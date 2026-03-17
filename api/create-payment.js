@@ -12,9 +12,9 @@ export default async function handler(req, res) {
 
   try {
     const params = new URLSearchParams({
-     TerminalNumber: '1000',
-      ApiName: 'bWnMIhVB0gDMa4YYCeJxi2sFKr0',
-     ApiPassword: '',
+      TerminalNumber: '170602',
+      ApiName: 'p5BVAwyhlERiuO6lsgsb',
+      ApiPassword: 'Iqhnz2ZvzOoKx6oewgTl',
       SumToBill: price.toString(),
       SuccessRedirectUrl: returnUrl,
       ErrorRedirectUrl: failUrl,
@@ -43,9 +43,9 @@ export default async function handler(req, res) {
     if (parsed.LowProfileCode && parsed.url) {
       return res.status(200).json({ url: parsed.url });
     } else {
-      return res.status(400).json({ error: parsed.Description || 'Cardcom error' });
+      return res.status(200).json({ trial: true, error: parsed.Description || 'Cardcom unavailable' });
     }
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(200).json({ trial: true, error: e.message });
   }
 }
