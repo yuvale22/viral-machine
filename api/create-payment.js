@@ -12,9 +12,9 @@ export default async function handler(req, res) {
 
   try {
     const params = new URLSearchParams({
-      TerminalNumber: '170602',
-      ApiName: 'nBpN6Pz2AqazwWsiicQM',
-      ApiPassword: 'vOSgMwOmCio3CpJjpxLh',
+     TerminalNumber: '1000',
+      ApiName: 'bWnMIhVB0gDMa4YYCeJxi2sFKr0',
+     ApiPassword: '',
       SumToBill: price.toString(),
       SuccessRedirectUrl: returnUrl,
       ErrorRedirectUrl: failUrl,
