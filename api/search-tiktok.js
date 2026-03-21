@@ -9,7 +9,9 @@ export default async function handler(req, res) {
   if (!RAPID_KEY) return res.status(500).json({ error: 'RapidAPI key not configured' });
 
   const { endpoint, params } = req.body;
-  const allowedEndpoints = ['feed/search', 'user/posts'];
+
+  // Allowed endpoints
+  const allowedEndpoints = ['feed/search', 'user/posts', 'user/search'];
   if (!allowedEndpoints.includes(endpoint)) {
     return res.status(400).json({ error: 'Invalid endpoint' });
   }
@@ -25,7 +27,10 @@ export default async function handler(req, res) {
       }
     });
 
-    if (!response.ok) return res.status(response.status).json({ error: 'TikTok API error: ' + response.status });
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'TikTok API error: ' + response.status });
+    }
+
     const data = await response.json();
     return res.status(200).json(data);
   } catch (e) {
