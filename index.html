@@ -1262,6 +1262,9 @@ function smartFilter(allVideos, maxResults, industryId) {
     const ownerMatches = ownerSignals.filter(kw => text.includes(kw)).length;
     score += ownerMatches * 5;
 
+    // HUGE BONUS: Video from verified business owner account
+    if (v._ownerAccount) score += 15 + (v._accountScore || 0);
+
     // PENALTY: reviewer/blogger signals (negative score)
     const reviewerMatches = REVIEWER_KEYWORDS.filter(kw => text.includes(kw)).length;
     score -= reviewerMatches * 10;
@@ -1292,13 +1295,18 @@ function smartFilter(allVideos, maxResults, industryId) {
   // Tier 1: Strict — 100K views, 10-60s, high relevance
   let filtered = filterScored(nonReviewer, 100000, 10, 60, 2);
   let filterLabel = '100K+ צפיות, רלוונטיות גבוהה';
-  if (filtered.length < 3) {
-    filtered = filterScored(nonReviewer, 50000, 5, 90, 1);
-    filterLabel = '50K+ צפיות';
+  if (filtered.length < 5) {
+    filtered = filterScored(nonReviewer, 30000, 5, 90, 1);
+    filterLabel = '30K+ צפיות';
+  }
+  if (filtered.length < 5) {
+    filtered = filterScored(nonReviewer, 5000, 0, 999, 0);
+    filterLabel = '5K+ צפיות';
   }
   if (filtered.length < 3) {
-    filtered = filterScored(nonReviewer, 10000, 0, 999, 0);
-    filterLabel = '10K+ צפיות';
+    // Last resort — include any video from owner accounts even with low views
+    filtered = filterScored(nonReviewer, 1000, 0, 999, -5);
+    filterLabel = '1K+ צפיות';
   }
   return { filtered, filterLabel };
 }
@@ -1436,51 +1444,121 @@ async function startSearch(industryId) {
   loadEl.style.display = 'flex';
   progBar.style.width = '0%';
   try {
-    // ===== Phase 0: Get business names from Claude =====
-    textEl.textContent = '🏪 מייצר רשימת עסקים ישראליים...';
+    // ===== Phase 0: Generate search queries for business owner accounts =====
+    textEl.textContent = '🏪 מחפש חשבונות של בעלי עסקים...';
     iconEl.textContent = '🏪';
     progBar.style.width = '5%';
 
     const indLabel = state.industry.label;
-    let businessNames = [];
+    let searchQueries = [];
     try {
-      const prompt = `אתה מומחה לעסקים ישראליים. תן לי רשימה של 20 עסקים ישראליים מוכרים ופופולריים בתחום: ${indLabel}.
-כלול עסקים מכל הארץ — תל אביב, ירושלים, חיפה, באר שבע, אשדוד, אשקלון, רמת גן, הרצליה וכו'.
-כלול גם עסקים קטנים-בינוניים שידועים ברשתות חברתיות ויש להם תוכן טוב בטיקטוק.
+      const prompt = `אתה מומחה לטיקטוק ישראלי ועסקים קטנים.
 
-חובה: תחזיר רק JSON array של שמות, בלי שום טקסט נוסף.
-דוגמה: ["מחניודה","OCD","קלארו","הסלון"]`;
+אני מחפש חשבונות טיקטוק של **בעלי עסקים ישראליים** בתחום: ${indLabel}
 
-      const text = await callClaude(prompt, 500);
+תן לי 15 שאילתות חיפוש שימצאו את החשבונות של בעלי העסקים עצמם (לא בלוגרים, לא ביקורות).
+
+כלול:
+- שמות של עסקים ישראליים מוכרים בתחום שיש להם טיקטוק פעיל
+- ביטויים בעברית שבעלי עסקים משתמשים בהם (למשל: "הפיצרייה שלנו", "המספרה שלי")
+- ביטויים באנגלית שבעלי עסקים בתחום משתמשים בהם (למשל: "gym owner", "pizza shop")
+- שילובים של תחום + מיקום ישראלי (למשל: "מספרה תל אביב", "פיצרייה ירושלים")
+
+חובה: תחזיר רק JSON array של שאילתות חיפוש, בלי שום טקסט נוסף.
+דוגמה: ["פיצרייה ישראלית טיקטוק","pizza shop israel","הפיצרייה שלנו","פיצה תל אביב"]`;
+
+      const text = await callClaude(prompt, 600);
       const match = text.match(/\[[\s\S]*\]/);
-      if (match) businessNames = JSON.parse(match[0]);
-      console.log('Business names:', businessNames);
-    } catch(e) { console.log('Claude business names error:', e); }
+      if (match) searchQueries = JSON.parse(match[0]);
+      console.log('Search queries:', searchQueries);
+    } catch(e) { console.log('Claude queries error:', e); }
 
-    if (businessNames.length === 0) {
-      // Fallback: use industry label as search
-      businessNames = [indLabel.split('/')[0].trim()];
+    if (searchQueries.length === 0) {
+      searchQueries = [
+        indLabel.split('/')[0].trim(),
+        indLabel.split('/')[0].trim() + ' ישראל',
+        indLabel.split('/')[0].trim() + ' תל אביב',
+      ];
     }
 
-    // ===== Phase 1: Search each business name on TikTok =====
-    textEl.textContent = '🔍 מחפש עסקים בטיקטוק...';
-    iconEl.textContent = '🔍';
+    // ===== Phase 1: Find business owner ACCOUNTS =====
+    textEl.textContent = '👤 מחפש חשבונות בעלי עסקים...';
+    iconEl.textContent = '👤';
+    progBar.style.width = '15%';
+
+    const foundAccounts = [];
+    const accountsSeen = new Set();
+    const userSearchQueries = searchQueries.slice(0, 8);
+
+    for (let i = 0; i < userSearchQueries.length; i++) {
+      progBar.style.width = (15 + Math.round((i / userSearchQueries.length) * 25)) + '%';
+      textEl.textContent = `👤 מחפש: ${userSearchQueries[i]}...`;
+      try {
+        const users = await searchUsers(userSearchQueries[i]);
+        users.forEach(u => {
+          const uid = u.user_info?.unique_id || u.unique_id || '';
+          if (uid && !accountsSeen.has(uid)) {
+            accountsSeen.add(uid);
+            const followers = u.user_info?.follower_count || u.follower_count || 0;
+            const nickname = u.user_info?.nickname || u.nickname || '';
+            const sig = u.user_info?.signature || u.signature || '';
+            // Score: prefer accounts with moderate followers (real businesses, not mega influencers)
+            let score = 0;
+            if (followers >= 500 && followers < 500000) score += 3;
+            if (followers >= 1000 && followers < 100000) score += 2;
+            // Business signals in bio
+            const bioText = (nickname + ' ' + sig).toLowerCase();
+            const bizSignals = ['עסק','חנות','מסעדה','מספרה','סלון','כושר','מאפייה','פיצרייה','קליניקה','משרד','סטודיו',
+              'shop','store','restaurant','salon','gym','bakery','pizza','clinic','studio','official','owner','בעלים','מייסד'];
+            bizSignals.forEach(s => { if (bioText.includes(s)) score += 3; });
+            // Location signals
+            const locSignals = ['תל אביב','ירושלים','חיפה','ישראל','israel','tlv','il','🇮🇱'];
+            locSignals.forEach(s => { if (bioText.includes(s)) score += 1; });
+
+            foundAccounts.push({ uid, nickname, sig, followers, score });
+          }
+        });
+      } catch(e) {}
+      if (i < userSearchQueries.length - 1) await sleep(300);
+    }
+
+    // Sort accounts by score
+    foundAccounts.sort((a, b) => b.score - a.score);
+    const topAccounts = foundAccounts.slice(0, 10);
+    console.log('Found accounts:', topAccounts.map(a => `@${a.uid} (${a.followers} followers, score:${a.score})`));
+
+    // ===== Phase 2: Fetch posts from top business accounts =====
+    textEl.textContent = '🎬 מושך סרטונים מחשבונות בעלי עסקים...';
+    iconEl.textContent = '🎬';
     const allFoundVideos = [];
 
-    for (let i = 0; i < businessNames.length; i++) {
-      progBar.style.width = (10 + Math.round((i / businessNames.length) * 70)) + '%';
-      textEl.textContent = `🔍 מחפש: ${businessNames[i]}...`;
+    for (let i = 0; i < topAccounts.length; i++) {
+      progBar.style.width = (40 + Math.round((i / topAccounts.length) * 30)) + '%';
+      textEl.textContent = `🎬 @${topAccounts[i].uid} — ${topAccounts[i].nickname}`;
       try {
-        const vids = await searchTikTok(businessNames[i], 'IL');
+        const vids = await fetchUserPosts(topAccounts[i].uid);
+        vids.forEach(v => { v._ownerAccount = true; v._accountScore = topAccounts[i].score; });
         allFoundVideos.push(...vids);
       } catch(e) {}
-      // Short delay to avoid rate limiting
-      if (i < businessNames.length - 1) await sleep(250);
+      if (i < topAccounts.length - 1) await sleep(300);
     }
 
-    // ===== Phase 2: Also search with DNA queries from curated creators =====
+    // ===== Phase 2.5: Also do video search as supplement =====
+    textEl.textContent = '🔍 מחפש סרטונים נוספים...';
+    iconEl.textContent = '🔍';
+    progBar.style.width = '75%';
+
+    const videoQueries = searchQueries.slice(0, 5);
+    for (let i = 0; i < videoQueries.length; i++) {
+      try {
+        const vids = await searchTikTok(videoQueries[i], 'IL');
+        allFoundVideos.push(...vids);
+      } catch(e) {}
+      if (i < videoQueries.length - 1) await sleep(250);
+    }
+
+    // ===== Phase 2.6: Curated creators from admin =====
     let creators = [];
-    let creatorUsernames = new Set();
     try {
       creators = await supa.select('creators', `industry_id=eq.${industryId}`);
     } catch(e) {}
@@ -1489,15 +1567,10 @@ async function startSearch(industryId) {
       textEl.textContent = '🧬 לומד מיוצרים מומלצים...';
       iconEl.textContent = '🧬';
       for (let i = 0; i < creators.length; i++) {
-        creatorUsernames.add(creators[i].username.replace('@','').toLowerCase());
         try {
           const vids = await fetchUserPosts(creators[i].username);
-          // Extract hashtags for additional queries
-          vids.forEach(v => {
-            const desc = (v.desc || '').toLowerCase();
-            const tags = desc.match(/#[\wא-ת]+/g) || [];
-            // Don't add the videos themselves — just learn from them
-          });
+          vids.forEach(v => { v._ownerAccount = true; v._accountScore = 10; });
+          allFoundVideos.push(...vids);
         } catch(e) {}
       }
     }
@@ -1573,6 +1646,7 @@ function renderVideos() {
         <span class="vid-stat">❤️ ${fmt(v.digg_count)}</span>
         <span class="vid-stat ${v.eng>3?'hot':''}">${v.eng}% eng</span>
         ${v.duration ? `<span class="vid-stat">⏱ ${v.duration}s</span>` : ''}
+        ${v._ownerAccount ? `<span class="vid-stat" style="color:var(--green);background:rgba(45,122,79,0.08)">👤 בעל עסק</span>` : ''}
       </div>
       <div style="font-size:15px;font-weight:700;color:var(--brown);margin-bottom:4px;line-height:1.5">${esc(title)}</div>
       ${subtitle ? `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6">${esc(subtitle)}</div>` : ''}
@@ -1912,6 +1986,20 @@ async function searchTikTok(query, region) {
     text_extra: v.text_extra || [],
     music_info: v.music_info || v.music || {},
   }));
+}
+
+async function searchUsers(query) {
+  try {
+    const res = await fetch('/api/search-tiktok', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: 'user/search', params: { keywords: query, count: 10, cursor: 0 } })
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const users = json.data?.user_list || json.user_list || json.data || [];
+    return Array.isArray(users) ? users : [];
+  } catch(e) { console.log('User search error:', e); return []; }
 }
 
 async function callClaude(prompt, maxTokens) {
