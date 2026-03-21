@@ -1,0 +1,3231 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ Viral Machine</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FDF6EC;
+    --cream-dark: #F5EBD8;
+    --cream-mid: #FAF0E1;
+    --brown: #6B4226;
+    --brown-dark: #4A2E19;
+    --brown-light: #8B6343;
+    --brown-warm: #A0714B;
+    --caramel: #C4853B;
+    --caramel-light: #D4A05A;
+    --sand: #E8D5B7;
+    --sand-light: #F0E2CE;
+    --text: #3B2415;
+    --text-secondary: #7A6352;
+    --text-muted: #A89482;
+    --border: rgba(107,66,38,0.1);
+    --border-hover: rgba(107,66,38,0.25);
+    --surface: #FFFFFF;
+    --surface-warm: #FFF9F0;
+    --radius: 20px;
+    --radius-sm: 14px;
+    --radius-xs: 10px;
+    --shadow-sm: 0 2px 8px rgba(74,46,25,0.06);
+    --shadow-md: 0 8px 24px rgba(74,46,25,0.08);
+    --shadow-lg: 0 16px 48px rgba(74,46,25,0.1);
+    --green: #2D7A4F;
+    --red: #B43C3C;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--cream); color: var(--text); font-family: 'Heebo', sans-serif; min-height: 100vh; direction: rtl; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+
+  /* ========== MARQUEE ========== */
+  .marquee { overflow: hidden; white-space: nowrap; border-top: 1px solid var(--sand); border-bottom: 1px solid var(--sand); padding: 14px 0; background: var(--surface-warm); }
+  .marquee-inner { display: inline-block; animation: marquee 30s linear infinite; }
+  .marquee-item { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase; color: var(--text-muted); padding: 0 28px; }
+  .marquee-item .dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--caramel); margin: 0 14px; vertical-align: middle; }
+  @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(50%); } }
+
+  /* ========== LAYOUT ========== */
+  .page { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+  .section { padding: 48px 0; }
+
+  /* ========== TOPBAR ========== */
+  .topbar { position: sticky; top: 0; z-index: 50; background: rgba(253,246,236,0.9); backdrop-filter: blur(16px); border-bottom: 1px solid var(--sand); padding: 0 24px; }
+  .topbar-inner { max-width: 1000px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .topbar-logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; letter-spacing: 2px; font-family: 'Rubik', sans-serif; color: var(--brown); cursor: pointer; }
+  .topbar-logo .bolt { font-size: 22px; }
+  .topbar-actions { display: flex; gap: 10px; }
+
+  /* ========== BUTTONS ========== */
+  .btn-primary { background: var(--brown); border: none; border-radius: 50px; padding: 15px 38px; color: var(--cream); font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.3s cubic-bezier(0.4,0,0.2,1); letter-spacing: 0.5px; }
+  .btn-primary:hover { background: var(--brown-dark); transform: translateY(-2px); box-shadow: 0 12px 32px rgba(74,46,25,0.2); }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-primary.full { width: 100%; }
+  .btn-secondary { background: transparent; border: 1px solid var(--sand); border-radius: 50px; padding: 10px 22px; color: var(--text-secondary); font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .btn-secondary:hover { border-color: var(--brown-warm); color: var(--brown); background: var(--surface-warm); }
+  .btn-copy { background: var(--cream); border: 1px solid var(--sand); border-radius: 50px; padding: 10px 20px; color: var(--text-secondary); font-size: 13px; cursor: pointer; font-family: inherit; width: 100%; margin-top: 16px; transition: all 0.2s; }
+  .btn-copy:hover { background: rgba(196,133,59,0.08); border-color: var(--caramel-light); color: var(--brown); }
+  .btn-caramel { background: var(--caramel); border: none; border-radius: 50px; padding: 14px 32px; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.3s; }
+  .btn-caramel:hover { background: var(--brown-warm); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(196,133,59,0.25); }
+  .btn-caramel:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .btn-caramel.full { width: 100%; }
+  .btn-danger-ghost { background: transparent; border: 1px solid rgba(180,60,60,0.2); border-radius: 50px; padding: 8px 16px; color: var(--red); font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .btn-danger-ghost:hover { background: rgba(180,60,60,0.06); border-color: rgba(180,60,60,0.4); }
+
+  /* ========== FIELDS ========== */
+  .setup-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; text-align: center; background: linear-gradient(180deg, var(--cream) 0%, var(--cream-dark) 100%); }
+  .setup-icon { font-size: 64px; margin-bottom: 20px; }
+  .setup-title { font-size: 48px; font-weight: 900; letter-spacing: 1px; margin-bottom: 8px; line-height: 1.1; color: var(--brown-dark); }
+  .setup-title .highlight { color: var(--caramel); }
+  .setup-sub { color: var(--text-secondary); font-size: 17px; font-weight: 300; margin-bottom: 48px; max-width: 400px; line-height: 1.7; }
+  .setup-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 40px; width: 100%; max-width: 420px; text-align: right; box-shadow: var(--shadow-lg); }
+  .field-label { display: block; color: var(--text-secondary); font-size: 13px; font-weight: 500; margin-bottom: 10px; margin-top: 24px; }
+  .field-label:first-child { margin-top: 0; }
+  .field-input { width: 100%; background: var(--cream); border: 1px solid var(--sand); border-radius: var(--radius-xs); padding: 14px 18px; color: var(--text); font-size: 15px; outline: none; font-family: inherit; transition: border-color 0.2s, box-shadow 0.2s; }
+  .field-input:focus { border-color: var(--caramel-light); box-shadow: 0 0 0 3px rgba(196,133,59,0.1); }
+  .field-input::placeholder { color: var(--text-muted); }
+  .field-hint { color: var(--text-muted); font-size: 12px; margin-top: 6px; }
+
+  /* ========== STATS ========== */
+  .stats-row { display: flex; justify-content: center; gap: 48px; margin-bottom: 48px; }
+  .stat { text-align: center; }
+  .stat-num { font-size: 36px; font-weight: 900; color: var(--caramel); }
+  .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ========== STEPPER ========== */
+  .stepper { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 40px; direction: ltr; }
+  .st { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); font-weight: 500; transition: color 0.3s; }
+  .st.active { color: var(--brown); }
+  .st.done { color: var(--caramel); }
+  .st-dot { width: 32px; height: 32px; border-radius: 50%; border: 2px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; transition: all 0.3s; }
+  .st.active .st-dot { background: rgba(107,66,38,0.08); box-shadow: 0 0 16px rgba(107,66,38,0.08); }
+  .st.done .st-dot { background: rgba(196,133,59,0.1); }
+  .st-line { width: 36px; height: 1px; background: var(--sand); margin: 0 8px; transition: background 0.3s; }
+  .st-line.done { background: var(--caramel-light); }
+
+  /* ========== HEADINGS ========== */
+  .home-heading { text-align: center; margin-bottom: 12px; }
+  .home-heading h1 { font-size: 36px; font-weight: 900; line-height: 1.3; margin-bottom: 12px; color: var(--brown-dark); }
+  .home-heading p { color: var(--text-secondary); font-size: 16px; font-weight: 300; max-width: 500px; margin: 0 auto; line-height: 1.7; }
+  .screen-heading { text-align: center; margin-bottom: 32px; }
+  .screen-heading h2 { font-size: 28px; font-weight: 800; margin-bottom: 8px; color: var(--brown-dark); }
+  .screen-heading p { color: var(--text-secondary); font-size: 14px; font-weight: 300; }
+  .divider { width: 60px; height: 3px; background: var(--sand); border-radius: 2px; margin: 0 auto 32px; }
+
+  /* ========== INDUSTRY GRID ========== */
+  .industry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-top: 40px; }
+  .ind-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 28px 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 14px; transition: all 0.35s cubic-bezier(0.4,0,0.2,1); font-family: inherit; color: var(--text-secondary); font-size: 14px; font-weight: 500; text-align: center; position: relative; overflow: hidden; box-shadow: var(--shadow-sm); }
+  .ind-card::after { content:''; position:absolute; inset:0; border-radius:var(--radius); background:radial-gradient(circle at 50% 30%,rgba(196,133,59,0.06) 0%,transparent 70%); opacity:0; transition:opacity 0.3s; pointer-events:none; }
+  .ind-card:hover { border-color: var(--border-hover); transform: translateY(-4px); box-shadow: var(--shadow-lg); color: var(--brown); }
+  .ind-card:hover::after { opacity: 1; }
+  .ind-emoji { font-size: 36px; transition: transform 0.3s; position: relative; z-index: 1; }
+  .ind-card:hover .ind-emoji { transform: scale(1.2) rotate(-3deg); }
+
+  /* ========== VIDEO GRID ========== */
+  .count-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(196,133,59,0.08); border: 1px solid rgba(196,133,59,0.2); border-radius: 50px; padding: 8px 18px; font-size: 14px; color: var(--brown); font-weight: 500; margin-bottom: 24px; }
+  .count-badge .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--caramel); animation: pulse 2s ease infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.4; transform:scale(0.8); } }
+  .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-bottom: 32px; }
+  .vid-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 22px; cursor: pointer; position: relative; transition: all 0.25s; box-shadow: var(--shadow-sm); }
+  .vid-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .vid-card.selected { border-color: var(--brown); background: rgba(107,66,38,0.03); box-shadow: 0 0 0 1px var(--brown), var(--shadow-md); }
+  .vid-check { position: absolute; top: 14px; left: 14px; background: var(--brown); color: var(--cream); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; animation: popIn 0.2s ease; }
+  @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+  .vid-stats { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .vid-stat { font-size: 12px; color: var(--text-muted); background: var(--cream); padding: 4px 10px; border-radius: 8px; font-weight: 500; }
+  .vid-stat.hot { color: var(--green); background: rgba(45,122,79,0.08); }
+  .vid-title { font-size: 14px; color: var(--text); line-height: 1.7; margin-bottom: 8px; }
+  .vid-author { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+  .vid-link { font-size: 12px; color: var(--caramel); text-decoration: none; font-weight: 600; transition: color 0.2s; }
+  .vid-link:hover { color: var(--brown); }
+
+  /* ========== GEN PANEL ========== */
+  .gen-panel { background: var(--surface-warm); border: 1px solid var(--sand); border-radius: var(--radius); padding: 32px; margin-top: 12px; box-shadow: var(--shadow-sm); animation: fadeUp 0.3s ease; }
+  .gen-panel h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--brown); }
+  .gen-row { display: flex; gap: 14px; margin-bottom: 14px; }
+  .gen-row .field-input { flex: 1; }
+
+  /* ========== SCRIPTS ========== */
+  .scripts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 18px; }
+  .script-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 32px; position: relative; transition: all 0.25s; box-shadow: var(--shadow-sm); }
+  .script-card:hover { box-shadow: var(--shadow-md); border-color: var(--border-hover); }
+  .script-badge { position: absolute; top: 20px; left: 20px; background: var(--brown); color: var(--cream); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; font-family: 'Rubik'; }
+  .script-title { font-size: 17px; font-weight: 700; color: var(--brown); margin-bottom: 14px; }
+  .script-body { font-size: 14px; line-height: 2; color: var(--text); white-space: pre-wrap; background: var(--cream); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 14px; border: 1px solid var(--sand-light); }
+  .script-caption { font-size: 12px; color: var(--text-muted); line-height: 1.7; direction: ltr; text-align: left; }
+
+  /* ========== CALENDAR ========== */
+  .calendar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .day-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-sm); }
+  .day-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--sand); }
+  .day-name { font-size: 18px; font-weight: 800; color: var(--brown-dark); }
+  .day-date { font-size: 12px; color: var(--text-muted); }
+  .day-slot { background: var(--cream); border: 1px solid var(--sand-light); border-radius: var(--radius-xs); padding: 16px; margin-bottom: 10px; }
+  .day-slot:last-child { margin-bottom: 0; }
+  .slot-time { font-size: 11px; font-weight: 700; color: var(--caramel); margin-bottom: 6px; letter-spacing: 1px; }
+  .slot-platform { display: inline-block; font-size: 11px; background: rgba(196,133,59,0.1); color: var(--brown); padding: 2px 8px; border-radius: 6px; margin-bottom: 8px; font-weight: 600; }
+  .slot-title { font-size: 14px; font-weight: 600; color: var(--brown); margin-bottom: 4px; }
+  .slot-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* ========== HISTORY ========== */
+  .history-list { display: flex; flex-direction: column; gap: 14px; }
+  .history-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm); transition: all 0.2s; cursor: pointer; }
+  .history-card:hover { box-shadow: var(--shadow-md); border-color: var(--border-hover); }
+  .history-info { flex: 1; }
+  .history-biz { font-size: 16px; font-weight: 700; color: var(--brown); margin-bottom: 4px; }
+  .history-meta { font-size: 13px; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .history-actions { display: flex; gap: 8px; }
+  .empty-state { text-align: center; padding: 80px 24px; color: var(--text-muted); }
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state p { font-size: 15px; }
+
+  /* ========== TAB NAV ========== */
+  .tab-nav { display: flex; gap: 4px; background: var(--cream-dark); border-radius: 50px; padding: 4px; margin-bottom: 32px; max-width: 400px; margin-left: auto; margin-right: auto; }
+  .tab-btn { flex: 1; background: transparent; border: none; border-radius: 50px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .tab-btn.active { background: var(--surface); color: var(--brown); box-shadow: var(--shadow-sm); }
+
+  /* ========== TOAST ========== */
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--surface); border: 1px solid var(--sand); border-radius: 50px; padding: 14px 28px; font-size: 14px; color: var(--text); z-index: 200; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-lg); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.35s; opacity: 0; pointer-events: none; font-weight: 500; }
+  .toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.err { border-color: rgba(180,60,60,0.25); }
+  .toast.ok { border-color: rgba(45,122,79,0.25); }
+
+  /* ========== SCREENS ========== */
+  .screen { display: none; }
+  .screen.active { display: block; animation: fadeUp 0.35s ease; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+  .stagger { opacity: 0; animation: fadeUp 0.4s ease forwards; }
+  .error { color: var(--red); font-size: 13px; margin: 8px 0; }
+
+  /* ========== SEARCH LOADER — PREMIUM ========== */
+  .search-loader { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; text-align: center; gap: 40px; }
+
+  .orb-scene { position: relative; width: 160px; height: 160px; }
+
+  /* Outer ring */
+  .orb-ring { position: absolute; border-radius: 50%; border: 2px solid transparent; }
+  .orb-ring-1 { inset: 0; border-top-color: var(--caramel); border-right-color: rgba(196,133,59,0.2); animation: orbSpin1 2.5s cubic-bezier(0.4,0,0.2,1) infinite; }
+  .orb-ring-2 { inset: 14px; border-bottom-color: var(--brown-warm); border-left-color: rgba(160,113,75,0.15); animation: orbSpin2 3.2s cubic-bezier(0.4,0,0.2,1) infinite; }
+  .orb-ring-3 { inset: 28px; border-top-color: var(--sand); border-right-color: rgba(232,213,183,0.3); animation: orbSpin1 4s linear infinite reverse; }
+
+  @keyframes orbSpin1 {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  @keyframes orbSpin2 {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.04); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+
+  /* Floating dots on orbit */
+  .orb-dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; }
+  .orb-dot-1 { background: var(--caramel); top: 0; left: 50%; margin-left: -4px; animation: orbSpin1 2.5s cubic-bezier(0.4,0,0.2,1) infinite; transform-origin: 4px 80px; box-shadow: 0 0 12px rgba(196,133,59,0.6); }
+  .orb-dot-2 { background: var(--brown); bottom: 14px; right: 14px; width: 6px; height: 6px; animation: orbSpin2 3.2s cubic-bezier(0.4,0,0.2,1) infinite; transform-origin: -30px -30px; box-shadow: 0 0 10px rgba(107,66,38,0.5); }
+  .orb-dot-3 { background: var(--caramel-light); top: 28px; left: 28px; width: 5px; height: 5px; animation: orbSpin1 4s linear infinite reverse; transform-origin: 48px 48px; box-shadow: 0 0 8px rgba(212,160,90,0.5); }
+
+  /* Center icon */
+  .orb-center { position: absolute; inset: 42px; background: var(--surface); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(74,46,25,0.08); }
+  .orb-center-icon { font-size: 32px; animation: centerPulse 2s ease infinite; }
+  @keyframes centerPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+  }
+
+  /* Ambient particles */
+  .particle-field { position: absolute; inset: -20px; pointer-events: none; }
+  .particle { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: var(--caramel); opacity: 0; }
+  .particle:nth-child(1) { left: 10%; top: 20%; animation: particleFloat 3s ease-in-out 0s infinite; }
+  .particle:nth-child(2) { right: 15%; top: 30%; animation: particleFloat 3.5s ease-in-out 0.5s infinite; }
+  .particle:nth-child(3) { left: 20%; bottom: 20%; animation: particleFloat 2.8s ease-in-out 1s infinite; }
+  .particle:nth-child(4) { right: 10%; bottom: 30%; animation: particleFloat 3.2s ease-in-out 1.5s infinite; width: 2px; height: 2px; }
+  .particle:nth-child(5) { left: 50%; top: 5%; animation: particleFloat 4s ease-in-out 0.8s infinite; width: 4px; height: 4px; }
+  .particle:nth-child(6) { right: 30%; top: 10%; animation: particleFloat 3.8s ease-in-out 2s infinite; width: 2px; height: 2px; }
+  @keyframes particleFloat {
+    0% { opacity: 0; transform: translateY(0) scale(0); }
+    20% { opacity: 0.6; transform: translateY(-8px) scale(1); }
+    80% { opacity: 0.3; transform: translateY(-24px) scale(0.6); }
+    100% { opacity: 0; transform: translateY(-32px) scale(0); }
+  }
+
+  /* Progress bar */
+  .search-progress { width: 200px; height: 3px; background: var(--sand); border-radius: 2px; overflow: hidden; }
+  .search-progress-bar { height: 100%; background: linear-gradient(90deg, var(--caramel), var(--brown-warm), var(--caramel)); border-radius: 2px; width: 0%; transition: width 0.4s ease; animation: progressShimmer 2s ease infinite; background-size: 200% 100%; }
+  @keyframes progressShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .search-loader-text { font-size: 16px; font-weight: 600; color: var(--brown); }
+
+  /* ========== MOBILE ========== */
+  @media (max-width: 640px) {
+    .setup-title { font-size: 32px; }
+    .setup-card { padding: 28px; }
+    .home-heading h1 { font-size: 26px; }
+    .industry-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .video-grid { grid-template-columns: 1fr; }
+    .scripts-grid { grid-template-columns: 1fr; }
+    .calendar-grid { grid-template-columns: 1fr; }
+    .gen-row { flex-direction: column; }
+    .stats-row { gap: 24px; flex-wrap: wrap; }
+    .stat-num { font-size: 28px; }
+    .st span:not(.st-dot) { display: none; }
+    .st-line { width: 20px; }
+    .page { padding: 0 16px; }
+    .tab-nav { max-width: 100%; }
+  }
+  /* ========== GENERATION OVERLAY ========== */
+  .gen-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(253,246,236,0.95); backdrop-filter: blur(12px); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 32px; text-align: center; padding: 24px; }
+  .gen-overlay.active { display: flex; animation: fadeUp 0.3s ease; }
+  .gear-container { position: relative; width: 120px; height: 120px; }
+  .gear { position: absolute; }
+  .gear-big { width: 90px; height: 90px; top: 15px; left: 15px; animation: gearSpin 4s linear infinite; }
+  .gear-small { width: 50px; height: 50px; top: 0; right: 0; animation: gearSpin 3s linear infinite reverse; }
+  .gear svg { width: 100%; height: 100%; }
+  @keyframes gearSpin { to { transform: rotate(360deg); } }
+  .gen-steps { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 340px; }
+  .gen-step { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--sand); border-radius: 14px; transition: all 0.4s; opacity: 0.4; }
+  .gen-step.active { opacity: 1; border-color: var(--caramel-light); box-shadow: 0 4px 16px rgba(196,133,59,0.1); }
+  .gen-step.done { opacity: 0.7; }
+  .gen-step.done .step-icon { background: var(--green); color: #fff; }
+  .step-icon { width: 32px; height: 32px; min-width: 32px; border-radius: 50%; background: var(--sand); color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; transition: all 0.3s; }
+  .gen-step.active .step-icon { background: var(--caramel); color: #fff; animation: pulse 1.5s ease infinite; }
+  .step-text { text-align: right; }
+  .step-label { font-size: 14px; font-weight: 600; color: var(--brown); }
+  .step-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .gen-title-text { font-size: 22px; font-weight: 800; color: var(--brown-dark); }
+
+  /* ========== TRENDS ========== */
+  .tools-row { display: flex; gap: 14px; margin-top: 48px; flex-wrap: wrap; justify-content: center; }
+  .tool-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 24px 28px; cursor: pointer; display: flex; align-items: center; gap: 14px; transition: all 0.3s; box-shadow: var(--shadow-sm); flex: 1; min-width: 200px; max-width: 320px; }
+  .tool-card:hover { border-color: var(--border-hover); transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .tool-icon { font-size: 28px; }
+  .tool-info { text-align: right; }
+  .tool-name { font-size: 15px; font-weight: 700; color: var(--brown); }
+  .tool-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .trends-updated { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; justify-content: center; margin-bottom: 24px; }
+  .trends-updated .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s ease infinite; }
+  .trend-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-bottom: 32px; }
+  .trend-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 22px; position: relative; transition: all 0.25s; box-shadow: var(--shadow-sm); }
+  .trend-card:hover { box-shadow: var(--shadow-md); border-color: var(--border-hover); }
+  .fav-btn { position: absolute; top: 14px; left: 14px; background: none; border: none; font-size: 22px; cursor: pointer; transition: transform 0.2s; padding: 0; line-height: 1; filter: grayscale(1) opacity(0.4); }
+  .fav-btn:hover { transform: scale(1.2); filter: grayscale(0) opacity(0.7); }
+  .fav-btn.liked { filter: grayscale(0) opacity(1); animation: popIn 0.3s ease; }
+  .trends-tabs { display: flex; gap: 4px; background: var(--cream-dark); border-radius: 50px; padding: 4px; margin-bottom: 24px; max-width: 300px; margin-left: auto; margin-right: auto; }
+  .trends-tab { flex: 1; background: transparent; border: none; border-radius: 50px; padding: 10px 16px; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .trends-tab.active { background: var(--surface); color: var(--brown); box-shadow: var(--shadow-sm); }
+
+  /* ========== CLIENTS DASHBOARD ========== */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin-bottom: 32px; }
+  .summary-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 20px; text-align: center; box-shadow: var(--shadow-sm); }
+  .summary-num { font-size: 28px; font-weight: 900; margin-bottom: 4px; }
+  .summary-label { font-size: 12px; color: var(--text-muted); }
+
+  .client-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 28px; margin-bottom: 14px; box-shadow: var(--shadow-sm); transition: all 0.3s; position: relative; overflow: hidden; }
+  .client-card::before { content: ''; position: absolute; top: 0; right: 0; width: 4px; height: 100%; background: var(--caramel); border-radius: 0 4px 4px 0; transition: background 0.3s; }
+  .client-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .client-card.overdue::before { background: var(--red); animation: overduePulse 2s ease infinite; }
+  .client-card.is-paid::before { background: var(--green); }
+  @keyframes overduePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .client-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .client-name-wrap { display: flex; align-items: center; gap: 12px; }
+  .client-avatar { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--caramel-light), var(--brown-warm)); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; font-weight: 800; font-family: 'Rubik', sans-serif; flex-shrink: 0; }
+  .client-card.overdue .client-avatar { background: linear-gradient(135deg, #e07070, #B43C3C); }
+  .client-card.is-paid .client-avatar { background: linear-gradient(135deg, #6bc88d, var(--green)); }
+  .client-name { font-size: 17px; font-weight: 700; color: var(--brown-dark); }
+  .client-amount { font-size: 20px; font-weight: 900; color: var(--caramel); letter-spacing: -0.5px; }
+
+  .client-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .status-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 50px; }
+  .tag-paid { background: rgba(45,122,79,0.08); color: var(--green); }
+  .tag-paid .tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s ease infinite; }
+  .tag-overdue { background: rgba(180,60,60,0.08); color: var(--red); }
+  .tag-overdue .tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: pulse 1.5s ease infinite; }
+
+  .client-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .meta-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+  .meta-icon { width: 28px; height: 28px; border-radius: 8px; background: var(--cream); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .meta-icon svg { width: 14px; height: 14px; }
+
+  .client-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid var(--sand); }
+  .btn-paid { background: var(--green); border: none; border-radius: 50px; padding: 10px 22px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.25s; display: flex; align-items: center; gap: 6px; }
+  .btn-paid:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(45,122,79,0.25); }
+  .btn-unpaid { background: transparent; border: 1px solid rgba(180,60,60,0.2); border-radius: 50px; padding: 10px 22px; color: var(--red); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+  .btn-unpaid:hover { background: rgba(180,60,60,0.06); }
+  .btn-delete-client { background: transparent; border: 1px solid var(--sand); border-radius: 50px; padding: 10px 16px; color: var(--text-muted); font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.2s; margin-right: auto; }
+  .btn-delete-client:hover { border-color: rgba(180,60,60,0.3); color: var(--red); }
+
+  .add-client-modal { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 28px; margin-bottom: 20px; box-shadow: var(--shadow-md); animation: fadeUp 0.3s ease; }
+  .add-client-modal h3 { font-size: 16px; font-weight: 700; color: var(--brown); margin-bottom: 16px; }
+  .modal-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .modal-row .field-input { flex: 1; min-width: 140px; margin-bottom: 0; }
+
+  /* ========== AUTH ========== */
+  .auth-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, var(--cream) 0%, var(--cream-dark) 100%); padding: 40px 20px; }
+  .auth-card { background: var(--surface); border: 1px solid var(--sand); border-radius: 16px; padding: 40px 32px; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); }
+  .auth-toggle { display: flex; gap: 0; background: var(--sand); border-radius: 12px; overflow: hidden; margin-bottom: 28px; }
+  .auth-toggle button { flex: 1; padding: 12px; border: none; background: transparent; font: 600 14px Heebo; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+  .auth-toggle button.active { background: var(--brown); color: #fff; }
+  .auth-separator { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--text-muted); font-size: 12px; }
+  .auth-separator::before, .auth-separator::after { content:''; flex:1; height:1px; background:var(--sand); }
+
+  /* ========== PLANS ========== */
+  .plans-wrap { min-height: 100vh; background: linear-gradient(180deg, var(--cream) 0%, var(--cream-dark) 100%); padding: 40px 20px; }
+  .plans-header { text-align: center; margin-bottom: 40px; }
+  .plans-header h1 { font: 800 32px Rubik; color: var(--brown); margin-bottom: 8px; }
+  .plans-header p { font-size: 16px; color: var(--text-muted); }
+  .plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 960px; margin: 0 auto; }
+  .plan-card { background: var(--surface); border: 2px solid var(--sand); border-radius: 16px; padding: 32px 24px; text-align: center; transition: all 0.3s; position: relative; }
+  .plan-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-4px); }
+  .plan-card.popular { border-color: var(--caramel); }
+  .plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--caramel); color: #fff; font: 700 11px Heebo; padding: 4px 16px; border-radius: 20px; letter-spacing: 1px; }
+  .plan-emoji { font-size: 36px; margin-bottom: 12px; }
+  .plan-name { font: 700 20px Rubik; color: var(--brown); margin-bottom: 8px; }
+  .plan-price { font: 800 36px Rubik; color: var(--brown-dark); margin-bottom: 4px; }
+  .plan-price span { font-size: 16px; font-weight: 400; color: var(--text-muted); }
+  .plan-features { list-style: none; padding: 0; margin: 20px 0; text-align: right; }
+  .plan-features li { padding: 8px 0; font-size: 14px; color: var(--text); border-bottom: 1px solid var(--sand); }
+  .plan-features li::before { content: '✓ '; color: var(--caramel); font-weight: 700; }
+  .plan-features li.disabled { color: var(--text-muted); text-decoration: line-through; }
+  .plan-features li.disabled::before { content: '✗ '; color: #ccc; }
+  .plan-btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font: 700 16px Heebo; cursor: pointer; transition: all 0.2s; }
+  .plan-btn-primary { background: var(--brown); color: #fff; }
+  .plan-btn-primary:hover { background: var(--brown-dark); }
+  .plan-btn-outline { background: transparent; border: 2px solid var(--brown); color: var(--brown); }
+  .plan-btn-outline:hover { background: var(--brown); color: #fff; }
+  .plan-current { background: var(--sand); color: var(--text-muted); cursor: default; }
+
+  /* ========== ADMIN ========== */
+  .admin-topbar { background: var(--brown-dark) !important; }
+  .admin-topbar .topbar-logo { color: var(--cream) !important; }
+  .admin-topbar .btn-secondary { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); }
+  .admin-topbar .btn-secondary:hover { border-color: rgba(255,255,255,0.3); color: #fff; background: rgba(255,255,255,0.05); }
+  .admin-badge { display: inline-block; background: var(--caramel); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; letter-spacing: 1px; margin-right: 8px; }
+  .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .creator-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm); transition: all 0.2s; }
+  .creator-card:hover { box-shadow: var(--shadow-md); }
+  .creator-info { display: flex; align-items: center; gap: 12px; }
+  .creator-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--caramel-light), var(--brown-warm)); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; font-weight: 700; }
+  .creator-username { font-size: 14px; font-weight: 700; color: var(--brown); }
+  .creator-industry-tag { font-size: 11px; background: rgba(196,133,59,0.1); color: var(--brown); padding: 2px 8px; border-radius: 6px; font-weight: 500; }
+  .admin-login-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 40px; width: 100%; max-width: 380px; box-shadow: var(--shadow-lg); }
+  .admin-stat { background: var(--brown-dark); color: var(--cream); border-radius: var(--radius); padding: 20px; text-align: center; }
+  .admin-stat .summary-num { color: var(--caramel-light); }
+  .admin-stat .summary-label { color: rgba(255,255,255,0.6); }
+
+  /* ========== PROFILE & QUOTES ========== */
+  .profile-section { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 28px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
+  .profile-section h3 { font-size: 16px; font-weight: 700; color: var(--brown); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .service-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .service-row .field-input { margin-bottom: 0; }
+  .service-row .svc-name { flex: 2; }
+  .service-row .svc-price { flex: 1; max-width: 140px; }
+  .remove-btn { background: none; border: none; color: var(--red); font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: background 0.2s; }
+  .remove-btn:hover { background: rgba(180,60,60,0.08); }
+  .add-row { display: flex; align-items: center; gap: 8px; color: var(--caramel); font-size: 14px; font-weight: 600; cursor: pointer; padding: 10px 0; transition: opacity 0.2s; }
+  .add-row:hover { opacity: 0.7; }
+  .contract-area { width: 100%; min-height: 350px; background: var(--cream); border: 1px solid var(--sand); border-radius: var(--radius-xs); padding: 18px 20px; color: var(--text); font-size: 14px; outline: none; font-family: inherit; line-height: 1.9; resize: vertical; transition: border-color 0.2s; }
+  .contract-area:focus { border-color: var(--caramel-light); }
+  .quote-service-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--cream); border: 1px solid var(--sand); border-radius: var(--radius-xs); margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+  .quote-service-item:hover { border-color: var(--border-hover); }
+  .quote-service-item.checked { border-color: var(--brown); background: rgba(107,66,38,0.04); }
+  .qcheck { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--sand); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; transition: all 0.2s; color: transparent; }
+  .quote-service-item.checked .qcheck { border-color: var(--brown); background: var(--brown); color: var(--cream); }
+  .qsvc-info { flex: 1; }
+  .qsvc-name { font-size: 14px; font-weight: 600; color: var(--brown); }
+  .qsvc-price-input { width: 120px; background: var(--surface); border: 1px solid var(--sand); border-radius: 8px; padding: 8px 12px; font-size: 14px; font-family: inherit; color: var(--text); text-align: center; outline: none; }
+  .qsvc-price-input:focus { border-color: var(--caramel-light); }
+  .quote-total { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--surface-warm); border: 1px solid var(--sand); border-radius: var(--radius-xs); margin-top: 16px; }
+  .quote-total-label { font-size: 16px; font-weight: 700; color: var(--brown); }
+  .quote-total-num { font-size: 24px; font-weight: 900; color: var(--caramel); }
+  .quotes-list { display: flex; flex-direction: column; gap: 12px; }
+  .quote-hist-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm); transition: all 0.2s; }
+  .quote-hist-card:hover { box-shadow: var(--shadow-md); }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--cream); }
+  ::-webkit-scrollbar-thumb { background: var(--sand); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"><span id="toast-icon"></span><span id="toast-msg"></span></div>
+
+<!-- GENERATION OVERLAY -->
+<div class="gen-overlay" id="gen-overlay">
+  <div class="gear-container">
+    <div class="gear gear-big">
+      <svg viewBox="0 0 100 100" fill="none"><path d="M50 15a35 35 0 0 1 0 70 35 35 0 0 1 0-70zm0 12a23 23 0 1 0 0 46 23 23 0 0 0 0-46z" fill="currentColor" opacity="0.15"/><path d="M44 2h12l2 13a36 36 0 0 1 10 5.8l12.4-5 6 10.4-10.4 8a36 36 0 0 1 0 11.6l10.4 8-6 10.4-12.4-5a36 36 0 0 1-10 5.8L56 98H44l-2-13a36 36 0 0 1-10-5.8L19.6 84.2l-6-10.4 10.4-8a36 36 0 0 1 0-11.6l-10.4-8 6-10.4 12.4 5a36 36 0 0 1 10-5.8L44 2z" fill="var(--caramel)" opacity="0.8"/><circle cx="50" cy="50" r="18" fill="var(--cream)"/><circle cx="50" cy="50" r="12" fill="none" stroke="var(--caramel)" stroke-width="2" opacity="0.4"/></svg>
+    </div>
+    <div class="gear gear-small">
+      <svg viewBox="0 0 100 100" fill="none"><path d="M44 2h12l2 13a36 36 0 0 1 10 5.8l12.4-5 6 10.4-10.4 8a36 36 0 0 1 0 11.6l10.4 8-6 10.4-12.4-5a36 36 0 0 1-10 5.8L56 98H44l-2-13a36 36 0 0 1-10-5.8L19.6 84.2l-6-10.4 10.4-8a36 36 0 0 1 0-11.6l-10.4-8 6-10.4 12.4 5a36 36 0 0 1 10-5.8L44 2z" fill="var(--brown-warm)" opacity="0.6"/><circle cx="50" cy="50" r="18" fill="var(--cream)"/></svg>
+    </div>
+  </div>
+  <div class="gen-title-text" id="gen-overlay-title">מייצר תסריטים...</div>
+  <div class="gen-steps">
+    <div class="gen-step" id="gstep-1">
+      <div class="step-icon">1</div>
+      <div class="step-text"><div class="step-label">ניתוח סרטונים</div><div class="step-desc">מנתח סגנון, מבנה, וקצב של הסרטונים שבחרת</div></div>
+    </div>
+    <div class="gen-step" id="gstep-2">
+      <div class="step-icon">2</div>
+      <div class="step-text"><div class="step-label">יצירת תסריטים</div><div class="step-desc">בונה תסריטים מותאמים בסגנון הסרטונים</div></div>
+    </div>
+    <div class="gen-step" id="gstep-3">
+      <div class="step-icon">3</div>
+      <div class="step-text"><div class="step-label">שמירה</div><div class="step-desc">שומר להיסטוריה ומכין לצפייה</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SETUP ========== -->
+<!-- ========== AUTH (Login/Register) ========== -->
+<div id="screen-auth" class="screen active">
+  <div class="auth-wrap">
+    <div style="text-align:center;margin-bottom:32px">
+      <div class="setup-icon">⚡</div>
+      <div class="setup-title"><span class="highlight">VIRAL</span> MACHINE</div>
+      <div class="setup-sub">מכונת הרעיונות לתוכן ויראלי לכל עסק</div>
+    </div>
+    <div class="auth-card">
+      <div class="auth-toggle">
+        <button id="auth-tab-login" class="active" onclick="switchAuthTab('login')">התחברות</button>
+        <button id="auth-tab-register" onclick="switchAuthTab('register')">הרשמה</button>
+      </div>
+
+      <!-- Login Form -->
+      <div id="auth-login-form">
+        <label class="field-label">אימייל</label>
+        <input class="field-input" type="email" id="auth-login-email" placeholder="you@email.com">
+        <label class="field-label">סיסמה</label>
+        <input class="field-input" type="password" id="auth-login-pass" placeholder="••••••••">
+        <button class="btn-primary full" style="margin-top:20px" onclick="userLogin()">התחבר ←</button>
+      </div>
+
+      <!-- Register Form (hidden) -->
+      <div id="auth-register-form" style="display:none">
+        <label class="field-label">שם מלא</label>
+        <input class="field-input" type="text" id="auth-reg-name" placeholder="ישראל ישראלי">
+        <label class="field-label">אימייל</label>
+        <input class="field-input" type="email" id="auth-reg-email" placeholder="you@email.com">
+        <label class="field-label">סיסמה (לפחות 6 תווים)</label>
+        <input class="field-input" type="password" id="auth-reg-pass" placeholder="••••••••">
+        <button class="btn-primary full" style="margin-top:20px" onclick="userRegister()">צור חשבון ←</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PLANS ========== -->
+<div id="screen-plans" class="screen">
+  <div class="plans-wrap">
+    <div class="plans-header">
+      <div style="font-size:48px;margin-bottom:8px">⚡</div>
+      <h1>בחר את התוכנית שלך</h1>
+      <p>התחל בחינם, שדרג כשתרצה</p>
+    </div>
+    <div class="plans-grid">
+
+      <!-- FREE -->
+      <div class="plan-card">
+        <div class="plan-emoji">🆓</div>
+        <div class="plan-name">חינם</div>
+        <div class="plan-price">₪0 <span>/ לנצח</span></div>
+        <ul class="plan-features">
+          <li>3 חיפושים ביום</li>
+          <li>צפייה בסרטונים ויראליים</li>
+          <li class="disabled">תסריטים בעברית</li>
+          <li class="disabled">לוח תוכן שבועי</li>
+          <li class="disabled">ניהול לקוחות</li>
+          <li class="disabled">הצעות מחיר</li>
+        </ul>
+        <button class="plan-btn plan-btn-outline" onclick="selectPlan('free')">התחל בחינם</button>
+      </div>
+
+      <!-- BASIC -->
+      <div class="plan-card popular">
+        <div class="plan-badge">הכי פופולרי</div>
+        <div class="plan-emoji">🚀</div>
+        <div class="plan-name">בייסיק</div>
+        <div class="plan-price">₪99 <span>/ חודש</span></div>
+        <ul class="plan-features">
+          <li>חיפושים ללא הגבלה</li>
+          <li>צפייה בסרטונים ויראליים</li>
+          <li>10 תסריטים ביום</li>
+          <li>לוח תוכן שבועי</li>
+          <li class="disabled">ניהול לקוחות</li>
+          <li class="disabled">הצעות מחיר</li>
+        </ul>
+        <button class="plan-btn plan-btn-primary" onclick="selectPlan('basic')">שדרג עכשיו ←</button>
+      </div>
+
+      <!-- PRO -->
+      <div class="plan-card">
+        <div class="plan-emoji">💎</div>
+        <div class="plan-name">פרו</div>
+        <div class="plan-price">₪199 <span>/ חודש</span></div>
+        <ul class="plan-features">
+          <li>חיפושים ללא הגבלה</li>
+          <li>צפייה בסרטונים ויראליים</li>
+          <li>תסריטים ללא הגבלה</li>
+          <li>לוח תוכן שבועי</li>
+          <li>ניהול לקוחות</li>
+          <li>הצעות מחיר ופקטורות</li>
+        </ul>
+        <button class="plan-btn plan-btn-outline" onclick="selectPlan('pro')">שדרג לפרו ←</button>
+      </div>
+
+    </div>
+    <div style="text-align:center;margin-top:24px">
+      <button class="btn-secondary" onclick="selectPlan('free')" style="font-size:13px">דלג — המשך בחינם</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SETUP (API Keys) ========== -->
+<div id="screen-setup" class="screen">
+  <div class="setup-wrap">
+    <div class="setup-icon">⚡</div>
+    <div class="setup-title"><span class="highlight">VIRAL</span> MACHINE</div>
+    <div class="setup-sub">מכונת הרעיונות שתעזור לך ליצור תוכן ויראלי לכל עסק — ב-3 צעדים פשוטים</div>
+    <div class="setup-card">
+      <label class="field-label">RapidAPI Key (TikTok Scraper)</label>
+      <input class="field-input" type="password" id="input-rapid" placeholder="74c8d3ff...">
+      <div class="field-hint">rapidapi.com → TikTok Scraper → Your Key</div>
+      <label class="field-label">Claude API Key</label>
+      <input class="field-input" type="password" id="input-claude" placeholder="sk-ant-...">
+      <button class="btn-primary full" style="margin-top:28px" onclick="saveKeys()">בואו נתחיל ←</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== HOME ========== -->
+<div id="screen-home" class="screen">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> VIRAL MACHINE <span id="plan-badge" style="font-size:10px;background:var(--caramel);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px"></span></div>
+      <div class="topbar-actions">
+        <button class="btn-secondary" onclick="showScreen('history')">📂</button>
+        <button class="btn-secondary" onclick="showScreen('plans')" id="btn-upgrade" style="display:none">⬆️ שדרג</button>
+        <button class="btn-secondary" onclick="showScreen('admin')" id="btn-admin-home" style="display:none">🛠️</button>
+        <button class="btn-secondary" onclick="showScreen('setup')">⚙️</button>
+        <button class="btn-secondary" onclick="userLogout()">🚪</button>
+      </div>
+    </div>
+  </div>
+  <div class="marquee"><div class="marquee-inner"><span class="marquee-item">TIKTOK <span class="dot"></span> REELS <span class="dot"></span> CONTENT <span class="dot"></span> VIRAL <span class="dot"></span> SCRIPTS <span class="dot"></span> SOCIAL MEDIA <span class="dot"></span> TIKTOK <span class="dot"></span> REELS <span class="dot"></span> CONTENT <span class="dot"></span> VIRAL <span class="dot"></span> SCRIPTS <span class="dot"></span> SOCIAL MEDIA <span class="dot"></span> TIKTOK <span class="dot"></span> REELS <span class="dot"></span> CONTENT <span class="dot"></span> VIRAL <span class="dot"></span> SCRIPTS <span class="dot"></span> SOCIAL MEDIA <span class="dot"></span></span></div></div>
+  <div class="page"><div class="section">
+    <div class="stats-row">
+      <div class="stat"><div class="stat-num">10+</div><div class="stat-label">תחומים</div></div>
+      <div class="stat"><div class="stat-num" id="history-count-stat">0</div><div class="stat-label">תסריטים שנוצרו</div></div>
+      <div class="stat"><div class="stat-num" id="clients-count-stat">0</div><div class="stat-label">לקוחות פעילים</div></div>
+    </div>
+    <div class="stepper">
+      <div class="st active"><span class="st-dot">1</span><span>תחום</span></div><div class="st-line"></div>
+      <div class="st"><span class="st-dot">2</span><span>סרטונים</span></div><div class="st-line"></div>
+      <div class="st"><span class="st-dot">3</span><span>תסריטים</span></div><div class="st-line"></div>
+      <div class="st"><span class="st-dot">4</span><span>לוח תוכן</span></div>
+    </div>
+    <div class="home-heading">
+      <h1>באיזה תחום העסק שלך?</h1>
+      <p>נחפש סרטונים ויראלים של סיטואציות מצחיקות<br>ונבנה לך תסריטים + לוח תוכן שבועי</p>
+    </div>
+    <div class="divider"></div>
+    <div class="industry-grid" id="industry-grid"></div>
+
+    <!-- כלים נוספים -->
+    <div class="tools-row">
+      <div class="tool-card" onclick="gatedScreen('trends')">
+        <span class="tool-icon">🔥</span>
+        <div class="tool-info">
+          <div class="tool-name">טרנדים חמים <span id="gate-trends" class="gate-lock" style="display:none">🔒</span></div>
+          <div class="tool-desc">סרטונים ויראלים מכל התחומים — מתעדכן יומית</div>
+        </div>
+      </div>
+      <div class="tool-card" onclick="gatedScreen('quotes')">
+        <span class="tool-icon">💰</span>
+        <div class="tool-info">
+          <div class="tool-name">הצעות מחיר <span id="gate-quotes" class="gate-lock" style="display:none">🔒</span></div>
+          <div class="tool-desc">צור הצעת מחיר מעוצבת ללקוחות שלך</div>
+        </div>
+      </div>
+      <div class="tool-card" onclick="gatedScreen('clients')">
+        <span class="tool-icon">👥</span>
+        <div class="tool-info">
+          <div class="tool-name">הלקוחות שלי <span id="gate-clients" class="gate-lock" style="display:none">🔒</span></div>
+          <div class="tool-desc">ניהול לקוחות, תשלומים וסיכום חודשי</div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ========== SEARCH ========== -->
+<div id="screen-search" class="screen">
+  <div class="topbar"><div class="topbar-inner">
+    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> <span id="search-title-bar"></span></div>
+    <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
+  </div></div>
+  <div class="page"><div class="section">
+    <div class="stepper">
+      <div class="st done"><span class="st-dot">✓</span><span>תחום</span></div><div class="st-line done"></div>
+      <div class="st active"><span class="st-dot">2</span><span>סרטונים</span></div><div class="st-line"></div>
+      <div class="st"><span class="st-dot">3</span><span>תסריטים</span></div><div class="st-line"></div>
+      <div class="st"><span class="st-dot">4</span><span>לוח תוכן</span></div>
+    </div>
+    <div id="search-loading" class="search-loader" style="display:none">
+      <div class="orb-scene">
+        <div class="particle-field">
+          <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+          <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+        </div>
+        <div class="orb-ring orb-ring-1"></div>
+        <div class="orb-ring orb-ring-2"></div>
+        <div class="orb-ring orb-ring-3"></div>
+        <div class="orb-dot orb-dot-1"></div>
+        <div class="orb-dot orb-dot-2"></div>
+        <div class="orb-dot orb-dot-3"></div>
+        <div class="orb-center">
+          <span class="orb-center-icon" id="loader-icon">🔍</span>
+        </div>
+      </div>
+      <div class="search-loader-text" id="loader-text">מחפש סרטונים ויראלים</div>
+      <div class="search-progress"><div class="search-progress-bar" id="search-progress-bar"></div></div>
+    </div>
+    <div id="search-content" style="display:none">
+      <div class="screen-heading">
+        <h2 id="search-title"></h2>
+        <p id="videos-count"></p>
+      </div>
+      <div class="divider"></div>
+      <div id="selected-info" style="text-align:center"></div>
+      <div class="video-grid" id="video-grid"></div>
+    </div>
+    <div id="gen-panel" class="gen-panel" style="display:none">
+      <h3>📝 שם העסק</h3>
+      <input class="field-input" id="biz-name" placeholder="הכנס את שם העסק">
+      <button class="btn-primary full" id="gen-btn" style="margin-top:20px" onclick="generateScripts()">✨ צור תסריטים</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- ========== SCRIPTS ========== -->
+<div id="screen-scripts" class="screen">
+  <div class="topbar"><div class="topbar-inner">
+    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> <span id="scripts-title-bar"></span></div>
+    <div class="topbar-actions">
+      <button class="btn-secondary" onclick="showScreen('search')">← חזור</button>
+      <button class="btn-secondary" onclick="showScreen('home')">בית</button>
+    </div>
+  </div></div>
+  <div class="page"><div class="section">
+    <div class="stepper">
+      <div class="st done"><span class="st-dot">✓</span><span>תחום</span></div><div class="st-line done"></div>
+      <div class="st done"><span class="st-dot">✓</span><span>סרטונים</span></div><div class="st-line done"></div>
+      <div class="st active"><span class="st-dot">3</span><span>תסריטים</span></div><div class="st-line"></div>
+      <div class="st"><span class="st-dot">4</span><span>לוח תוכן</span></div>
+    </div>
+    <!-- Tabs -->
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('scripts')">📝 תסריטים</button>
+      <button class="tab-btn" onclick="switchTab('calendar')">📅 לוח תוכן</button>
+    </div>
+    <div class="screen-heading">
+      <h2 id="scripts-title">התסריטים שלך</h2>
+      <p id="scripts-sub"></p>
+    </div>
+    <div class="divider"></div>
+    <!-- Scripts Tab -->
+    <div id="tab-scripts">
+      <div class="scripts-grid" id="scripts-grid"></div>
+    </div>
+    <!-- Calendar Tab -->
+    <div id="tab-calendar" style="display:none">
+      <div id="calendar-loading" class="search-loader" style="display:none">
+        <div class="orb-scene">
+          <div class="particle-field"><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div></div>
+          <div class="orb-ring orb-ring-1"></div><div class="orb-ring orb-ring-2"></div><div class="orb-ring orb-ring-3"></div>
+          <div class="orb-dot orb-dot-1"></div><div class="orb-dot orb-dot-2"></div><div class="orb-dot orb-dot-3"></div>
+          <div class="orb-center"><span class="orb-center-icon">📅</span></div>
+        </div>
+        <div class="search-loader-text">בונה לוח תוכן שבועי</div>
+        <div class="search-progress"><div class="search-progress-bar" style="width:60%;animation:progressShimmer 2s ease infinite;background-size:200% 100%"></div></div>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+      <div id="calendar-empty" style="display:none;text-align:center;padding:40px">
+        <button class="btn-caramel" onclick="generateCalendar()">📅 צור לוח תוכן שבועי</button>
+        <p style="color:var(--text-muted);font-size:13px;margin-top:12px">ייצור לך לוז מלא לשבוע עם שעות פרסום ופלטפורמות</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center;margin-top:32px;flex-wrap:wrap">
+      <button class="btn-primary" onclick="reSearch()">🔄 חפש סרטונים חדשים</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- ========== HISTORY ========== -->
+<div id="screen-history" class="screen">
+  <div class="topbar"><div class="topbar-inner">
+    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> היסטוריה</div>
+    <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
+  </div></div>
+  <div class="page"><div class="section">
+    <div class="screen-heading">
+      <h2>📂 היסטוריית תסריטים</h2>
+      <p>כל ההפקות שיצרת — מסודרות לפי תאריך</p>
+    </div>
+    <div class="divider"></div>
+    <div id="history-list" class="history-list"></div>
+  </div></div>
+</div>
+
+<!-- ========== TRENDS ========== -->
+<div id="screen-trends" class="screen">
+  <div class="topbar"><div class="topbar-inner">
+    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> טרנדים חמים</div>
+    <div class="topbar-actions">
+      <button class="btn-secondary" onclick="refreshTrends(true)">🔄 רענן</button>
+      <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
+    </div>
+  </div></div>
+  <div class="page"><div class="section">
+    <div class="screen-heading">
+      <h2>🔥 מה ויראלי עכשיו</h2>
+      <p>סרטוני סיטואציות מצחיקות מכל התחומים — לחץ ❤️ לשמור מועדפים</p>
+    </div>
+    <div class="trends-updated" id="trends-updated"></div>
+    <div class="divider"></div>
+
+    <div class="trends-tabs">
+      <button class="trends-tab active" onclick="switchTrendsTab('all')">🔥 הכל</button>
+      <button class="trends-tab" onclick="switchTrendsTab('favs')">❤️ מועדפים</button>
+    </div>
+
+    <div id="trends-loading" class="search-loader" style="display:none">
+      <div class="orb-scene">
+        <div class="particle-field"><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div></div>
+        <div class="orb-ring orb-ring-1"></div><div class="orb-ring orb-ring-2"></div><div class="orb-ring orb-ring-3"></div>
+        <div class="orb-dot orb-dot-1"></div><div class="orb-dot orb-dot-2"></div><div class="orb-dot orb-dot-3"></div>
+        <div class="orb-center"><span class="orb-center-icon">🔥</span></div>
+      </div>
+      <div class="search-loader-text">מחפש טרנדים חמים...</div>
+      <div class="search-progress"><div class="search-progress-bar" id="trends-progress" style="width:30%"></div></div>
+    </div>
+
+    <div id="trends-all" class="trend-grid"></div>
+    <div id="trends-favs" class="trend-grid" style="display:none"></div>
+  </div></div>
+</div>
+
+<!-- ========== CLIENTS ========== -->
+<div id="screen-clients" class="screen">
+  <div class="topbar"><div class="topbar-inner">
+    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> הלקוחות שלי</div>
+    <div class="topbar-actions">
+      <button class="btn-secondary" onclick="toggleAddClient()">+ לקוח חדש</button>
+      <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
+    </div>
+  </div></div>
+  <div class="page"><div class="section">
+    <div class="screen-heading">
+      <h2>👥 הלקוחות שלי</h2>
+      <p>ניהול לקוחות, תשלומים וסיכום הכנסות</p>
+    </div>
+    <div class="divider"></div>
+
+    <!-- Summary -->
+    <div class="summary-grid" id="clients-summary"></div>
+
+    <!-- Add Client Form (hidden) -->
+    <div id="add-client-form" style="display:none">
+      <div class="add-client-modal">
+        <h3>➕ הוסף לקוח חדש</h3>
+        <div class="modal-row">
+          <div style="flex:1;min-width:140px"><label class="field-label" style="margin-top:0">שם הלקוח</label><input class="field-input" id="ac-name" placeholder="שם הלקוח"></div>
+          <div style="flex:1;min-width:140px"><label class="field-label" style="margin-top:0">סכום חודשי ₪</label><input class="field-input" id="ac-amount" type="number" placeholder="0"></div>
+        </div>
+        <div class="modal-row">
+          <div style="flex:1;min-width:140px"><label class="field-label" style="margin-top:0">תאריך התחלה</label><input class="field-input" id="ac-start" type="date"></div>
+          <div style="flex:1;min-width:140px"><label class="field-label" style="margin-top:0">לכמה חודשים</label><input class="field-input" id="ac-months" type="number" placeholder="12" value="12"></div>
+          <div style="flex:1;min-width:140px"><label class="field-label" style="margin-top:0">יום תשלום בחודש (1-28)</label><input class="field-input" id="ac-payday" type="number" placeholder="1" value="1" min="1" max="28"></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <button class="btn-primary" style="flex:1" onclick="saveClient()">💾 שמור לקוח</button>
+          <button class="btn-secondary" onclick="toggleAddClient()">ביטול</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Client List -->
+    <div id="clients-list"></div>
+  </div></div>
+</div>
+
+<!-- ========== PROFILE ========== -->
+<div id="screen-profile" class="screen">
+  <div class="topbar"><div class="topbar-inner">
+    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> הפרופיל שלי</div>
+    <button class="btn-secondary" onclick="showScreen('quotes')">← חזור</button>
+  </div></div>
+  <div class="page"><div class="section">
+    <div class="screen-heading">
+      <h2>⚙️ הפרופיל שלי</h2>
+      <p>הגדר את הפרטים, השירותים והמחירים שלך — ישמשו ליצירת הצעות מחיר</p>
+    </div>
+    <div class="divider"></div>
+
+    <div class="profile-section">
+      <h3>👤 פרטים אישיים</h3>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <input class="field-input" id="prof-name" placeholder="שם מלא" style="flex:1;min-width:180px">
+        <input class="field-input" id="prof-phone" placeholder="טלפון" style="flex:1;min-width:140px">
+        <input class="field-input" id="prof-email" placeholder="אימייל" style="flex:1;min-width:180px">
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <h3>📋 שירותים ומחירים</h3>
+      <div id="services-list"></div>
+      <div class="add-row" onclick="addService()">+ הוסף שירות</div>
+    </div>
+
+    <div class="profile-section">
+      <h3>📄 חוזה גנרי</h3>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px">הדבק את תבנית החוזה שלך. המערכת תחליף אוטומטית:</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <span style="font-size:12px;background:rgba(196,133,59,0.1);color:var(--brown);padding:4px 10px;border-radius:6px;font-weight:600">[שם הלקוח]</span>
+        <span style="font-size:12px;background:rgba(196,133,59,0.1);color:var(--brown);padding:4px 10px;border-radius:6px;font-weight:600">[שם המנהל]</span>
+        <span style="font-size:12px;background:rgba(196,133,59,0.1);color:var(--brown);padding:4px 10px;border-radius:6px;font-weight:600">[תאריך]</span>
+        <span style="font-size:12px;background:rgba(196,133,59,0.1);color:var(--brown);padding:4px 10px;border-radius:6px;font-weight:600">[סכום]</span>
+      </div>
+      <textarea class="contract-area" id="prof-contract" placeholder="הסכם התקשרות לניהול רשתות חברתיות&#10;&#10;בין: [שם המנהל] (להלן ״נותן השירות״)&#10;לבין: [שם הלקוח] (להלן ״הלקוח״)&#10;&#10;תאריך: [תאריך]&#10;סכום: [סכום] לחודש&#10;&#10;תנאי ההתקשרות:&#10;1. נותן השירות יספק ל[שם הלקוח] את השירותים המפורטים בהצעת המחיר.&#10;2. התשלום יתבצע מדי חודש בחודשו.&#10;3. ניתן לבטל את ההסכם בהודעה של 30 יום מראש.&#10;&#10;חתימות:"></textarea>
+    </div>
+
+    <button class="btn-primary full" onclick="saveProfile()">💾 שמור פרופיל</button>
+  </div></div>
+</div>
+
+<!-- ========== QUOTES ========== -->
+<div id="screen-quotes" class="screen">
+  <div class="topbar"><div class="topbar-inner">
+    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> הצעות מחיר</div>
+    <div class="topbar-actions">
+      <button class="btn-secondary" onclick="showScreen('profile')">⚙️ הפרופיל שלי</button>
+      <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
+    </div>
+  </div></div>
+  <div class="page"><div class="section">
+    <div class="screen-heading">
+      <h2>💰 הצעות מחיר</h2>
+      <p>צור הצעות מחיר מעוצבות ללקוחות שלך</p>
+    </div>
+    <div class="divider"></div>
+
+    <!-- New Quote Form -->
+    <div class="profile-section" id="quote-form">
+      <h3>✨ הצעה חדשה</h3>
+      <input class="field-input" id="quote-client" placeholder="שם הלקוח" style="margin-bottom:14px">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;font-weight:600">בחר שירותים:</p>
+      <div id="quote-services-list"></div>
+      <div class="quote-total" id="quote-total" style="display:none">
+        <span class="quote-total-label">סה"כ</span>
+        <span class="quote-total-num" id="quote-total-num">0 ₪</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn-primary" style="flex:1" onclick="generateQuotePDF()">📄 צור הצעת מחיר PDF</button>
+      </div>
+      <div id="quote-no-profile" style="display:none;text-align:center;padding:20px;color:var(--text-muted)">
+        <p>צריך קודם להגדיר שירותים</p>
+        <button class="btn-caramel" style="margin-top:12px" onclick="showScreen('profile')">⚙️ הגדר פרופיל</button>
+      </div>
+    </div>
+
+    <!-- Past Quotes -->
+    <div style="margin-top:32px">
+      <h3 style="font-size:16px;font-weight:700;color:var(--brown);margin-bottom:16px">📂 הצעות קודמות</h3>
+      <div id="quotes-history" class="quotes-list"></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ========== ADMIN LOGIN ========== -->
+<div id="screen-admin-login" class="screen">
+  <div class="setup-wrap" style="background:linear-gradient(180deg,#2a1a0e 0%,#1a1008 100%)">
+    <div class="setup-icon">🔐</div>
+    <div class="setup-title" style="color:var(--caramel-light)">ADMIN</div>
+    <div class="setup-sub" style="color:rgba(255,255,255,0.5)">כניסת מנהל — Viral Machine</div>
+    <div class="admin-login-card">
+      <label class="field-label">אימייל</label>
+      <input class="field-input" type="email" id="admin-email" placeholder="you@email.com">
+      <label class="field-label">סיסמה</label>
+      <input class="field-input" type="password" id="admin-pass" placeholder="••••••••">
+      <button class="btn-primary full" style="margin-top:20px" onclick="adminLogin()">התחבר</button>
+      <div style="text-align:center;margin-top:16px">
+        <button class="btn-secondary" onclick="showScreen('setup')" style="font-size:12px">← חזרה למשתמש רגיל</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ADMIN DASHBOARD ========== -->
+<div id="screen-admin" class="screen">
+  <div class="topbar admin-topbar"><div class="topbar-inner">
+    <div class="topbar-logo"><span class="bolt">⚡</span> <span class="admin-badge">ADMIN</span> VIRAL MACHINE</div>
+    <div class="topbar-actions">
+      <button class="btn-secondary" onclick="adminLogout()">🚪 התנתק</button>
+    </div>
+  </div></div>
+  <div class="page"><div class="section">
+
+    <!-- Admin Stats (top cards) -->
+    <div class="summary-grid" id="admin-stats" style="margin-bottom:28px"></div>
+
+    <!-- Admin Tabs -->
+    <div class="trends-tabs" style="margin-bottom:24px;max-width:600px">
+      <button class="trends-tab active" onclick="switchAdminTab('overview')">📊 סקירה</button>
+      <button class="trends-tab" onclick="switchAdminTab('users')">👥 משתמשים</button>
+      <button class="trends-tab" onclick="switchAdminTab('creators')">🎬 יוצרים</button>
+      <button class="trends-tab" onclick="switchAdminTab('payments')">💰 תשלומים</button>
+    </div>
+
+    <!-- TAB: Overview -->
+    <div id="admin-tab-overview">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px">
+        <!-- Plan breakdown -->
+        <div class="profile-section">
+          <h3>📊 התפלגות מנויים</h3>
+          <div id="admin-plan-breakdown"></div>
+        </div>
+        <!-- Recent signups -->
+        <div class="profile-section">
+          <h3>🆕 נרשמו לאחרונה</h3>
+          <div id="admin-recent-users"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Users -->
+    <div id="admin-tab-users" style="display:none">
+      <div class="profile-section" style="margin-bottom:16px">
+        <div style="display:flex;gap:12px;align-items:center">
+          <input class="field-input" id="admin-user-search" placeholder="🔍 חפש לפי שם או מייל..." oninput="filterAdminUsers()" style="flex:1;margin:0">
+          <select class="field-input" id="admin-user-filter" onchange="filterAdminUsers()" style="width:auto;min-width:140px;margin:0">
+            <option value="all">כל התוכניות</option>
+            <option value="free">🆓 Free</option>
+            <option value="basic">🚀 Basic</option>
+            <option value="pro">💎 Pro</option>
+          </select>
+        </div>
+      </div>
+      <div id="admin-users-list"></div>
+    </div>
+
+    <!-- TAB: Creators -->
+    <div id="admin-tab-creators" style="display:none">
+      <div class="profile-section" style="margin-bottom:24px">
+        <h3>➕ הוסף יוצר למאגר</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:2;min-width:180px">
+            <label class="field-label" style="margin-top:0">לינק TikTok או @username</label>
+            <input class="field-input" id="admin-creator-input" placeholder="https://www.tiktok.com/@username או @username">
+          </div>
+          <div style="flex:1;min-width:140px">
+            <label class="field-label" style="margin-top:0">תחום</label>
+            <select class="field-input" id="admin-creator-industry" style="cursor:pointer">
+              <option value="restaurant">🍕 מסעדה / קפה</option>
+              <option value="salon">✂️ מספרה / סלון</option>
+              <option value="gym">💪 חדר כושר</option>
+              <option value="beauty">💅 יופי / ציפורניים</option>
+              <option value="bakery">🥐 מאפייה</option>
+              <option value="realestate">🏠 נדל"ן</option>
+              <option value="law">⚖️ עורך דין</option>
+              <option value="clinic">🏥 קליניקה</option>
+              <option value="retail">🛍️ חנות קמעונאית</option>
+              <option value="tech">💻 טכנולוגיה / סטארטאפ</option>
+            </select>
+          </div>
+          <div style="min-width:100px">
+            <label class="field-label" style="margin-top:0">הערות</label>
+            <input class="field-input" id="admin-creator-notes" placeholder="אופציונלי">
+          </div>
+          <button class="btn-primary" style="padding:14px 28px" onclick="addCreator()">הוסף</button>
+        </div>
+      </div>
+      <div id="admin-creators-list"></div>
+    </div>
+
+    <!-- TAB: Payments -->
+    <div id="admin-tab-payments" style="display:none">
+      <div id="admin-payments-list"></div>
+    </div>
+
+  </div></div>
+</div>
+
+<script>
+// ========== SUPABASE (direct fetch — no library needed) ==========
+const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrem10dW56bWRsZmlhcHd6a29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzcyMTcsImV4cCI6MjA4OTE1MzIxN30.td9gx19iEU4jl8ph6JX33LHm-K-vQtNG5TW9q_kHWRs';
+let supaToken = localStorage.getItem('vm_supa_token') || null;
+const IS_ADMIN = new URLSearchParams(window.location.search).has('admin');
+
+function supaHeaders(auth) {
+  const h = { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' };
+  const token = auth && supaToken ? supaToken : SUPA_KEY;
+  h['Authorization'] = 'Bearer ' + token;
+  return h;
+}
+
+const supa = {
+  async select(table, filters) {
+    let url = `${SUPA_URL}/rest/v1/${table}?select=*`;
+    if (filters) url += '&' + filters;
+    const res = await fetch(url, { headers: supaHeaders() });
+    if (!res.ok) throw new Error('Supabase select error ' + res.status);
+    return await res.json();
+  },
+  async insert(table, row) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
+      method: 'POST', headers: { ...supaHeaders(true), 'Prefer': 'return=representation' },
+      body: JSON.stringify(row)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const e = new Error(err.message || 'Insert error');
+      e.code = err.code; throw e;
+    }
+    return await res.json();
+  },
+  async del(table, filters) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${filters}`, {
+      method: 'DELETE', headers: supaHeaders(true)
+    });
+    if (!res.ok) throw new Error('Delete error ' + res.status);
+  },
+  async login(email, password) {
+    const res = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST', headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error_description || e.msg || 'Login failed'); }
+    const data = await res.json();
+    supaToken = data.access_token;
+    localStorage.setItem('vm_supa_token', supaToken);
+    return data.user;
+  },
+  logout() { supaToken = null; localStorage.removeItem('vm_supa_token'); }
+};
+
+let state = {
+  rapidKey: localStorage.getItem('vm_rapid') || '',
+  claudeKey: localStorage.getItem('vm_claude') || '',
+  industry: null, videos: [], selected: [], scripts: [], calendar: [], bizName: '', trendVideos: [], lastQuote: null,
+  adminUser: null, creatorsCache: {},
+  user: null, userProfile: null,
+};
+
+const PLAN_LIMITS = {
+  free:  { searches: 3, scripts: 0, calendar: false, clients: false, quotes: false, trends: false },
+  basic: { searches: 999, scripts: 10, calendar: true, clients: false, quotes: false, trends: true },
+  pro:   { searches: 999, scripts: 999, calendar: true, clients: true, quotes: true, trends: true },
+};
+
+// Super admin — your email gets full access + admin panel from regular UI
+const SUPER_ADMIN_EMAIL = 'yuval.elgisser@gmail.com';
+
+const INDUSTRIES = [
+  { id:'restaurant', label:'מסעדה / קפה', emoji:'🍕', queries:[
+    'POV restaurant owner skit',
+    'restaurant staff behind the scenes',
+    'waiter POV funny skit',
+    'restaurant kitchen team comedy'
+  ], queriesHe:['מסעדה מאחורי הקלעים','מסעדה סיטואציות צוות','מלצר POV סקיט']},
+  { id:'salon', label:'מספרה / סלון', emoji:'✂️', queries:[
+    'POV hairstylist salon skit',
+    'salon owner behind the scenes',
+    'barber POV client comedy',
+    'salon staff funny situations'
+  ], queriesHe:['מספרה מאחורי הקלעים','ספר סיטואציות לקוח','סלון צוות סקיט']},
+  { id:'gym', label:'חדר כושר', emoji:'💪', queries:[
+    'gym owner POV skit',
+    'personal trainer client skit',
+    'gym staff behind scenes funny',
+    'gym employee POV comedy'
+  ], queriesHe:['חדר כושר מאחורי הקלעים','מאמן כושר סיטואציות','חדר כושר צוות סקיט']},
+  { id:'beauty', label:'יופי / ציפורניים', emoji:'💅', queries:[
+    'nail tech POV client skit',
+    'esthetician behind the scenes',
+    'beauty salon owner comedy',
+    'nail salon staff funny'
+  ], queriesHe:['קוסמטיקאית סיטואציות','סלון יופי מאחורי הקלעים','ציפורניים סקיט לקוחה']},
+  { id:'bakery', label:'מאפייה', emoji:'🥐', queries:[
+    'bakery owner POV skit',
+    'baker behind the scenes',
+    'bakery staff funny situations',
+    'cake order POV comedy'
+  ], queriesHe:['מאפייה מאחורי הקלעים','קונדיטור סיטואציות','מאפייה צוות סקיט']},
+  { id:'realestate', label:'נדל"ן', emoji:'🏠', queries:[
+    'realtor POV showing house skit',
+    'real estate agent client comedy',
+    'realtor behind the scenes funny',
+    'realtor day in the life'
+  ], queriesHe:['מתווך סיטואציות לקוח','נדלן מאחורי הקלעים','סוכן נדלן סקיט']},
+  { id:'law', label:'עורך דין', emoji:'⚖️', queries:[
+    'lawyer POV client skit',
+    'attorney office behind scenes',
+    'law firm staff comedy',
+    'lawyer day in the life funny'
+  ], queriesHe:['עורך דין סיטואציות לקוח','משרד עורכי דין מאחורי הקלעים','עורך דין סקיט']},
+  { id:'clinic', label:'קליניקה', emoji:'🏥', queries:[
+    'doctor POV patient skit',
+    'clinic staff behind scenes',
+    'dentist patient comedy',
+    'medical office funny situations'
+  ], queriesHe:['רופא סיטואציות מטופל','מרפאה מאחורי הקלעים','רופא שיניים סקיט']},
+  { id:'retail', label:'חנות קמעונאית', emoji:'🛍️', queries:[
+    'retail worker POV customer skit',
+    'store owner behind the scenes',
+    'cashier POV funny situations',
+    'shop employee comedy'
+  ], queriesHe:['חנות מאחורי הקלעים','מוכר סיטואציות לקוח','חנות צוות סקיט']},
+  { id:'tech', label:'טכנולוגיה / סטארטאפ', emoji:'💻', queries:[
+    'startup office POV skit',
+    'tech company behind scenes',
+    'developer team comedy',
+    'startup employee funny situations'
+  ], queriesHe:['סטארטאפ מאחורי הקלעים','הייטק סיטואציות צוות','משרד הייטק סקיט']},
+];
+
+// Global skit filter keywords (EN + HE)
+const SKIT_KEYWORDS = ['pov','customer','when','types','walk in','day in the life','acting normal',
+  'things i hear','relatable','skit','comedy','funny','waiter','client','boss','employee',
+  'barber','trainer','realtor','doctor','patient','teacher','retail','shop','salon','gym',
+  'restaurant','cafe','bakery','office','lawyer','nurse','chef','react','acting','pretend',
+  'be like','that one','every','nobody','someone','asking','order','appointment','meeting',
+  'לקוח','מצחיק','סיטואציה','סקיט','בעל עסק','מסעדה','מספרה','סלון','חנות','רופא',
+  'עורך דין','מאפייה','כושר','נדלן','הייטק','סטארטאפ','מלצר','מוכר','מטופל','קוסמטיקאית'];
+
+// Smart 3-tier fallback filter (used by search + trends)
+function filterVideos(videos, minViews, minDur, maxDur, requireKeyword, maxResults) {
+  const seen = new Set();
+  return videos
+    .filter(v => {
+      if (seen.has(v.video_id)) return false;
+      seen.add(v.video_id);
+      if (!v.play_count || v.play_count < minViews) return false;
+      if (v.duration && (v.duration < minDur || v.duration > maxDur)) return false;
+      if (requireKeyword) {
+        const text = ((v.title||'') + ' ' + (v.desc||'')).toLowerCase();
+        return SKIT_KEYWORDS.some(kw => text.includes(kw));
+      }
+      return true;
+    })
+    .map(v => ({...v, eng: calcEng(v)}))
+    .sort((a,b) => b.play_count - a.play_count)
+    .slice(0, maxResults || 20);
+}
+
+// Industry-specific keywords for filtering
+const INDUSTRY_KEYWORDS = {
+  restaurant: ['restaurant','waiter','chef','menu','kitchen','order','server','cook','מסעדה','מלצר','שף','מטבח','הזמנה','שולחן','תפריט','פיצה','מנה','העסק שלנו','הצוות','מאחורי הקלעים','pov','skit','סיטואציה'],
+  salon: ['salon','barber','hair','haircut','stylist','color','מספרה','סלון','ספר','תספורת','צבע','לקוחה','שיער','העסק שלנו','מאחורי הקלעים'],
+  gym: ['gym','trainer','workout','fitness','exercise','חדר כושר','מאמן','אימון','כושר','מתאמן','העסק שלנו'],
+  beauty: ['nail','beauty','lash','wax','esthetician','ציפורניים','יופי','קוסמטיקאית','לק','טיפול','העסק שלנו'],
+  bakery: ['bakery','cake','bread','dough','bake','מאפייה','עוגה','לחם','בצק','אפייה','קונדיטור','העסק שלנו'],
+  realestate: ['realtor','house','apartment','showing','buyer','נדלן','דירה','בית','מתווך','סוכן','נכס','העסק שלנו'],
+  law: ['lawyer','attorney','court','legal','עורך דין','משפט','לקוח','תיק','משרד','העסק שלנו'],
+  clinic: ['doctor','patient','clinic','nurse','רופא','מטופל','מרפאה','אחות','תור','העסק שלנו'],
+  retail: ['retail','store','shop','cashier','חנות','מוכר','קופה','מוצר','קניות','העסק שלנו'],
+  tech: ['tech','startup','developer','meeting','הייטק','סטארטאפ','מפתח','ישיבה','משרד','העסק שלנו'],
+};
+
+// Words that indicate REVIEWER/BLOGGER content (not business owner)
+const REVIEWER_KEYWORDS = ['המלצה','ביקורת','טעימות','review','recommend','food blog',
+  'taste test','must try','best places','הכי טעים','מומלץ','שווה לנסות','חייבים לנסות',
+  'top 10','ranking','rated','ביקרנו','הלכנו ל','tried','trying','food tour','mukbang',
+  'asmr eating','eating show','what i eat','foodie','בלוגר','blogger','influencer'];
+
+function smartFilter(allVideos, maxResults, industryId) {
+  const indKW = industryId ? INDUSTRY_KEYWORDS[industryId] || [] : [];
+
+  // Score each video for industry relevance + business owner likelihood
+  const scored = allVideos.map(v => {
+    const text = ((v.title||'') + ' ' + (v.desc||'')).toLowerCase();
+    let score = 0;
+
+    // Industry-specific keywords (high value)
+    const indMatches = indKW.filter(kw => text.includes(kw)).length;
+    score += indMatches * 3;
+
+    // Business-owner signals (very high value)
+    const ownerSignals = ['pov','skit','מאחורי הקלעים','behind the scenes','day in the life',
+      'יום בחיים','העסק שלנו','our restaurant','our salon','הצוות שלנו','עובד','employee',
+      'סיטואציה','situation','when a customer','כשלקוח','types of','סוגי לקוחות'];
+    const ownerMatches = ownerSignals.filter(kw => text.includes(kw)).length;
+    score += ownerMatches * 5;
+
+    // PENALTY: reviewer/blogger signals (negative score)
+    const reviewerMatches = REVIEWER_KEYWORDS.filter(kw => text.includes(kw)).length;
+    score -= reviewerMatches * 10;
+
+    return { ...v, _relevance: score };
+  });
+
+  // Remove videos with negative relevance (clearly reviewer content)
+  const nonReviewer = scored.filter(v => v._relevance >= 0);
+
+  // Filter and sort
+  function filterScored(vids, minViews, minDur, maxDur, minRelevance) {
+    const seen = new Set();
+    return vids
+      .filter(v => {
+        const vid = v.video_id || v.id || '';
+        if (!vid || seen.has(vid)) return false;
+        seen.add(vid);
+        if (!v.play_count || v.play_count < minViews) return false;
+        if (v.duration && (v.duration < minDur || v.duration > maxDur)) return false;
+        return v._relevance >= minRelevance;
+      })
+      .map(v => ({...v, eng: calcEng(v)}))
+      .sort((a,b) => (b._relevance * 1000000 + b.play_count) - (a._relevance * 1000000 + a.play_count))
+      .slice(0, maxResults);
+  }
+
+  // Tier 1: Strict — 100K views, 10-60s, high relevance
+  let filtered = filterScored(nonReviewer, 100000, 10, 60, 2);
+  let filterLabel = '100K+ צפיות, רלוונטיות גבוהה';
+  if (filtered.length < 3) {
+    filtered = filterScored(nonReviewer, 50000, 5, 90, 1);
+    filterLabel = '50K+ צפיות';
+  }
+  if (filtered.length < 3) {
+    filtered = filterScored(nonReviewer, 10000, 0, 999, 0);
+    filterLabel = '10K+ צפיות';
+  }
+  return { filtered, filterLabel };
+}
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('vm_history') || '[]'); } catch { return []; }
+}
+function saveToHistory(entry) {
+  const h = getHistory();
+  h.unshift(entry);
+  if (h.length > 50) h.length = 50;
+  localStorage.setItem('vm_history', JSON.stringify(h));
+}
+
+window.onload = async () => {
+  buildGrid();
+  updateHistoryCount();
+
+  // Handle Cardcom payment return
+  const urlParams = new URLSearchParams(window.location.search);
+  const isPaymentReturn = urlParams.has('payment_success') || urlParams.has('payment_fail');
+
+  if (IS_ADMIN) {
+    if (supaToken) {
+      showScreen('admin');
+    } else {
+      showScreen('admin-login');
+    }
+    return;
+  }
+
+  // Check for existing user session
+  const savedUser = localStorage.getItem('vm_user');
+  if (savedUser) {
+    try {
+      state.user = JSON.parse(savedUser);
+      await loadUserProfile();
+      // Handle payment return if coming back from Cardcom
+      if (isPaymentReturn) {
+        await handlePaymentReturn();
+      }
+      // Super admin → straight to admin dashboard
+      if (isSuperAdmin()) {
+        showScreen('admin');
+      } else if (state.rapidKey && state.claudeKey) {
+        updatePlanUI();
+        showScreen('home');
+      } else {
+        showScreen('setup');
+      }
+    } catch(e) {
+      console.log('Session restore failed:', e);
+      showScreen('auth');
+    }
+  } else {
+    showScreen('auth');
+  }
+};
+
+function updateHistoryCount() {
+  const el = document.getElementById('history-count-stat');
+  if (el) el.textContent = getHistory().length;
+  const cl = document.getElementById('clients-count-stat');
+  if (cl) cl.textContent = getClients().length;
+}
+
+function buildGrid() {
+  document.getElementById('industry-grid').innerHTML = INDUSTRIES.map((ind, i) =>
+    `<button class="ind-card stagger" style="animation-delay:${i*45}ms" onclick="startSearch('${ind.id}')">
+      <span class="ind-emoji">${ind.emoji}</span><span>${ind.label}</span>
+    </button>`
+  ).join('');
+}
+
+function showScreen(name) {
+  // Super admin can access admin dashboard from regular UI
+  if (name === 'admin' && !IS_ADMIN && isSuperAdmin()) {
+    // Set supaToken if needed for admin operations
+    if (!supaToken && localStorage.getItem('vm_supa_token')) {
+      supaToken = localStorage.getItem('vm_supa_token');
+    }
+  }
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (name === 'home') { buildGrid(); updateHistoryCount(); updateGateLocks(); updatePlanUI(); }
+  if (name === 'plans') updatePlanUI();
+  if (name === 'history') renderHistory();
+  if (name === 'trends') loadTrends();
+  if (name === 'profile') loadProfileForm();
+  if (name === 'quotes') loadQuoteForm();
+  if (name === 'clients') renderClients();
+  if (name === 'admin') renderAdminDashboard();
+}
+
+function gatedScreen(name) {
+  if (canUseFeature(name)) {
+    showScreen(name);
+  } else {
+    toast('פיצ\'ר זה דורש שדרוג תוכנית — לחץ ⬆️ שדרג', 'err');
+    showScreen('plans');
+  }
+}
+
+function updateGateLocks() {
+  ['trends','quotes','clients'].forEach(f => {
+    const el = document.getElementById('gate-' + f);
+    if (el) el.style.display = canUseFeature(f) ? 'none' : '';
+  });
+}
+
+function saveKeys() {
+  const r = document.getElementById('input-rapid').value.trim();
+  const c = document.getElementById('input-claude').value.trim();
+  if (!r || !c.startsWith('sk-')) { toast('נא להכניס את שני ה-Keys','err'); return; }
+  localStorage.setItem('vm_rapid', r); localStorage.setItem('vm_claude', c);
+  state.rapidKey = r; state.claudeKey = c;
+  toast('נשמר בהצלחה!','ok');
+  setTimeout(() => showScreen('home'), 500);
+}
+
+async function startSearch(industryId) {
+  // Check search limit
+  if (!IS_ADMIN && !checkSearchLimit()) return;
+  state.industry = INDUSTRIES.find(i => i.id === industryId);
+  state.videos = []; state.selected = []; state.scripts = []; state.calendar = [];
+  document.getElementById('search-title').textContent = state.industry.emoji + ' סיטואציות ויראליות — ' + state.industry.label;
+  document.getElementById('search-title-bar').textContent = state.industry.label;
+  document.getElementById('search-content').style.display = 'none';
+  document.getElementById('video-grid').innerHTML = '';
+  document.getElementById('gen-panel').style.display = 'none';
+  showScreen('search');
+  const loadEl = document.getElementById('search-loading');
+  const textEl = document.getElementById('loader-text');
+  const iconEl = document.getElementById('loader-icon');
+  const progBar = document.getElementById('search-progress-bar');
+  loadEl.style.display = 'flex';
+  progBar.style.width = '0%';
+  try {
+    // ===== Phase 0: Get business names from Claude =====
+    textEl.textContent = '🏪 מייצר רשימת עסקים ישראליים...';
+    iconEl.textContent = '🏪';
+    progBar.style.width = '5%';
+
+    const indLabel = state.industry.label;
+    let businessNames = [];
+    try {
+      const prompt = `אתה מומחה לעסקים ישראליים. תן לי רשימה של 20 עסקים ישראליים מוכרים ופופולריים בתחום: ${indLabel}.
+כלול עסקים מכל הארץ — תל אביב, ירושלים, חיפה, באר שבע, אשדוד, אשקלון, רמת גן, הרצליה וכו'.
+כלול גם עסקים קטנים-בינוניים שידועים ברשתות חברתיות ויש להם תוכן טוב בטיקטוק.
+
+חובה: תחזיר רק JSON array של שמות, בלי שום טקסט נוסף.
+דוגמה: ["מחניודה","OCD","קלארו","הסלון"]`;
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': state.claudeKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: prompt }] })
+      });
+      const data = await res.json();
+      const text = data.content?.[0]?.text || '';
+      // Extract JSON array from response
+      const match = text.match(/\[[\s\S]*\]/);
+      if (match) businessNames = JSON.parse(match[0]);
+      console.log('Business names:', businessNames);
+    } catch(e) { console.log('Claude business names error:', e); }
+
+    if (businessNames.length === 0) {
+      // Fallback: use industry label as search
+      businessNames = [indLabel.split('/')[0].trim()];
+    }
+
+    // ===== Phase 1: Search each business name on TikTok =====
+    textEl.textContent = '🔍 מחפש עסקים בטיקטוק...';
+    iconEl.textContent = '🔍';
+    const allFoundVideos = [];
+
+    for (let i = 0; i < businessNames.length; i++) {
+      progBar.style.width = (10 + Math.round((i / businessNames.length) * 70)) + '%';
+      textEl.textContent = `🔍 מחפש: ${businessNames[i]}...`;
+      try {
+        const vids = await searchTikTok(businessNames[i], 'IL');
+        allFoundVideos.push(...vids);
+      } catch(e) {}
+      // Short delay to avoid rate limiting
+      if (i < businessNames.length - 1) await sleep(250);
+    }
+
+    // ===== Phase 2: Also search with DNA queries from curated creators =====
+    let creators = [];
+    let creatorUsernames = new Set();
+    try {
+      creators = await supa.select('creators', `industry_id=eq.${industryId}`);
+    } catch(e) {}
+
+    if (creators.length > 0) {
+      textEl.textContent = '🧬 לומד מיוצרים מומלצים...';
+      iconEl.textContent = '🧬';
+      for (let i = 0; i < creators.length; i++) {
+        creatorUsernames.add(creators[i].username.replace('@','').toLowerCase());
+        try {
+          const vids = await fetchUserPosts(creators[i].username);
+          // Extract hashtags for additional queries
+          vids.forEach(v => {
+            const desc = (v.desc || '').toLowerCase();
+            const tags = desc.match(/#[\wא-ת]+/g) || [];
+            // Don't add the videos themselves — just learn from them
+          });
+        } catch(e) {}
+      }
+    }
+
+    // ===== Phase 3: Filter and rank =====
+    progBar.style.width = '90%';
+    textEl.textContent = '🧹 מסנן ומדרג תוצאות...';
+    await sleep(300);
+
+    const { filtered, filterLabel } = smartFilter(allFoundVideos, 25, industryId);
+    state.videos = filtered;
+
+    const totalCount = state.videos.length;
+    progBar.style.width = '100%';
+    await sleep(200);
+    if (state.videos.length === 0) { toast('לא נמצאו סרטונים בתחום — נסה שוב או תחום אחר','err'); loadEl.style.display = 'none'; return; }
+
+    // Generate Hebrew titles via Claude
+    const countText = `🏪 ${totalCount} סרטונים מעסקים ישראליים — בחר עד 5`;
+    textEl.textContent = '📝 מתרגם ומנתח סרטונים...';
+    iconEl.textContent = '📝';
+    progBar.style.width = '60%';
+    try {
+      const videoList = state.videos.map((v,i) =>
+        `${i+1}. ENGLISH TITLE: "${(v.title||v.desc||'').slice(0,120)}"${v.desc && v.desc !== v.title ? `\n   DESC: "${v.desc.slice(0,150)}"` : ''}${v.duration ? ` | ${v.duration}s` : ''} | ${fmt(v.play_count)} views`
+      ).join('\n');
+
+      const titlePrompt = `Analyze these TikTok videos and give each a Hebrew title and short description.
+
+${videoList}
+
+For each video, understand what the skit/situation is about based on the title and description, then provide:
+- A catchy Hebrew TITLE (5-8 words max, describes the concept)
+- A Hebrew SUBTITLE (1 sentence, explains what happens in the video)
+
+RESPOND ONLY IN VALID JSON, no markdown, no backticks:
+[{"title":"כותרת בעברית","subtitle":"משפט שמסביר מה קורה בסרטון"}]
+
+Return exactly ${state.videos.length} items in the array.`;
+
+      const titlesRaw = await callClaude(titlePrompt);
+      const titlesClean = titlesRaw.replace(/```json|```/g,'').trim();
+      const titles = JSON.parse(titlesClean);
+      state.videos.forEach((v, i) => {
+        if (titles[i]) {
+          v.heTitle = titles[i].title || '';
+          v.heSubtitle = titles[i].subtitle || '';
+        }
+      });
+    } catch(e) {
+      // If title generation fails, we still show videos with original titles
+      console.log('Title gen failed:', e);
+    }
+
+    progBar.style.width = '100%';
+    await sleep(200);
+    loadEl.style.display = 'none';
+    document.getElementById('search-content').style.display = 'block';
+    document.getElementById('videos-count').textContent = countText;
+    renderVideos();
+  } catch(e) { loadEl.style.display = 'none'; toast('שגיאה: '+e.message,'err'); }
+}
+
+function renderVideos() {
+  document.getElementById('video-grid').innerHTML = state.videos.map((v,i) => {
+    const sel = state.selected.includes(v.video_id);
+    const title = v.heTitle || (v.title||'ללא כותרת').slice(0,90);
+    const subtitle = v.heSubtitle || '';
+    return `<div class="vid-card stagger ${sel?'selected':''}" style="animation-delay:${i*35}ms" onclick="toggleVideo('${v.video_id}')">
+      ${sel ? '<div class="vid-check">✓</div>' : ''}
+      <div class="vid-stats">
+        <span class="vid-stat">👁 ${fmt(v.play_count)}</span>
+        <span class="vid-stat">❤️ ${fmt(v.digg_count)}</span>
+        <span class="vid-stat ${v.eng>3?'hot':''}">${v.eng}% eng</span>
+        ${v.duration ? `<span class="vid-stat">⏱ ${v.duration}s</span>` : ''}
+      </div>
+      <div style="font-size:15px;font-weight:700;color:var(--brown);margin-bottom:4px;line-height:1.5">${esc(title)}</div>
+      ${subtitle ? `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6">${esc(subtitle)}</div>` : ''}
+      <div class="vid-author">@${esc(v.author?.unique_id||'')}</div>
+      <a class="vid-link" href="https://www.tiktok.com/@${v.author?.unique_id}/video/${v.video_id}" target="_blank" onclick="event.stopPropagation()">צפה ב-TikTok ↗</a>
+    </div>`;
+  }).join('');
+  const info = document.getElementById('selected-info');
+  info.innerHTML = state.selected.length > 0
+    ? `<div class="count-badge"><span class="pulse"></span>${state.selected.length} / 5 סרטונים נבחרו</div>`
+    : '';
+}
+
+function toggleVideo(videoId) {
+  if (state.selected.includes(videoId)) state.selected = state.selected.filter(id => id !== videoId);
+  else if (state.selected.length < 5) state.selected.push(videoId);
+  else { toast('ניתן לבחור עד 5','err'); return; }
+  renderVideos();
+  document.getElementById('gen-panel').style.display = state.selected.length > 0 ? 'block' : 'none';
+  document.getElementById('gen-btn').textContent = `✨ צור תסריטים (${state.selected.length} נבחרו)`;
+}
+
+async function generateScripts() {
+  const name = document.getElementById('biz-name').value.trim();
+  if (!name) { toast('נא להכניס שם עסק','err'); return; }
+  state.bizName = name;
+  const chosen = state.videos.filter(v => state.selected.includes(v.video_id));
+
+  // Build rich video summaries with all available data
+  const richSummaries = chosen.map((v,i) => {
+    let s = `${i+1}. TITLE: "${(v.title||v.desc||'').slice(0,120)}"`;
+    s += `\n   VIEWS: ${fmt(v.play_count)} | LIKES: ${fmt(v.digg_count)} | ENGAGEMENT: ${v.eng}%`;
+    if (v.duration) s += ` | DURATION: ${v.duration}s`;
+    if (v.desc && v.desc !== v.title) s += `\n   DESCRIPTION: "${v.desc.slice(0,200)}"`;
+    const tags = (v.text_extra||[]).filter(t=>t.hashtag_name).map(t=>'#'+t.hashtag_name).join(' ');
+    if (tags) s += `\n   HASHTAGS: ${tags.slice(0,150)}`;
+    if (v.music_info?.title) s += `\n   MUSIC: "${v.music_info.title}"`;
+    return s;
+  }).join('\n\n');
+
+  // Show overlay
+  const overlay = document.getElementById('gen-overlay');
+  overlay.classList.add('active');
+  document.getElementById('gen-overlay-title').textContent = `מייצר תסריטים ל${name}...`;
+  setGenStep(1);
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+
+  try {
+    // ===== STEP 1: ANALYZE VIDEOS =====
+    const analyzePrompt = `You are an expert at analyzing viral TikTok content patterns.
+
+Below are ${chosen.length} real viral TikTok videos selected by a social media manager. Analyze each video deeply:
+
+${richSummaries}
+
+For EACH video, analyze:
+1. FORMAT: What viral format is this? (POV skit / Types of... / When customer... / Day in the life / Acting normal when / Relatable reaction / Other)
+2. STRUCTURE: How is the video built? (setup → twist → punchline? slow build? rapid cuts? etc.)
+3. HUMOR STYLE: What makes it funny? (absurd situation, deadpan delivery, escalation, contrast, relatable pain, awkward silence, etc.)
+4. CHARACTERS: Who appears? (employee, customer types, boss, etc.)
+5. PUNCHLINE: Where is the humor peak? (end twist, mid-video flip, running gag, etc.)
+6. PACING: Fast/slow? How many beats/scenes?
+7. HOOK: What makes someone stop scrolling in the first 2 seconds?
+
+Then provide an OVERALL PATTERN SUMMARY:
+- What do these videos have in common?
+- What viral formula connects them?
+- What tone/energy do they share?
+
+Respond in Hebrew.`;
+
+    const analysis = await callClaude(analyzePrompt);
+    state.videoAnalysis = analysis;
+
+    // ===== STEP 2: GENERATE SCRIPTS BASED ON ANALYSIS =====
+    setGenStep(2);
+
+    const generatePrompt = `You are a viral TikTok scriptwriter for Israeli small businesses.
+
+BUSINESS:
+- Name: ${name}
+- Type: ${state.industry?.label}
+
+VIRAL VIDEO ANALYSIS (from real TikTok videos the client chose as reference):
+${analysis}
+
+ORIGINAL VIDEO DATA:
+${richSummaries}
+
+Based on the SPECIFIC patterns, formats, humor styles, and structures identified in the analysis above, create 6 short Hebrew comedy scripts (15-25 seconds each).
+
+CRITICAL RULES:
+- Each script MUST mimic the EXACT style of the analyzed videos — same structure, same type of humor, same pacing
+- Use the same viral formats found in the analysis (POV, Types, etc.)
+- Match the hook style — whatever works in the first 2 seconds of those videos, replicate it
+- Match the punchline placement — if videos end with a twist, so should scripts
+- The business name "${name}" should appear naturally, not forced
+- All dialogue in Hebrew, casual and authentic
+- Each script should be a DIFFERENT variation inspired by the patterns
+
+Use EXACTLY this format for each:
+---SCRIPT---
+TITLE: [כותרת קליטה]
+FORMAT: [הפורמט הויראלי שזוהה]
+INSPIRED_BY: [איזה סרטון מקורי השפיע על התסריט הזה]
+HOOK: [מה קורה ב-2 שניות הראשונות]
+SCRIPT:
+[דיאלוג מלא בעברית עם הנחיות במשחק]
+CAPTION: [כיתוב + האשטאגים]
+---END---`;
+
+    const text = await callClaude(generatePrompt);
+    state.scripts = text.split('---SCRIPT---').slice(1).map(r => {
+      const c = r.slice(0, r.indexOf('---END---') > -1 ? r.indexOf('---END---') : undefined);
+      const get = k => { const m = c.match(new RegExp(k+':\\s*([\\s\\S]*?)(?=\\n[A-Z_]+:|---END|$)')); return m ? m[1].trim() : ''; };
+      return {
+        title: get('TITLE'), format: get('FORMAT'), inspired: get('INSPIRED_BY'),
+        hook: get('HOOK'), script: get('SCRIPT'), caption: get('CAPTION')
+      };
+    }).filter(s => s.script);
+
+    if (state.scripts.length === 0) { overlay.classList.remove('active'); toast('לא נוצרו תסריטים','err'); return; }
+
+    // ===== STEP 3: SAVE =====
+    setGenStep(3);
+    await sleep(600);
+
+    saveToHistory({
+      id: Date.now(),
+      date: new Date().toLocaleDateString('he-IL'),
+      bizName: name, industry: state.industry.label,
+      industryEmoji: state.industry.emoji,
+      scriptsCount: state.scripts.length,
+      scripts: state.scripts,
+    });
+
+    overlay.classList.remove('active');
+    toast(`${state.scripts.length} תסריטים נוצרו בסגנון הסרטונים שבחרת!`,'ok');
+    state.calendar = [];
+    renderScripts(name);
+    showScreen('scripts');
+  } catch(e) {
+    overlay.classList.remove('active');
+    toast('שגיאה: '+e.message,'err');
+  } finally {
+    btn.disabled = false; btn.textContent = '✨ צור תסריטים';
+  }
+}
+
+function setGenStep(n) {
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById('gstep-'+i);
+    el.className = 'gen-step' + (i < n ? ' done' : i === n ? ' active' : '');
+    if (i < n) el.querySelector('.step-icon').textContent = '✓';
+  }
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (tab==='scripts'?i===0:i===1)));
+  document.getElementById('tab-scripts').style.display = tab === 'scripts' ? 'block' : 'none';
+  document.getElementById('tab-calendar').style.display = tab === 'calendar' ? 'block' : 'none';
+  if (tab === 'calendar' && state.calendar.length === 0) {
+    document.getElementById('calendar-grid').innerHTML = '';
+    document.getElementById('calendar-empty').style.display = 'block';
+  }
+}
+
+function renderScripts(bizName) {
+  document.getElementById('scripts-title').textContent = `✨ תסריטים ל${bizName}`;
+  document.getElementById('scripts-title-bar').textContent = bizName;
+  document.getElementById('scripts-sub').innerHTML = `${state.scripts.length} תסריטים &bull; ${state.industry?.emoji} ${state.industry?.label}`;
+  document.getElementById('scripts-grid').innerHTML = state.scripts.map((s,i) => `
+    <div class="script-card stagger" style="animation-delay:${i*70}ms">
+      <div class="script-badge">${i+1}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        ${s.format ? `<span style="font-size:11px;background:rgba(196,133,59,0.1);color:var(--brown);padding:3px 10px;border-radius:6px;font-weight:600">${esc(s.format)}</span>` : ''}
+        ${s.inspired ? `<span style="font-size:11px;background:rgba(45,122,79,0.08);color:var(--green);padding:3px 10px;border-radius:6px;font-weight:500">🎬 ${esc(s.inspired).slice(0,40)}</span>` : ''}
+      </div>
+      <div class="script-title">${esc(s.title)}</div>
+      ${s.hook ? `<div style="font-size:12px;color:var(--caramel);margin-bottom:10px;font-weight:600">🪝 Hook: ${esc(s.hook)}</div>` : ''}
+      <pre class="script-body">${esc(s.script)}</pre>
+      <div class="script-caption">${esc(s.caption)}</div>
+      <button class="btn-copy" id="copy-${i}" onclick="copyScript(${i})">📋 העתק תסריט</button>
+    </div>`).join('');
+  // Reset calendar tab
+  switchTab('scripts');
+}
+
+async function generateCalendar() {
+  document.getElementById('calendar-empty').style.display = 'none';
+  document.getElementById('calendar-loading').style.display = 'flex';
+  const scriptsList = state.scripts.map((s,i) => `${i+1}. "${s.title}" (${s.format||'skit'})`).join('\n');
+  const prompt = `You are a social media content strategist for Israeli businesses.
+
+BUSINESS: ${state.bizName}
+INDUSTRY: ${state.industry?.label}
+
+AVAILABLE SCRIPTS:
+${scriptsList}
+
+Create a 7-day content calendar (Sunday to Saturday) for this business.
+For each day, assign 1-2 content slots with:
+- Which script to use (or create a bonus idea)
+- Best posting time for Israel (specific hour)
+- Which platform (TikTok, Instagram Reels, Instagram Stories, or Facebook)
+- A brief note on what to focus on
+
+Also add 1-2 "rest days" where the business only posts a Story or doesn't post.
+
+RESPOND ONLY IN VALID JSON, no markdown, no backticks:
+{"days":[{"day":"ראשון","slots":[{"time":"10:00","platform":"TikTok","title":"שם התסריט","note":"הערה קצרה"}]}]}`;
+
+  try {
+    const text = await callClaude(prompt);
+    const clean = text.replace(/```json|```/g,'').trim();
+    const data = JSON.parse(clean);
+    state.calendar = data.days || [];
+    document.getElementById('calendar-loading').style.display = 'none';
+    renderCalendar();
+    toast('לוח תוכן שבועי נוצר!','ok');
+    // Update stepper
+  } catch(e) {
+    document.getElementById('calendar-loading').style.display = 'none';
+    document.getElementById('calendar-empty').style.display = 'block';
+    toast('שגיאה ביצירת לוח: '+e.message,'err');
+  }
+}
+
+function renderCalendar() {
+  document.getElementById('calendar-grid').innerHTML = state.calendar.map((day,i) => `
+    <div class="day-card stagger" style="animation-delay:${i*60}ms">
+      <div class="day-header">
+        <span class="day-name">יום ${esc(day.day)}</span>
+      </div>
+      ${(day.slots||[]).map(slot => `
+        <div class="day-slot">
+          <div class="slot-time">🕐 ${esc(slot.time)}</div>
+          <span class="slot-platform">${esc(slot.platform)}</span>
+          <div class="slot-title">${esc(slot.title)}</div>
+          <div class="slot-desc">${esc(slot.note||'')}</div>
+        </div>
+      `).join('')}
+      ${(!day.slots||day.slots.length===0) ? '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px">🌿 יום מנוחה</div>' : ''}
+    </div>
+  `).join('');
+}
+
+function copyScript(i) {
+  const s = state.scripts[i];
+  let text = s.title;
+  if (s.format) text += `\nפורמט: ${s.format}`;
+  if (s.hook) text += `\nHook: ${s.hook}`;
+  text += `\n\n${s.script}\n\n${s.caption}`;
+  navigator.clipboard.writeText(text);
+  const el = document.getElementById('copy-'+i);
+  el.textContent = '✓ הועתק!'; el.style.color = 'var(--green)'; el.style.borderColor = 'rgba(45,122,79,0.3)';
+  toast('הועתק!','ok');
+  setTimeout(() => { el.textContent = '📋 העתק תסריט'; el.style.color = ''; el.style.borderColor = ''; }, 2000);
+}
+
+function reSearch() { startSearch(state.industry.id); }
+
+// ========== HISTORY ==========
+function renderHistory() {
+  const h = getHistory();
+  const container = document.getElementById('history-list');
+  if (h.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📂</div><p>עדיין אין היסטוריה.<br>צור תסריטים ראשונים והם יישמרו כאן.</p></div>`;
+    return;
+  }
+  container.innerHTML = h.map((entry,i) => `
+    <div class="history-card" onclick="loadHistory(${i})">
+      <div class="history-info">
+        <div class="history-biz">${entry.industryEmoji||''} ${esc(entry.bizName)}</div>
+        <div class="history-meta">
+          <span>📅 ${esc(entry.date)}</span>
+          <span>📝 ${entry.scriptsCount} תסריטים</span>
+          <span>${esc(entry.industry||'')}</span>
+        </div>
+      </div>
+      <div class="history-actions">
+        <button class="btn-danger-ghost" onclick="event.stopPropagation();deleteHistory(${i})">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function loadHistory(idx) {
+  const h = getHistory();
+  const entry = h[idx];
+  if (!entry) return;
+  state.scripts = entry.scripts || [];
+  state.bizName = entry.bizName;
+  state.industry = INDUSTRIES.find(ind => ind.label === entry.industry) || INDUSTRIES[0];
+  state.calendar = [];
+  renderScripts(entry.bizName);
+  showScreen('scripts');
+  toast(`נטען: ${entry.bizName}`,'ok');
+}
+
+function deleteHistory(idx) {
+  const h = getHistory();
+  h.splice(idx, 1);
+  localStorage.setItem('vm_history', JSON.stringify(h));
+  renderHistory();
+  toast('נמחק','ok');
+}
+
+// ========== TOAST ==========
+let toastT;
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-icon').textContent = type === 'err' ? '⚠️' : '✓';
+  document.getElementById('toast-msg').textContent = msg;
+  el.className = 'toast ' + type;
+  clearTimeout(toastT);
+  requestAnimationFrame(() => el.classList.add('visible'));
+  toastT = setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
+// ========== API ==========
+async function searchTikTok(query, region) {
+  const r = region || 'us';
+  const url = `https://tiktok-scraper7.p.rapidapi.com/feed/search?keywords=${encodeURIComponent(query)}&region=${r}&count=30&cursor=0&publish_time=0&sort_type=0`;
+  const res = await fetch(url, { headers: { 'X-RapidAPI-Key': state.rapidKey, 'X-RapidAPI-Host': 'tiktok-scraper7.p.rapidapi.com' } });
+  if (!res.ok) throw new Error('RapidAPI error ' + res.status);
+  const json = await res.json();
+  return (json.data?.videos || []).filter(v => !v.is_ad).map(v => ({
+    ...v,
+    desc: v.desc || v.title || '',
+    duration: v.duration || 0,
+    text_extra: v.text_extra || [],
+    music_info: v.music_info || v.music || {},
+  }));
+}
+
+async function callClaude(prompt) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': state.claudeKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content?.[0]?.text || '';
+}
+
+function fmt(n) { if(!n) return '0'; if(n>=1e6) return (n/1e6).toFixed(1)+'M'; if(n>=1e3) return Math.round(n/1e3)+'K'; return String(n); }
+function calcEng(v) { if(!v.play_count||v.play_count<100) return 0; return Math.round((v.digg_count||0)/v.play_count*1000)/10; }
+function sleep(ms) { return new Promise(r => setTimeout(r,ms)); }
+function esc(s) { if(!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ========== TRENDS ==========
+const TREND_QUERIES = [
+  'POV customer walks in funny',
+  'types of customers comedy',
+  'small business owner POV skit',
+  'employee reacts customer funny',
+  'when client asks something funny',
+  'day in the life business owner',
+  'POV waiter customer restaurant',
+  'POV salon client funny skit',
+  'retail worker customer comedy',
+  'doctor patient funny skit'
+];
+const TREND_QUERIES_HE = [
+  'POV לקוח נכנס לעסק מצחיק',
+  'סיטואציות מצחיקות עסק',
+  'בעל עסק סקיט מצחיק',
+  'לקוחות מצחיקים סיטואציה',
+  'יום בחיים של בעל עסק'
+];
+
+function getTrendCache() {
+  try { return JSON.parse(localStorage.getItem('vm_trends') || '{}'); } catch { return {}; }
+}
+function saveTrendCache(data) {
+  localStorage.setItem('vm_trends', JSON.stringify(data));
+}
+function getFavs() {
+  try { return JSON.parse(localStorage.getItem('vm_favs') || '[]'); } catch { return []; }
+}
+function saveFavs(favs) {
+  localStorage.setItem('vm_favs', JSON.stringify(favs));
+}
+
+async function loadTrends() {
+  const cache = getTrendCache();
+  const now = Date.now();
+  const oneDay = 24 * 60 * 60 * 1000;
+
+  // If cache exists and is less than 24h old, use it
+  if (cache.videos && cache.videos.length > 0 && cache.timestamp && (now - cache.timestamp) < oneDay) {
+    state.trendVideos = cache.videos;
+    renderTrends();
+    const ago = getTimeAgo(cache.timestamp);
+    document.getElementById('trends-updated').innerHTML = `<span class="live-dot"></span> עודכן ${ago}`;
+    return;
+  }
+
+  // Otherwise fetch fresh
+  await refreshTrends(false);
+}
+
+async function refreshTrends(manual) {
+  const loadEl = document.getElementById('trends-loading');
+  const progBar = document.getElementById('trends-progress');
+  const allGrid = document.getElementById('trends-all');
+  allGrid.innerHTML = '';
+  loadEl.style.display = 'flex';
+  progBar.style.width = '10%';
+
+  try {
+    const allVideos = [];
+    const totalSteps = TREND_QUERIES_HE.length + TREND_QUERIES.length;
+    let step = 0;
+
+    // Phase 1: Israeli trends
+    for (let i = 0; i < TREND_QUERIES_HE.length; i++) {
+      step++;
+      progBar.style.width = Math.round((step / totalSteps) * 70) + '%';
+      try { const vids = await searchTikTok(TREND_QUERIES_HE[i], 'IL'); allVideos.push(...vids); } catch(e) {}
+      await sleep(350);
+    }
+
+    // Phase 2: Global trends
+    for (let i = 0; i < TREND_QUERIES.length; i++) {
+      step++;
+      progBar.style.width = Math.round((step / totalSteps) * 70) + '%';
+      try { const vids = await searchTikTok(TREND_QUERIES[i], 'us'); allVideos.push(...vids); } catch(e) {}
+      if (i < TREND_QUERIES.length - 1) await sleep(350);
+    }
+
+    // Same filter as main search — 3-tier fallback, 30 results for trends
+    const { filtered } = smartFilter(allVideos, 30);
+
+    if (filtered.length === 0) {
+      loadEl.style.display = 'none';
+      toast('לא נמצאו טרנדים — נסה שוב מאוחר יותר', 'err');
+      return;
+    }
+
+    // Generate Hebrew titles
+    progBar.style.width = '80%';
+    try {
+      const videoList = filtered.map((v,i) =>
+        `${i+1}. "${(v.title||v.desc||'').slice(0,120)}"${v.duration ? ` | ${v.duration}s` : ''} | ${fmt(v.play_count)} views`
+      ).join('\n');
+
+      const raw = await callClaude(`Analyze these viral TikTok videos and give each a Hebrew title and subtitle.
+
+${videoList}
+
+For each, provide a catchy Hebrew TITLE (5-8 words) and a SUBTITLE (1 sentence explaining the video).
+
+RESPOND ONLY IN VALID JSON, no markdown, no backticks:
+[{"title":"כותרת","subtitle":"הסבר"}]
+
+Return exactly ${filtered.length} items.`);
+      const titles = JSON.parse(raw.replace(/```json|```/g,'').trim());
+      filtered.forEach((v,i) => {
+        if (titles[i]) { v.heTitle = titles[i].title || ''; v.heSubtitle = titles[i].subtitle || ''; }
+      });
+    } catch(e) { console.log('Trend titles failed:', e); }
+
+    progBar.style.width = '100%';
+    await sleep(200);
+
+    state.trendVideos = filtered;
+    saveTrendCache({ videos: filtered, timestamp: Date.now() });
+
+    loadEl.style.display = 'none';
+    document.getElementById('trends-updated').innerHTML = `<span class="live-dot"></span> עודכן עכשיו`;
+    renderTrends();
+    if (manual) toast(`${filtered.length} טרנדים חדשים נטענו!`, 'ok');
+  } catch(e) {
+    loadEl.style.display = 'none';
+    toast('שגיאה: ' + e.message, 'err');
+  }
+}
+
+function renderTrends() {
+  const favs = getFavs();
+  const videos = state.trendVideos || [];
+  document.getElementById('trends-all').innerHTML = videos.map((v,i) => buildTrendCard(v, i, favs)).join('');
+  renderFavs();
+}
+
+function renderFavs() {
+  const favs = getFavs();
+  const videos = (state.trendVideos || []).filter(v => favs.includes(v.video_id));
+  const el = document.getElementById('trends-favs');
+  if (videos.length === 0) {
+    el.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 24px;color:var(--text-muted)">
+      <div style="font-size:40px;margin-bottom:12px">❤️</div>
+      <p>עדיין לא שמרת מועדפים.<br>לחץ על ❤️ ליד סרטונים שאהבת.</p>
+    </div>`;
+  } else {
+    el.innerHTML = videos.map((v,i) => buildTrendCard(v, i, favs)).join('');
+  }
+}
+
+function buildTrendCard(v, i, favs) {
+  const isFav = favs.includes(v.video_id);
+  const title = v.heTitle || (v.title||'ללא כותרת').slice(0,80);
+  const subtitle = v.heSubtitle || '';
+  return `<div class="trend-card stagger" style="animation-delay:${i*30}ms">
+    <button class="fav-btn ${isFav?'liked':''}" onclick="toggleFav('${v.video_id}')" title="${isFav?'הסר ממועדפים':'שמור למועדפים'}">❤️</button>
+    <div class="vid-stats" style="margin-bottom:12px">
+      <span class="vid-stat">👁 ${fmt(v.play_count)}</span>
+      <span class="vid-stat">❤️ ${fmt(v.digg_count)}</span>
+      <span class="vid-stat ${v.eng>3?'hot':''}">${v.eng}% eng</span>
+      ${v.duration ? `<span class="vid-stat">⏱ ${v.duration}s</span>` : ''}
+    </div>
+    <div style="font-size:15px;font-weight:700;color:var(--brown);margin-bottom:4px;line-height:1.5">${esc(title)}</div>
+    ${subtitle ? `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;line-height:1.6">${esc(subtitle)}</div>` : ''}
+    <div class="vid-author">@${esc(v.author?.unique_id||'')}</div>
+    <a class="vid-link" href="https://www.tiktok.com/@${v.author?.unique_id}/video/${v.video_id}" target="_blank">צפה ב-TikTok ↗</a>
+  </div>`;
+}
+
+function toggleFav(videoId) {
+  let favs = getFavs();
+  if (favs.includes(videoId)) {
+    favs = favs.filter(id => id !== videoId);
+    toast('הוסר ממועדפים', 'ok');
+  } else {
+    favs.push(videoId);
+    toast('נשמר למועדפים ❤️', 'ok');
+  }
+  saveFavs(favs);
+  renderTrends();
+}
+
+function switchTrendsTab(tab) {
+  document.querySelectorAll('.trends-tab').forEach((b,i) => b.classList.toggle('active', (tab==='all'?i===0:i===1)));
+  document.getElementById('trends-all').style.display = tab === 'all' ? 'grid' : 'none';
+  document.getElementById('trends-favs').style.display = tab === 'favs' ? 'grid' : 'none';
+  if (tab === 'favs') renderFavs();
+}
+
+function getTimeAgo(ts) {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'עכשיו';
+  if (mins < 60) return `לפני ${mins} דקות`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `לפני ${hrs} שעות`;
+  return `לפני ${Math.floor(hrs/24)} ימים`;
+}
+
+// ========== PROFILE ==========
+function getProfile() {
+  try { return JSON.parse(localStorage.getItem('vm_profile') || '{}'); } catch { return {}; }
+}
+function saveProfile() {
+  const name = document.getElementById('prof-name').value.trim();
+  const phone = document.getElementById('prof-phone').value.trim();
+  const email = document.getElementById('prof-email').value.trim();
+  const contract = document.getElementById('prof-contract').value.trim();
+
+  // Gather services
+  const serviceEls = document.querySelectorAll('.svc-row');
+  const services = [];
+  serviceEls.forEach(el => {
+    const n = el.querySelector('.svc-name').value.trim();
+    const p = parseInt(el.querySelector('.svc-price').value) || 0;
+    if (n && p > 0) services.push({ name: n, price: p });
+  });
+
+  const profile = { name, phone, email, services, contract };
+  localStorage.setItem('vm_profile', JSON.stringify(profile));
+  toast('פרופיל נשמר בהצלחה!', 'ok');
+}
+
+function loadProfileForm() {
+  const p = getProfile();
+  document.getElementById('prof-name').value = p.name || '';
+  document.getElementById('prof-phone').value = p.phone || '';
+  document.getElementById('prof-email').value = p.email || '';
+  document.getElementById('prof-contract').value = p.contract || '';
+
+  const list = document.getElementById('services-list');
+  list.innerHTML = '';
+  if (p.services && p.services.length > 0) {
+    p.services.forEach(s => addService(s.name, s.price));
+  } else {
+    addService(); addService();
+  }
+}
+
+function addService(name, price) {
+  const list = document.getElementById('services-list');
+  const row = document.createElement('div');
+  row.className = 'service-row svc-row';
+  row.innerHTML = `
+    <input class="field-input svc-name" placeholder="שם השירות" value="${esc(name||'')}">
+    <input class="field-input svc-price" type="number" placeholder="מחיר ₪" value="${price||''}">
+    <button class="remove-btn" onclick="this.parentElement.remove()">✕</button>
+  `;
+  list.appendChild(row);
+}
+
+// ========== QUOTES ==========
+function getQuotes() {
+  try { return JSON.parse(localStorage.getItem('vm_quotes') || '[]'); } catch { return []; }
+}
+function saveQuote(q) {
+  const qs = getQuotes();
+  qs.unshift(q);
+  if (qs.length > 30) qs.length = 30;
+  localStorage.setItem('vm_quotes', JSON.stringify(qs));
+}
+
+function loadQuoteForm() {
+  const p = getProfile();
+  const formEl = document.getElementById('quote-form');
+  const noProfile = document.getElementById('quote-no-profile');
+  const servicesList = document.getElementById('quote-services-list');
+
+  if (!p.services || p.services.length === 0) {
+    servicesList.innerHTML = '';
+    noProfile.style.display = 'block';
+    document.getElementById('quote-total').style.display = 'none';
+    return;
+  }
+  noProfile.style.display = 'none';
+
+  servicesList.innerHTML = p.services.map((s, i) => `
+    <div class="quote-service-item" onclick="toggleQuoteService(${i}, this)" data-idx="${i}" data-price="${s.price}">
+      <div class="qcheck">✓</div>
+      <div class="qsvc-info">
+        <div class="qsvc-name">${esc(s.name)}</div>
+      </div>
+      <input class="qsvc-price-input" value="${s.price}" onclick="event.stopPropagation()" oninput="updateQuoteTotal()"> ₪
+    </div>
+  `).join('');
+  document.getElementById('quote-total').style.display = 'none';
+  renderQuotesHistory();
+}
+
+function toggleQuoteService(idx, el) {
+  el.classList.toggle('checked');
+  updateQuoteTotal();
+}
+
+function updateQuoteTotal() {
+  const checked = document.querySelectorAll('.quote-service-item.checked');
+  let total = 0;
+  checked.forEach(el => {
+    const input = el.querySelector('.qsvc-price-input');
+    total += parseInt(input.value) || 0;
+  });
+  const totalEl = document.getElementById('quote-total');
+  totalEl.style.display = checked.length > 0 ? 'flex' : 'none';
+  document.getElementById('quote-total-num').textContent = total.toLocaleString() + ' ₪';
+}
+
+function generateQuotePDF() {
+  const clientName = document.getElementById('quote-client').value.trim();
+  if (!clientName) { toast('נא להכניס שם לקוח', 'err'); return; }
+  const profile = getProfile();
+  if (!profile.name) { toast('נא למלא פרופיל קודם', 'err'); return; }
+
+  const checked = document.querySelectorAll('.quote-service-item.checked');
+  if (checked.length === 0) { toast('נא לבחור לפחות שירות אחד', 'err'); return; }
+
+  const services = [];
+  let total = 0;
+  checked.forEach(el => {
+    const name = el.querySelector('.qsvc-name').textContent;
+    const price = parseInt(el.querySelector('.qsvc-price-input').value) || 0;
+    services.push({ name, price });
+    total += price;
+  });
+
+  const today = new Date().toLocaleDateString('he-IL');
+
+  // Save to history
+  saveQuote({ id: Date.now(), date: today, client: clientName, services, total });
+  renderQuotesHistory();
+
+  // Process contract
+  let contract = profile.contract || '';
+  contract = contract.replace(/\[שם הלקוח\]/g, clientName)
+    .replace(/\[שם המנהל\]/g, profile.name)
+    .replace(/\[תאריך\]/g, today)
+    .replace(/\[סכום\]/g, total.toLocaleString() + ' ₪');
+
+  // Generate PDF HTML
+  const servicesRows = services.map(s =>
+    `<tr><td style="padding:12px 16px;border-bottom:1px solid #E8D5B7;font-size:15px">${s.name}</td>
+     <td style="padding:12px 16px;border-bottom:1px solid #E8D5B7;font-size:15px;text-align:left;font-weight:600">${s.price.toLocaleString()} ₪</td></tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8">
+<title>הצעת מחיר — ${clientName}</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Heebo', sans-serif; background: #FDF6EC; color: #3B2415; padding: 40px; direction: rtl; }
+  .page { max-width: 700px; margin: 0 auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(74,46,25,0.1); }
+  .header { background: #6B4226; color: #FDF6EC; padding: 40px; }
+  .header h1 { font-size: 28px; font-weight: 900; margin-bottom: 4px; }
+  .header p { font-size: 14px; opacity: 0.8; }
+  .body { padding: 40px; }
+  .row { display: flex; justify-content: space-between; margin-bottom: 32px; }
+  .col h3 { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #A89482; margin-bottom: 8px; }
+  .col p { font-size: 15px; line-height: 1.7; }
+  table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+  th { background: #FAF0E1; padding: 12px 16px; text-align: right; font-size: 13px; font-weight: 700; color: #6B4226; letter-spacing: 1px; }
+  th:last-child { text-align: left; }
+  .total-row { background: #6B4226; color: #FDF6EC; }
+  .total-row td { padding: 16px; font-size: 18px; font-weight: 800; }
+  .contract { margin-top: 32px; padding-top: 24px; border-top: 1px solid #E8D5B7; }
+  .contract h3 { font-size: 14px; font-weight: 700; color: #6B4226; margin-bottom: 12px; }
+  .contract-text { font-size: 13px; line-height: 2; color: #7A6352; white-space: pre-wrap; }
+  .sig { margin-top: 48px; display: flex; justify-content: space-between; }
+  .sig-box { text-align: center; width: 45%; }
+  .sig-line { border-top: 1px solid #A89482; margin-top: 60px; padding-top: 8px; font-size: 13px; color: #A89482; }
+  @media print { body { padding: 0; background: #fff; } .page { box-shadow: none; border-radius: 0; } }
+</style></head><body>
+<div class="page">
+  <div class="header">
+    <h1>הצעת מחיר</h1>
+    <p>${today}</p>
+  </div>
+  <div class="body">
+    <div class="row">
+      <div class="col"><h3>מאת</h3><p><strong>${esc(profile.name)}</strong><br>${esc(profile.phone||'')}<br>${esc(profile.email||'')}</p></div>
+      <div class="col"><h3>עבור</h3><p><strong>${esc(clientName)}</strong></p></div>
+    </div>
+    <table>
+      <tr><th>שירות</th><th style="text-align:left">מחיר</th></tr>
+      ${servicesRows}
+      <tr class="total-row"><td>סה"כ</td><td style="text-align:left">${total.toLocaleString()} ₪</td></tr>
+    </table>
+    ${contract ? `<div class="contract"><h3>תנאים</h3><div class="contract-text">${esc(contract)}</div></div>` : ''}
+    <div class="sig">
+      <div class="sig-box"><div class="sig-line">נותן השירות — ${esc(profile.name)}</div></div>
+      <div class="sig-box"><div class="sig-line">הלקוח — ${esc(clientName)}</div></div>
+    </div>
+  </div>
+</div>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  toast('הצעת מחיר נוצרה — שמור כ-PDF', 'ok');
+
+  // Prompt to add as client
+  state.lastQuote = { name: clientName, amount: total };
+  setTimeout(() => {
+    if (confirm(`להוסיף את "${clientName}" ללקוחות הקיימים?\n\nסכום חודשי: ${total.toLocaleString()} ₪`)) {
+      showScreen('clients');
+      setTimeout(() => {
+        toggleAddClient(true);
+        document.getElementById('ac-name').value = clientName;
+        document.getElementById('ac-amount').value = total;
+        document.getElementById('ac-start').value = new Date().toISOString().split('T')[0];
+      }, 300);
+    }
+  }, 500);
+}
+
+function renderQuotesHistory() {
+  const qs = getQuotes();
+  const el = document.getElementById('quotes-history');
+  if (qs.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">עדיין לא יצרת הצעות מחיר</div>';
+    return;
+  }
+  el.innerHTML = qs.map((q,i) => `
+    <div class="quote-hist-card">
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;color:var(--brown)">${esc(q.client)}</div>
+        <div style="font-size:13px;color:var(--text-muted);display:flex;gap:12px;margin-top:4px">
+          <span>📅 ${esc(q.date)}</span>
+          <span>${q.services.length} שירותים</span>
+          <span style="font-weight:700;color:var(--caramel)">${q.total.toLocaleString()} ₪</span>
+        </div>
+      </div>
+      <button class="btn-danger-ghost" onclick="deleteQuote(${i})">🗑️</button>
+    </div>
+  `).join('');
+}
+
+function deleteQuote(idx) {
+  const qs = getQuotes();
+  qs.splice(idx, 1);
+  localStorage.setItem('vm_quotes', JSON.stringify(qs));
+  renderQuotesHistory();
+  toast('נמחק', 'ok');
+}
+
+// ========== CLIENTS ==========
+function getClients() {
+  try { return JSON.parse(localStorage.getItem('vm_clients') || '[]'); } catch { return []; }
+}
+function saveClients(clients) {
+  localStorage.setItem('vm_clients', JSON.stringify(clients));
+}
+
+function toggleAddClient(forceOpen) {
+  const form = document.getElementById('add-client-form');
+  if (forceOpen === true) { form.style.display = 'block'; return; }
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  if (form.style.display === 'block') {
+    document.getElementById('ac-name').value = '';
+    document.getElementById('ac-amount').value = '';
+    document.getElementById('ac-start').value = new Date().toISOString().split('T')[0];
+    document.getElementById('ac-months').value = '12';
+    document.getElementById('ac-payday').value = '1';
+  }
+}
+
+function saveClient() {
+  const name = document.getElementById('ac-name').value.trim();
+  const amount = parseInt(document.getElementById('ac-amount').value) || 0;
+  const start = document.getElementById('ac-start').value;
+  const months = parseInt(document.getElementById('ac-months').value) || 12;
+  const payday = Math.min(28, Math.max(1, parseInt(document.getElementById('ac-payday').value) || 1));
+
+  if (!name || amount <= 0) { toast('נא למלא שם וסכום', 'err'); return; }
+  if (!start) { toast('נא לבחור תאריך התחלה', 'err'); return; }
+
+  const clients = getClients();
+  const client = {
+    id: Date.now(),
+    name,
+    monthlyAmount: amount,
+    startDate: start,
+    totalMonths: months,
+    paymentDay: payday,
+    payments: []
+  };
+
+  // Generate payment entries for each month
+  const startD = new Date(start);
+  for (let i = 0; i < months; i++) {
+    const m = new Date(startD.getFullYear(), startD.getMonth() + i, 1);
+    const key = m.getFullYear() + '-' + String(m.getMonth() + 1).padStart(2, '0');
+    client.payments.push({ month: key, paid: false });
+  }
+
+  clients.push(client);
+  saveClients(clients);
+  toggleAddClient();
+  renderClients();
+  toast(`${name} נוסף ללקוחות!`, 'ok');
+}
+
+function renderClients() {
+  const clients = getClients();
+  const now = new Date();
+  const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+
+  // Summary calculations
+  const active = clients.filter(c => {
+    const lastPayment = c.payments[c.payments.length - 1];
+    return lastPayment && lastPayment.month >= currentMonth;
+  });
+  const totalMonthly = active.reduce((sum, c) => sum + c.monthlyAmount, 0);
+  const paidThisMonth = active.filter(c => {
+    const pm = c.payments.find(p => p.month === currentMonth);
+    return pm && pm.paid;
+  }).length;
+  const pendingThisMonth = active.length - paidThisMonth;
+  const totalCollected = clients.reduce((sum, c) => sum + c.payments.filter(p => p.paid).length * c.monthlyAmount, 0);
+
+  document.getElementById('clients-summary').innerHTML = `
+    <div class="summary-card"><div class="summary-num" style="color:var(--brown)">${active.length}</div><div class="summary-label">לקוחות פעילים</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:var(--caramel)">${totalMonthly.toLocaleString()} ₪</div><div class="summary-label">הכנסה חודשית</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:var(--green)">${paidThisMonth}</div><div class="summary-label">שילמו החודש</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:${pendingThisMonth > 0 ? 'var(--red)' : 'var(--text-muted)'}">${pendingThisMonth}</div><div class="summary-label">ממתינים לתשלום</div></div>
+  `;
+
+  const listEl = document.getElementById('clients-list');
+  if (clients.length === 0) {
+    listEl.innerHTML = '<div style="text-align:center;padding:60px 24px;color:var(--text-muted)"><div style="width:48px;height:48px;margin:0 auto 16px;border-radius:50%;background:var(--cream-dark);display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><p>עדיין אין לקוחות.<br>הוסף לקוח חדש או צור הצעת מחיר.</p></div>';
+    return;
+  }
+
+  listEl.innerHTML = clients.map((c, idx) => {
+    const currentPayment = c.payments.find(p => p.month === currentMonth);
+    const paidNow = currentPayment ? currentPayment.paid : false;
+    const remainingMonths = c.payments.filter(p => p.month >= currentMonth).length;
+    const nextPayDate = getNextPaymentDate(c, currentMonth);
+    const isOverdue = !paidNow && nextPayDate && new Date(nextPayDate) < now;
+    const startFormatted = new Date(c.startDate).toLocaleDateString('he-IL');
+    const initials = c.name.split(' ').map(w => w[0]).join('').slice(0,2);
+
+    const svgCalendar = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--brown-warm)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+    const svgClock = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--brown-warm)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+    const svgRepeat = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--brown-warm)" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
+    const svgCard = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--brown-warm)" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
+
+    return `<div class="client-card ${isOverdue ? 'overdue' : ''} ${paidNow ? 'is-paid' : ''} stagger" style="animation-delay:${idx * 60}ms">
+      <div class="client-top">
+        <div class="client-name-wrap">
+          <div class="client-avatar">${esc(initials)}</div>
+          <div>
+            <div class="client-name">${esc(c.name)}</div>
+            <div class="client-tags">
+              ${paidNow ? '<span class="status-tag tag-paid"><span class="tag-dot"></span>שולם</span>' : ''}
+              ${isOverdue ? '<span class="status-tag tag-overdue"><span class="tag-dot"></span>עבר תאריך</span>' : ''}
+            </div>
+          </div>
+        </div>
+        <div class="client-amount">${c.monthlyAmount.toLocaleString()} ₪</div>
+      </div>
+      <div class="client-meta">
+        <div class="meta-item"><div class="meta-icon">${svgCalendar}</div><span>התחיל: ${startFormatted}</span></div>
+        <div class="meta-item"><div class="meta-icon">${svgRepeat}</div><span>נשארו: ${remainingMonths} חודשים</span></div>
+        <div class="meta-item"><div class="meta-icon">${svgCard}</div><span>יום תשלום: ${c.paymentDay} בחודש</span></div>
+        ${nextPayDate ? `<div class="meta-item"><div class="meta-icon">${svgClock}</div><span>תשלום הבא: ${new Date(nextPayDate).toLocaleDateString('he-IL')}</span></div>` : ''}
+      </div>
+      <div class="client-actions">
+        ${!paidNow && currentPayment ? `<button class="btn-paid" onclick="markPayment(${idx},'${currentMonth}',true)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> שילם החודש</button>` : ''}
+        ${paidNow && currentPayment ? `<button class="btn-unpaid" onclick="markPayment(${idx},'${currentMonth}',false)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M12 3l-4 4 4 4"/></svg> בטל תשלום</button>` : ''}
+        <button class="btn-delete-client" onclick="deleteClient(${idx})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg> מחק</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getNextPaymentDate(client, currentMonth) {
+  const [y, m] = currentMonth.split('-').map(Number);
+  const day = Math.min(client.paymentDay, 28);
+  return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function markPayment(clientIdx, month, paid) {
+  const clients = getClients();
+  const client = clients[clientIdx];
+  if (!client) return;
+  const pm = client.payments.find(p => p.month === month);
+  if (pm) {
+    pm.paid = paid;
+    saveClients(clients);
+    renderClients();
+    toast(paid ? `✅ ${client.name} — סומן כשולם` : `↩️ ${client.name} — תשלום בוטל`, 'ok');
+  }
+}
+
+function deleteClient(idx) {
+  if (!confirm('למחוק את הלקוח?')) return;
+  const clients = getClients();
+  const name = clients[idx]?.name || '';
+  clients.splice(idx, 1);
+  saveClients(clients);
+  renderClients();
+  toast(`${name} נמחק`, 'ok');
+}
+
+// ========== FETCH USER POSTS (from curated creators) ==========
+async function fetchUserPosts(username) {
+  const clean = username.replace('@','').trim();
+  const url = `https://tiktok-scraper7.p.rapidapi.com/user/posts?unique_id=${encodeURIComponent(clean)}&count=20&cursor=0`;
+  const res = await fetch(url, { headers: { 'X-RapidAPI-Key': state.rapidKey, 'X-RapidAPI-Host': 'tiktok-scraper7.p.rapidapi.com' } });
+  if (!res.ok) throw new Error('RapidAPI error ' + res.status);
+  const json = await res.json();
+  // Handle multiple response formats
+  const videos = json.data?.videos || json.data || json.videos || json.itemList || [];
+  const arr = Array.isArray(videos) ? videos : [];
+  console.log(`@${clean}: got ${arr.length} videos`);
+  return arr.filter(v => v && !v.is_ad).map(v => ({
+    video_id: v.video_id || v.id || v.aweme_id || '',
+    title: v.title || v.desc || '',
+    desc: v.desc || v.title || '',
+    play_count: v.play_count || v.stats?.playCount || v.statistics?.playCount || 0,
+    digg_count: v.digg_count || v.stats?.diggCount || v.statistics?.diggCount || 0,
+    duration: v.duration || v.video?.duration || 0,
+    author: v.author || { unique_id: clean },
+    text_extra: v.text_extra || v.textExtra || [],
+    music_info: v.music_info || v.music || {},
+    _source: 'curated',
+    _creator: clean,
+  }));
+}
+
+// ========== AUTH FUNCTIONS ==========
+function switchAuthTab(tab) {
+  document.getElementById('auth-tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('auth-tab-register').classList.toggle('active', tab === 'register');
+  document.getElementById('auth-login-form').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('auth-register-form').style.display = tab === 'register' ? '' : 'none';
+}
+
+async function userRegister() {
+  const name = document.getElementById('auth-reg-name').value.trim();
+  const email = document.getElementById('auth-reg-email').value.trim();
+  const pass = document.getElementById('auth-reg-pass').value;
+  if (!name || !email || !pass) { toast('נא למלא את כל השדות', 'err'); return; }
+  if (pass.length < 6) { toast('סיסמה חייבת להכיל לפחות 6 תווים', 'err'); return; }
+
+  try {
+    // Register with Supabase Auth
+    const res = await fetch(`${SUPA_URL}/auth/v1/signup`, {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass, options: { data: { full_name: name } } })
+    });
+    const data = await res.json();
+    if (data.error || !data.access_token) throw new Error(data.error?.message || data.msg || 'Registration failed');
+
+    supaToken = data.access_token;
+    localStorage.setItem('vm_supa_token', supaToken);
+    state.user = data.user;
+    localStorage.setItem('vm_user', JSON.stringify(data.user));
+
+    // Create profile
+    try {
+      await supa.insert('user_profiles', {
+        id: data.user.id,
+        email: email,
+        full_name: name,
+        plan: 'free',
+      });
+    } catch(e) { console.log('Profile insert:', e); }
+
+    state.userProfile = { plan: 'free', full_name: name, email };
+    toast('ברוכים הבאים ' + name + '!', 'ok');
+    showScreen('plans');
+  } catch(e) {
+    toast('שגיאה: ' + e.message, 'err');
+  }
+}
+
+async function userLogin() {
+  const email = document.getElementById('auth-login-email').value.trim();
+  const pass = document.getElementById('auth-login-pass').value;
+  if (!email || !pass) { toast('נא למלא מייל וסיסמה', 'err'); return; }
+
+  try {
+    const user = await supa.login(email, pass);
+    state.user = user;
+    localStorage.setItem('vm_user', JSON.stringify(user));
+    await loadUserProfile();
+    toast('התחברת בהצלחה!', 'ok');
+    // Super admin → straight to admin dashboard
+    if (isSuperAdmin()) {
+      showScreen('admin');
+    } else {
+      updatePlanUI();
+      if (state.rapidKey && state.claudeKey) {
+        showScreen('home');
+      } else {
+        showScreen('setup');
+      }
+    }
+  } catch(e) {
+    toast('שגיאה: ' + e.message, 'err');
+  }
+}
+
+async function userLogout() {
+  supa.logout();
+  state.user = null;
+  state.userProfile = null;
+  localStorage.removeItem('vm_user');
+  toast('התנתקת', 'ok');
+  showScreen('auth');
+}
+
+async function loadUserProfile() {
+  if (!state.user) return;
+  try {
+    const profiles = await supa.select('user_profiles', `id=eq.${state.user.id}`);
+    if (profiles && profiles.length > 0) {
+      state.userProfile = profiles[0];
+    } else {
+      state.userProfile = { plan: 'free' };
+    }
+  } catch(e) {
+    console.log('Profile load error:', e);
+    state.userProfile = { plan: 'free' };
+  }
+}
+
+function isSuperAdmin() {
+  const email = (state.user?.email || state.userProfile?.email || '').toLowerCase();
+  return email === SUPER_ADMIN_EMAIL.toLowerCase();
+}
+
+function getUserPlan() {
+  if (isSuperAdmin()) return 'pro'; // Super admin always has PRO
+  const p = state.userProfile?.plan || 'free';
+  if (state.userProfile?.plan_expires_at) {
+    const exp = new Date(state.userProfile.plan_expires_at);
+    if (exp < new Date()) return 'free';
+  }
+  return p;
+}
+
+function getPlanLimits() {
+  return PLAN_LIMITS[getUserPlan()] || PLAN_LIMITS.free;
+}
+
+function updatePlanUI() {
+  const plan = getUserPlan();
+  const superAdmin = isSuperAdmin();
+  const badge = document.getElementById('plan-badge');
+  const upgradeBtn = document.getElementById('btn-upgrade');
+  const adminBtn = document.getElementById('btn-admin-home');
+
+  if (badge) {
+    if (superAdmin) {
+      badge.textContent = 'ADMIN';
+      badge.style.background = '#d33';
+    } else {
+      const labels = { free: 'FREE', basic: 'BASIC', pro: 'PRO' };
+      badge.textContent = labels[plan] || 'FREE';
+      badge.style.background = plan === 'pro' ? '#8B6343' : plan === 'basic' ? 'var(--caramel)' : 'var(--text-muted)';
+    }
+  }
+  if (upgradeBtn) {
+    upgradeBtn.style.display = (plan === 'pro' || superAdmin) ? 'none' : '';
+  }
+  if (adminBtn) {
+    adminBtn.style.display = superAdmin ? '' : 'none';
+  }
+
+  // Update plan cards if on plans screen
+  document.querySelectorAll('.plan-card').forEach(card => {
+    const btn = card.querySelector('.plan-btn');
+    if (!btn) return;
+    const onclick = btn.getAttribute('onclick') || '';
+    const match = onclick.match(/selectPlan\('(\w+)'\)/);
+    if (match && match[1] === plan) {
+      btn.textContent = 'התוכנית הנוכחית ✓';
+      btn.className = 'plan-btn plan-current';
+      btn.disabled = true;
+    }
+  });
+}
+
+function canUseFeature(feature) {
+  const limits = getPlanLimits();
+  if (feature === 'scripts' && limits.scripts === 0) return false;
+  if (feature === 'calendar' && !limits.calendar) return false;
+  if (feature === 'clients' && !limits.clients) return false;
+  if (feature === 'quotes' && !limits.quotes) return false;
+  if (feature === 'trends' && !limits.trends) return false;
+  return true;
+}
+
+function checkSearchLimit() {
+  const limits = getPlanLimits();
+  const profile = state.userProfile;
+  if (!profile) return true;
+  const today = new Date().toISOString().slice(0,10);
+  if (profile.last_search_date !== today) {
+    profile.daily_searches = 0;
+    profile.last_search_date = today;
+  }
+  if (profile.daily_searches >= limits.searches) {
+    toast(`הגעת למגבלת ${limits.searches} חיפושים ביום — שדרג את התוכנית!`, 'err');
+    showScreen('plans');
+    return false;
+  }
+  profile.daily_searches++;
+  return true;
+}
+
+async function selectPlan(plan) {
+  if (plan === 'free') {
+    // Just continue
+    if (state.userProfile) {
+      state.userProfile.plan = 'free';
+      try {
+        await fetch(`${SUPA_URL}/rest/v1/user_profiles?id=eq.${state.user.id}`, {
+          method: 'PATCH',
+          headers: { ...supaHeaders(true), 'Prefer': 'return=representation' },
+          body: JSON.stringify({ plan: 'free' })
+        });
+      } catch(e) {}
+    }
+    updatePlanUI();
+    if (state.rapidKey && state.claudeKey) showScreen('home');
+    else showScreen('setup');
+    return;
+  }
+
+  // Paid plans → Cardcom (requires HTTPS hosting — Vercel)
+  const IS_HOSTED = window.location.protocol === 'https:';
+  const CARDCOM_TERMINAL = '170602';
+  const CARDCOM_API_NAME = 'nBpN6Pz2AqazwWsiicQM';
+  const PLAN_PRICES = { basic: 99, pro: 199 };
+  const price = PLAN_PRICES[plan];
+  if (!price) return;
+
+  if (IS_HOSTED) {
+    // Real Cardcom payment via API route
+    toast('מכין דף תשלום מאובטח...', 'ok');
+    try {
+      const returnUrl = window.location.origin + window.location.pathname + `?payment_success=1&plan=${plan}`;
+      const failUrl = window.location.origin + window.location.pathname + '?payment_fail=1';
+
+      const res = await fetch('/api/create-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, userId: state.user?.id, returnUrl, failUrl })
+      });
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast('שגיאה בסליקה: ' + (data.error || 'Unknown'), 'err');
+      }
+    } catch(e) {
+      toast('שגיאה: ' + e.message, 'err');
+    }
+  } else {
+    // Trial mode (local file:// — no Cardcom)
+    toast(`✅ תוכנית ${plan.toUpperCase()} הופעלה לניסיון 30 יום!`, 'ok');
+    const expires = new Date();
+    expires.setDate(expires.getDate() + 30);
+    if (state.userProfile && state.user) {
+      state.userProfile.plan = plan;
+      state.userProfile.plan_expires_at = expires.toISOString();
+      try {
+        await fetch(`${SUPA_URL}/rest/v1/user_profiles?id=eq.${state.user.id}`, {
+          method: 'PATCH',
+          headers: { ...supaHeaders(true), 'Prefer': 'return=representation' },
+          body: JSON.stringify({ plan, plan_expires_at: expires.toISOString() })
+        });
+      } catch(e) {}
+    }
+    updatePlanUI();
+    if (state.rapidKey && state.claudeKey) showScreen('home');
+    else showScreen('setup');
+  }
+}
+
+// Handle payment return from Cardcom
+async function handlePaymentReturn() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  if (urlParams.get('payment_success') === '1') {
+    const plan = urlParams.get('plan');
+    if (plan && state.user) {
+      const expires = new Date();
+      expires.setDate(expires.getDate() + 30);
+      state.userProfile.plan = plan;
+      state.userProfile.plan_expires_at = expires.toISOString();
+      try {
+        await fetch(`${SUPA_URL}/rest/v1/user_profiles?id=eq.${state.user.id}`, {
+          method: 'PATCH',
+          headers: { ...supaHeaders(true), 'Prefer': 'return=representation' },
+          body: JSON.stringify({ plan, plan_expires_at: expires.toISOString() })
+        });
+        await supa.insert('payments', {
+          user_id: state.user.id,
+          amount: plan === 'pro' ? 199 : 99,
+          plan: plan,
+          status: 'completed',
+        });
+      } catch(e) { console.log('Payment update error:', e); }
+      toast(`🎉 תשלום הצליח! תוכנית ${plan.toUpperCase()} הופעלה`, 'ok');
+      updatePlanUI();
+    }
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+  
+  if (urlParams.get('payment_fail') === '1') {
+    toast('התשלום נכשל — נסה שוב', 'err');
+    window.history.replaceState({}, '', window.location.pathname);
+    showScreen('plans');
+  }
+}
+
+// ========== ADMIN FUNCTIONS ==========
+async function adminLogin() {
+  const email = document.getElementById('admin-email').value.trim();
+  const pass = document.getElementById('admin-pass').value;
+  if (!email || !pass) { toast('נא למלא מייל וסיסמה', 'err'); return; }
+  try {
+    const user = await supa.login(email, pass);
+    state.adminUser = user;
+    toast('התחברת בהצלחה!', 'ok');
+    showScreen('admin');
+  } catch(e) {
+    toast('שגיאה: ' + e.message, 'err');
+  }
+}
+
+async function adminLogout() {
+  supa.logout();
+  state.adminUser = null;
+  state.user = null;
+  state.userProfile = null;
+  localStorage.removeItem('vm_user');
+  showScreen('auth');
+  toast('התנתקת', 'ok');
+}
+
+function parseUsername(input) {
+  // Handle full URLs: https://www.tiktok.com/@username or just @username
+  const match = input.match(/@([\w.]+)/);
+  if (match) return match[1];
+  // If no @, try as plain username
+  return input.replace(/https?:\/\/(www\.)?tiktok\.com\//g, '').replace(/\//g, '').trim();
+}
+
+async function addCreator() {
+  const input = document.getElementById('admin-creator-input').value.trim();
+  const industry = document.getElementById('admin-creator-industry').value;
+  const notes = document.getElementById('admin-creator-notes').value.trim();
+  if (!input) { toast('נא להכניס username או לינק', 'err'); return; }
+
+  const username = parseUsername(input);
+  if (!username) { toast('לא הצלחתי לזהות username', 'err'); return; }
+
+  const ind = INDUSTRIES.find(i => i.id === industry);
+  try {
+    await supa.insert('creators', {
+      username: username,
+      industry_id: industry,
+      display_name: ind ? ind.emoji + ' ' + username : username,
+      notes: notes || null,
+    });
+    toast(`@${username} נוסף למאגר!`, 'ok');
+    document.getElementById('admin-creator-input').value = '';
+    document.getElementById('admin-creator-notes').value = '';
+    renderAdminDashboard();
+  } catch(e) {
+    if (e.code === '23505') { toast('היוצר כבר קיים במאגר', 'err'); return; }
+    toast('שגיאה: ' + e.message, 'err');
+  }
+}
+
+async function deleteCreator(id) {
+  if (!confirm('למחוק את היוצר?')) return;
+  try {
+    await supa.del('creators', `id=eq.${id}`);
+    toast('נמחק', 'ok');
+    renderAdminDashboard();
+  } catch(e) { toast('שגיאה: ' + e.message, 'err'); }
+}
+
+let adminUsersCache = [];
+
+function switchAdminTab(tab) {
+  ['overview','users','creators','payments'].forEach(t => {
+    const el = document.getElementById('admin-tab-' + t);
+    if (el) el.style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('#screen-admin .trends-tab').forEach((btn, i) => {
+    const tabs = ['overview','users','creators','payments'];
+    btn.classList.toggle('active', tabs[i] === tab);
+  });
+  if (tab === 'users') renderAdminUsers();
+  if (tab === 'payments') renderAdminPayments();
+}
+
+async function renderAdminDashboard() {
+  // Fetch creators
+  let creators = [];
+  try { creators = await supa.select('creators', 'order=created_at.desc'); } catch(e) {}
+
+  // Fetch users
+  let users = [];
+  try { users = await supa.select('user_profiles', 'order=created_at.desc'); } catch(e) {}
+  adminUsersCache = users || [];
+
+  // Fetch payments
+  let payments = [];
+  try { payments = await supa.select('payments', 'order=created_at.desc'); } catch(e) {}
+
+  const now = new Date();
+  const freeUsers = (users||[]).filter(u => !u.plan || u.plan === 'free' || (u.plan !== 'free' && u.plan_expires_at && new Date(u.plan_expires_at) < now)).length;
+  const basicUsers = (users||[]).filter(u => u.plan === 'basic' && (!u.plan_expires_at || new Date(u.plan_expires_at) >= now)).length;
+  const proUsers = (users||[]).filter(u => u.plan === 'pro' && (!u.plan_expires_at || new Date(u.plan_expires_at) >= now)).length;
+  const paidUsers = basicUsers + proUsers;
+  const mrr = basicUsers * 99 + proUsers * 199;
+  const totalRevenue = (payments||[]).filter(p => p.status === 'completed').reduce((s,p) => s + (p.amount||0), 0);
+
+  // Top stats
+  document.getElementById('admin-stats').innerHTML = `
+    <div class="admin-stat"><div class="summary-num">${(users||[]).length}</div><div class="summary-label">סה"כ משתמשים</div></div>
+    <div class="admin-stat"><div class="summary-num">${paidUsers}</div><div class="summary-label">משלמים פעילים</div></div>
+    <div class="admin-stat"><div class="summary-num">₪${mrr}</div><div class="summary-label">MRR חודשי</div></div>
+    <div class="admin-stat"><div class="summary-num">₪${totalRevenue}</div><div class="summary-label">סה"כ הכנסות</div></div>
+    <div class="admin-stat"><div class="summary-num">${(creators||[]).length}</div><div class="summary-label">יוצרים במאגר</div></div>
+  `;
+
+  // Plan breakdown
+  const total = (users||[]).length || 1;
+  const convRate = total > 0 ? Math.round((paidUsers / total) * 100) : 0;
+  document.getElementById('admin-plan-breakdown').innerHTML = `
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px;color:var(--text-secondary)">🆓 Free</span>
+        <span style="font-size:14px;font-weight:700;color:var(--text)">${freeUsers}</span>
+      </div>
+      <div style="height:8px;background:var(--sand);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${Math.round(freeUsers/total*100)}%;background:#999;border-radius:4px"></div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px;color:var(--text-secondary)">🚀 Basic — ₪99</span>
+        <span style="font-size:14px;font-weight:700;color:var(--caramel)">${basicUsers}</span>
+      </div>
+      <div style="height:8px;background:var(--sand);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${Math.round(basicUsers/total*100)}%;background:var(--caramel);border-radius:4px"></div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px;color:var(--text-secondary)">💎 Pro — ₪199</span>
+        <span style="font-size:14px;font-weight:700;color:var(--brown)">${proUsers}</span>
+      </div>
+      <div style="height:8px;background:var(--sand);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${Math.round(proUsers/total*100)}%;background:var(--brown);border-radius:4px"></div>
+      </div>
+    </div>
+    <div style="padding:16px;background:var(--cream);border-radius:12px;text-align:center;margin-top:16px">
+      <div style="font-size:28px;font-weight:900;color:var(--caramel)">${convRate}%</div>
+      <div style="font-size:12px;color:var(--text-muted)">אחוז המרה (free → paid)</div>
+    </div>
+  `;
+
+  // Recent signups (last 5)
+  const recent = (users||[]).slice(0, 5);
+  document.getElementById('admin-recent-users').innerHTML = recent.length === 0
+    ? '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">אין משתמשים עדיין</p>'
+    : recent.map(u => {
+      const plan = u.plan || 'free';
+      const planEmoji = plan === 'pro' ? '💎' : plan === 'basic' ? '🚀' : '🆓';
+      const date = u.created_at ? new Date(u.created_at).toLocaleDateString('he-IL') : '';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--sand)">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--brown)">${esc(u.full_name || u.email)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${date}</div>
+        </div>
+        <span style="font-size:12px">${planEmoji} ${plan.toUpperCase()}</span>
+      </div>`;
+    }).join('');
+
+  // Render creators list
+  renderAdminCreators(creators);
+}
+
+function renderAdminCreators(creators) {
+  const listEl = document.getElementById('admin-creators-list');
+  if (!creators || creators.length === 0) {
+    listEl.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted)"><p>המאגר ריק — הוסף יוצרים למעלה</p></div>';
+    return;
+  }
+  let html = '';
+  INDUSTRIES.forEach(ind => {
+    const indCreators = creators.filter(c => c.industry_id === ind.id);
+    if (indCreators.length === 0) return;
+    html += `<div style="margin-bottom:28px">
+      <h3 style="font-size:16px;font-weight:700;color:var(--brown);margin-bottom:14px">${ind.emoji} ${ind.label} (${indCreators.length})</h3>
+      <div class="admin-grid">
+        ${indCreators.map(c => `
+          <div class="creator-card">
+            <div class="creator-info">
+              <div class="creator-avatar">@</div>
+              <div>
+                <div class="creator-username">@${esc(c.username)}</div>
+                ${c.notes ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${esc(c.notes)}</div>` : ''}
+              </div>
+            </div>
+            <button class="btn-danger-ghost" onclick="deleteCreator('${c.id}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            </button>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  });
+  const emptyIndustries = INDUSTRIES.filter(ind => !creators.some(c => c.industry_id === ind.id));
+  if (emptyIndustries.length > 0) {
+    html += `<div style="margin-top:16px;padding:20px;background:var(--cream);border-radius:var(--radius);text-align:center">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px">תחומים ללא יוצרים:</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        ${emptyIndustries.map(ind => `<span style="font-size:12px;background:var(--surface);border:1px solid var(--sand);padding:4px 12px;border-radius:50px">${ind.emoji} ${ind.label}</span>`).join('')}
+      </div>
+    </div>`;
+  }
+  listEl.innerHTML = html;
+}
+
+async function renderAdminUsers() {
+  const el = document.getElementById('admin-users-list');
+  if (adminUsersCache.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">טוען...</div>';
+    try { adminUsersCache = await supa.select('user_profiles', 'order=created_at.desc'); } catch(e) {}
+  }
+  renderUserTable(adminUsersCache);
+}
+
+function filterAdminUsers() {
+  const search = (document.getElementById('admin-user-search')?.value || '').toLowerCase();
+  const planFilter = document.getElementById('admin-user-filter')?.value || 'all';
+  const now = new Date();
+
+  const filtered = adminUsersCache.filter(u => {
+    const matchSearch = !search || (u.full_name||'').toLowerCase().includes(search) || (u.email||'').toLowerCase().includes(search);
+    const activePlan = (u.plan !== 'free' && u.plan_expires_at && new Date(u.plan_expires_at) >= now) ? u.plan : 'free';
+    const matchPlan = planFilter === 'all' || activePlan === planFilter;
+    return matchSearch && matchPlan;
+  });
+  renderUserTable(filtered);
+}
+
+function renderUserTable(users) {
+  const el = document.getElementById('admin-users-list');
+  if (!users || users.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted)"><p>אין משתמשים</p></div>';
+    return;
+  }
+
+  const now = new Date();
+  const planLabels = { free: '🆓 FREE', basic: '🚀 BASIC', pro: '💎 PRO' };
+  const planColors = { free: '#999', basic: 'var(--caramel)', pro: '#8B6343' };
+
+  let html = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:14px">
+    <tr style="background:var(--brown-dark);color:#fff">
+      <th style="padding:12px 16px;text-align:right">שם</th>
+      <th style="padding:12px 16px;text-align:right">אימייל</th>
+      <th style="padding:12px 16px;text-align:center">תוכנית</th>
+      <th style="padding:12px 16px;text-align:center">תפוגה</th>
+      <th style="padding:12px 16px;text-align:center">נרשם</th>
+      <th style="padding:12px 16px;text-align:center">פעולות</th>
+    </tr>`;
+
+  users.forEach(u => {
+    const plan = u.plan || 'free';
+    const isExpired = u.plan_expires_at && new Date(u.plan_expires_at) < now;
+    const activePlan = (plan !== 'free' && !isExpired) ? plan : 'free';
+    const expDate = u.plan_expires_at ? new Date(u.plan_expires_at).toLocaleDateString('he-IL') : '—';
+    const regDate = u.created_at ? new Date(u.created_at).toLocaleDateString('he-IL') : '—';
+
+    html += `<tr style="border-bottom:1px solid var(--sand)">
+      <td style="padding:12px 16px;font-weight:600">${esc(u.full_name || '—')}</td>
+      <td style="padding:12px 16px;color:var(--text-muted);font-size:12px">${esc(u.email)}</td>
+      <td style="padding:12px 16px;text-align:center">
+        <span style="background:${planColors[activePlan]};color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700">
+          ${planLabels[activePlan]}
+        </span>
+        ${isExpired && plan !== 'free' ? '<div style="color:#d33;font-size:10px;margin-top:2px">פג תוקף</div>' : ''}
+      </td>
+      <td style="padding:12px 16px;text-align:center;font-size:12px;color:var(--text-muted)">${expDate}</td>
+      <td style="padding:12px 16px;text-align:center;font-size:12px;color:var(--text-muted)">${regDate}</td>
+      <td style="padding:12px 16px;text-align:center">
+        <select style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--sand)" onchange="adminChangePlan('${u.id}', this.value)">
+          <option value="free" ${activePlan==='free'?'selected':''}>Free</option>
+          <option value="basic" ${activePlan==='basic'?'selected':''}>Basic</option>
+          <option value="pro" ${activePlan==='pro'?'selected':''}>Pro</option>
+        </select>
+      </td>
+    </tr>`;
+  });
+
+  html += '</table></div>';
+  html += `<div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text-muted)">${users.length} משתמשים</div>`;
+  el.innerHTML = html;
+}
+
+async function renderAdminPayments() {
+  const el = document.getElementById('admin-payments-list');
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">טוען תשלומים...</div>';
+
+  let payments = [];
+  try { payments = await supa.select('payments', 'order=created_at.desc'); } catch(e) {}
+
+  if (!payments || payments.length === 0) {
+    el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--text-muted)">
+      <div style="font-size:40px;margin-bottom:12px">💰</div>
+      <p>עדיין אין תשלומים</p>
+    </div>`;
+    return;
+  }
+
+  const totalRevenue = payments.filter(p => p.status === 'completed').reduce((s,p) => s + (p.amount||0), 0);
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const monthlyRevenue = payments.filter(p => p.status === 'completed' && p.created_at?.startsWith(thisMonth)).reduce((s,p) => s + (p.amount||0), 0);
+
+  let html = `
+    <div style="display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap">
+      <div class="profile-section" style="flex:1;min-width:200px;text-align:center;margin:0">
+        <div style="font-size:28px;font-weight:900;color:var(--caramel)">₪${totalRevenue.toLocaleString()}</div>
+        <div style="font-size:12px;color:var(--text-muted)">סה"כ הכנסות</div>
+      </div>
+      <div class="profile-section" style="flex:1;min-width:200px;text-align:center;margin:0">
+        <div style="font-size:28px;font-weight:900;color:var(--green)">₪${monthlyRevenue.toLocaleString()}</div>
+        <div style="font-size:12px;color:var(--text-muted)">הכנסות החודש</div>
+      </div>
+      <div class="profile-section" style="flex:1;min-width:200px;text-align:center;margin:0">
+        <div style="font-size:28px;font-weight:900;color:var(--brown)">${payments.length}</div>
+        <div style="font-size:12px;color:var(--text-muted)">סה"כ עסקאות</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:14px">
+    <tr style="background:var(--brown-dark);color:#fff">
+      <th style="padding:12px 16px;text-align:right">תאריך</th>
+      <th style="padding:12px 16px;text-align:center">תוכנית</th>
+      <th style="padding:12px 16px;text-align:center">סכום</th>
+      <th style="padding:12px 16px;text-align:center">סטטוס</th>
+    </tr>`;
+
+  payments.forEach(p => {
+    const date = p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—';
+    const statusLabel = p.status === 'completed' ? '✅ הצליח' : p.status === 'failed' ? '❌ נכשל' : '⏳ ממתין';
+    const statusColor = p.status === 'completed' ? 'var(--green)' : p.status === 'failed' ? 'var(--red)' : 'var(--text-muted)';
+    html += `<tr style="border-bottom:1px solid var(--sand)">
+      <td style="padding:12px 16px">${date}</td>
+      <td style="padding:12px 16px;text-align:center;font-weight:600">${(p.plan||'').toUpperCase()}</td>
+      <td style="padding:12px 16px;text-align:center;font-weight:700;color:var(--caramel)">₪${p.amount}</td>
+      <td style="padding:12px 16px;text-align:center;color:${statusColor};font-size:13px">${statusLabel}</td>
+    </tr>`;
+  });
+
+  html += '</table></div>';
+  el.innerHTML = html;
+}
+
+async function adminChangePlan(userId, newPlan) {
+  try {
+    const expires = new Date();
+    expires.setDate(expires.getDate() + 30);
+    const body = newPlan === 'free'
+      ? { plan: 'free', plan_expires_at: null }
+      : { plan: newPlan, plan_expires_at: expires.toISOString() };
+    await fetch(`${SUPA_URL}/rest/v1/user_profiles?id=eq.${userId}`, {
+      method: 'PATCH',
+      headers: { ...supaHeaders(true), 'Prefer': 'return=representation' },
+      body: JSON.stringify(body)
+    });
+    toast(`תוכנית עודכנה ל-${newPlan.toUpperCase()}`, 'ok');
+    renderAdminDashboard();
+  } catch(e) {
+    toast('שגיאה: ' + e.message, 'err');
+  }
+}
+</script>
+</body>
+</html>
