@@ -360,8 +360,8 @@
   /* ========== AUTH ========== */
   .auth-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, var(--cream) 0%, var(--cream-dark) 100%); padding: 40px 20px; }
   .auth-card { background: var(--surface); border: 1px solid var(--sand); border-radius: 16px; padding: 40px 32px; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); }
-  .auth-toggle { display: flex; gap: 0; background: var(--sand); border-radius: 12px; overflow: hidden; margin-bottom: 28px; }
-  .auth-toggle button { flex: 1; padding: 12px; border: none; background: transparent; font: 600 14px Heebo; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+  .auth-toggle { display: flex; gap: 0; background: var(--sand); border-radius: 12px; overflow: hidden; margin-bottom: 28px; position: relative; z-index: 10; }
+  .auth-toggle button { flex: 1; padding: 14px; border: none; background: transparent; font: 600 15px Heebo; color: var(--text-muted); cursor: pointer; transition: all 0.2s; position: relative; z-index: 11; -webkit-tap-highlight-color: transparent; }
   .auth-toggle button.active { background: var(--brown); color: #fff; }
   .auth-separator { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--text-muted); font-size: 12px; }
   .auth-separator::before, .auth-separator::after { content:''; flex:1; height:1px; background:var(--sand); }
@@ -497,6 +497,7 @@
         <label class="field-label">סיסמה</label>
         <input class="field-input" type="password" id="auth-login-pass" placeholder="••••••••">
         <button class="btn-primary full" style="margin-top:20px" onclick="userLogin()">התחבר ←</button>
+        <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--text-muted)">אין לך חשבון? <a href="#" onclick="event.preventDefault();switchAuthTab('register')" style="color:var(--caramel);font-weight:700;text-decoration:none">הירשם כאן</a></div>
       </div>
 
       <!-- Register Form (hidden) -->
@@ -508,6 +509,7 @@
         <label class="field-label">סיסמה (לפחות 6 תווים)</label>
         <input class="field-input" type="password" id="auth-reg-pass" placeholder="••••••••">
         <button class="btn-primary full" style="margin-top:20px" onclick="userRegister()">צור חשבון ←</button>
+        <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--text-muted)">יש לך חשבון? <a href="#" onclick="event.preventDefault();switchAuthTab('login')" style="color:var(--caramel);font-weight:700;text-decoration:none">התחבר כאן</a></div>
       </div>
     </div>
   </div>
@@ -605,7 +607,6 @@
         <button class="btn-secondary" onclick="showScreen('history')">📂</button>
         <button class="btn-secondary" onclick="showScreen('plans')" id="btn-upgrade" style="display:none">⬆️ שדרג</button>
         <button class="btn-secondary" onclick="showScreen('admin')" id="btn-admin-home" style="display:none">🛠️</button>
-        <button class="btn-secondary" onclick="showScreen('setup')">⚙️</button>
         <button class="btn-secondary" onclick="userLogout()">🚪</button>
       </div>
     </div>
@@ -1342,11 +1343,9 @@ window.onload = async () => {
       // Super admin → straight to admin dashboard
       if (isSuperAdmin()) {
         showScreen('admin');
-      } else if (state.rapidKey && state.claudeKey) {
+      } else {
         updatePlanUI();
         showScreen('home');
-      } else {
-        showScreen('setup');
       }
     } catch(e) {
       console.log('Session restore failed:', e);
@@ -1452,14 +1451,7 @@ async function startSearch(industryId) {
 חובה: תחזיר רק JSON array של שמות, בלי שום טקסט נוסף.
 דוגמה: ["מחניודה","OCD","קלארו","הסלון"]`;
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': state.claudeKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: prompt }] })
-      });
-      const data = await res.json();
-      const text = data.content?.[0]?.text || '';
-      // Extract JSON array from response
+      const text = await callClaude(prompt, 500);
       const match = text.match(/\[[\s\S]*\]/);
       if (match) businessNames = JSON.parse(match[0]);
       console.log('Business names:', businessNames);
@@ -1906,9 +1898,12 @@ function toast(msg, type) {
 // ========== API ==========
 async function searchTikTok(query, region) {
   const r = region || 'us';
-  const url = `https://tiktok-scraper7.p.rapidapi.com/feed/search?keywords=${encodeURIComponent(query)}&region=${r}&count=30&cursor=0&publish_time=0&sort_type=0`;
-  const res = await fetch(url, { headers: { 'X-RapidAPI-Key': state.rapidKey, 'X-RapidAPI-Host': 'tiktok-scraper7.p.rapidapi.com' } });
-  if (!res.ok) throw new Error('RapidAPI error ' + res.status);
+  const res = await fetch('/api/search-tiktok', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint: 'feed/search', params: { keywords: query, region: r, count: 30, cursor: 0, publish_time: 0, sort_type: 0 } })
+  });
+  if (!res.ok) throw new Error('TikTok API error ' + res.status);
   const json = await res.json();
   return (json.data?.videos || []).filter(v => !v.is_ad).map(v => ({
     ...v,
@@ -1919,15 +1914,15 @@ async function searchTikTok(query, region) {
   }));
 }
 
-async function callClaude(prompt) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+async function callClaude(prompt, maxTokens) {
+  const res = await fetch('/api/claude', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': state.claudeKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, max_tokens: maxTokens || 4000 })
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.content?.[0]?.text || '';
+  if (data.error) throw new Error(data.error);
+  return data.text || '';
 }
 
 function fmt(n) { if(!n) return '0'; if(n>=1e6) return (n/1e6).toFixed(1)+'M'; if(n>=1e3) return Math.round(n/1e3)+'K'; return String(n); }
@@ -2543,11 +2538,13 @@ function deleteClient(idx) {
 // ========== FETCH USER POSTS (from curated creators) ==========
 async function fetchUserPosts(username) {
   const clean = username.replace('@','').trim();
-  const url = `https://tiktok-scraper7.p.rapidapi.com/user/posts?unique_id=${encodeURIComponent(clean)}&count=20&cursor=0`;
-  const res = await fetch(url, { headers: { 'X-RapidAPI-Key': state.rapidKey, 'X-RapidAPI-Host': 'tiktok-scraper7.p.rapidapi.com' } });
-  if (!res.ok) throw new Error('RapidAPI error ' + res.status);
+  const res = await fetch('/api/search-tiktok', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint: 'user/posts', params: { unique_id: clean, count: 20, cursor: 0 } })
+  });
+  if (!res.ok) throw new Error('TikTok API error ' + res.status);
   const json = await res.json();
-  // Handle multiple response formats
   const videos = json.data?.videos || json.data || json.videos || json.itemList || [];
   const arr = Array.isArray(videos) ? videos : [];
   console.log(`@${clean}: got ${arr.length} videos`);
@@ -2630,11 +2627,7 @@ async function userLogin() {
       showScreen('admin');
     } else {
       updatePlanUI();
-      if (state.rapidKey && state.claudeKey) {
-        showScreen('home');
-      } else {
-        showScreen('setup');
-      }
+      showScreen('home');
     }
   } catch(e) {
     toast('שגיאה: ' + e.message, 'err');
@@ -2764,8 +2757,8 @@ async function selectPlan(plan) {
       } catch(e) {}
     }
     updatePlanUI();
-    if (state.rapidKey && state.claudeKey) showScreen('home');
-    else showScreen('setup');
+    showScreen('home');
+    else showScreen('home');
     return;
   }
 
@@ -2793,9 +2786,32 @@ async function selectPlan(plan) {
 
       if (data.url) {
         window.location.href = data.url;
-      } else {
-        toast('שגיאה בסליקה: ' + (data.error || 'Unknown'), 'err');
+        return;
       }
+      
+      // Cardcom unavailable — offer trial
+      if (data.trial) {
+        toast(`✅ תוכנית ${plan.toUpperCase()} הופעלה לניסיון 30 יום! (סליקה תחובר בקרוב)`, 'ok');
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 30);
+        if (state.userProfile && state.user) {
+          state.userProfile.plan = plan;
+          state.userProfile.plan_expires_at = expires.toISOString();
+          try {
+            await fetch(`${SUPA_URL}/rest/v1/user_profiles?id=eq.${state.user.id}`, {
+              method: 'PATCH',
+              headers: { ...supaHeaders(true), 'Prefer': 'return=representation' },
+              body: JSON.stringify({ plan, plan_expires_at: expires.toISOString() })
+            });
+          } catch(e) {}
+        }
+        updatePlanUI();
+        showScreen('home');
+        else showScreen('home');
+        return;
+      }
+
+      toast('שגיאה בסליקה: ' + (data.error || 'Unknown'), 'err');
     } catch(e) {
       toast('שגיאה: ' + e.message, 'err');
     }
@@ -2816,8 +2832,8 @@ async function selectPlan(plan) {
       } catch(e) {}
     }
     updatePlanUI();
-    if (state.rapidKey && state.claudeKey) showScreen('home');
-    else showScreen('setup');
+    showScreen('home');
+    else showScreen('home');
   }
 }
 
