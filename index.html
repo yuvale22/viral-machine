@@ -360,8 +360,8 @@
   /* ========== AUTH ========== */
   .auth-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, var(--cream) 0%, var(--cream-dark) 100%); padding: 40px 20px; }
   .auth-card { background: var(--surface); border: 1px solid var(--sand); border-radius: 16px; padding: 40px 32px; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); }
-  .auth-toggle { display: flex; gap: 0; background: var(--sand); border-radius: 12px; overflow: hidden; margin-bottom: 28px; }
-  .auth-toggle button { flex: 1; padding: 12px; border: none; background: transparent; font: 600 14px Heebo; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+  .auth-toggle { display: flex; gap: 0; background: var(--sand); border-radius: 12px; overflow: hidden; margin-bottom: 28px; position: relative; z-index: 10; }
+  .auth-toggle button { flex: 1; padding: 14px; border: none; background: transparent; font: 600 15px Heebo; color: var(--text-muted); cursor: pointer; transition: all 0.2s; position: relative; z-index: 11; -webkit-tap-highlight-color: transparent; }
   .auth-toggle button.active { background: var(--brown); color: #fff; }
   .auth-separator { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--text-muted); font-size: 12px; }
   .auth-separator::before, .auth-separator::after { content:''; flex:1; height:1px; background:var(--sand); }
@@ -497,6 +497,7 @@
         <label class="field-label">סיסמה</label>
         <input class="field-input" type="password" id="auth-login-pass" placeholder="••••••••">
         <button class="btn-primary full" style="margin-top:20px" onclick="userLogin()">התחבר ←</button>
+        <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--text-muted)">אין לך חשבון? <a href="#" onclick="event.preventDefault();switchAuthTab('register')" style="color:var(--caramel);font-weight:700;text-decoration:none">הירשם כאן</a></div>
       </div>
 
       <!-- Register Form (hidden) -->
@@ -508,6 +509,7 @@
         <label class="field-label">סיסמה (לפחות 6 תווים)</label>
         <input class="field-input" type="password" id="auth-reg-pass" placeholder="••••••••">
         <button class="btn-primary full" style="margin-top:20px" onclick="userRegister()">צור חשבון ←</button>
+        <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--text-muted)">יש לך חשבון? <a href="#" onclick="event.preventDefault();switchAuthTab('login')" style="color:var(--caramel);font-weight:700;text-decoration:none">התחבר כאן</a></div>
       </div>
     </div>
   </div>
