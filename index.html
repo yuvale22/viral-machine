@@ -3127,7 +3127,7 @@ async function renderAdminDashboard() {
 
   // Fetch users
   let users = [];
-  try { users = await supa.select('user_profiles', 'order=created_at.desc'); } catch(e) {}
+  try { users = await supa.select('user_profiles', 'order=email.asc'); } catch(e) { console.log('Users fetch error:', e); }
   adminUsersCache = users || [];
 
   // Fetch payments
@@ -3255,7 +3255,7 @@ async function renderAdminUsers() {
   const el = document.getElementById('admin-users-list');
   if (adminUsersCache.length === 0) {
     el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">טוען...</div>';
-    try { adminUsersCache = await supa.select('user_profiles', 'order=created_at.desc'); } catch(e) {}
+    try { adminUsersCache = await supa.select('user_profiles', 'order=email.asc'); } catch(e) {}
   }
   renderUserTable(adminUsersCache);
 }
