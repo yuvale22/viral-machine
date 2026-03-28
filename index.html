@@ -1219,13 +1219,13 @@ const PLAN_LIMITS = {
 const SUPER_ADMIN_EMAIL = 'yuval.elgisser@gmail.com';
 
 const INDUSTRIES = [
-  { id:'restaurant', label:'מסעדה / קפה', emoji:'🍕', queries:[
+  { id:'restaurant', label:'מסעדה / ג׳אנק פוד', emoji:'🍕', queries:[
     'POV restaurant owner skit',
     'restaurant staff behind the scenes',
     'waiter POV funny skit',
     'restaurant kitchen team comedy'
   ], queriesHe:['מסעדה מאחורי הקלעים','מסעדה סיטואציות צוות','מלצר POV סקיט']},
-  { id:'salon', label:'מספרה / סלון', emoji:'✂️', queries:[
+  { id:'salon', label:'ספר גברים ונשים', emoji:'✂️', queries:[
     'POV hairstylist salon skit',
     'salon owner behind the scenes',
     'barber POV client comedy',
@@ -1237,7 +1237,7 @@ const INDUSTRIES = [
     'gym staff behind scenes funny',
     'gym employee POV comedy'
   ], queriesHe:['חדר כושר מאחורי הקלעים','מאמן כושר סיטואציות','חדר כושר צוות סקיט']},
-  { id:'beauty', label:'יופי / ציפורניים', emoji:'💅', queries:[
+  { id:'beauty', label:'מניקוריסטית', emoji:'💅', queries:[
     'nail tech POV client skit',
     'esthetician behind the scenes',
     'beauty salon owner comedy',
@@ -1249,7 +1249,7 @@ const INDUSTRIES = [
     'bakery staff funny situations',
     'cake order POV comedy'
   ], queriesHe:['מאפייה מאחורי הקלעים','קונדיטור סיטואציות','מאפייה צוות סקיט']},
-  { id:'realestate', label:'נדל"ן', emoji:'🏠', queries:[
+  { id:'realestate', label:'תיווך נדל"ן', emoji:'🏠', queries:[
     'realtor POV showing house skit',
     'real estate agent client comedy',
     'realtor behind the scenes funny',
@@ -1261,24 +1261,6 @@ const INDUSTRIES = [
     'law firm staff comedy',
     'lawyer day in the life funny'
   ], queriesHe:['עורך דין סיטואציות לקוח','משרד עורכי דין מאחורי הקלעים','עורך דין סקיט']},
-  { id:'clinic', label:'קליניקה', emoji:'🏥', queries:[
-    'doctor POV patient skit',
-    'clinic staff behind scenes',
-    'dentist patient comedy',
-    'medical office funny situations'
-  ], queriesHe:['רופא סיטואציות מטופל','מרפאה מאחורי הקלעים','רופא שיניים סקיט']},
-  { id:'retail', label:'חנות קמעונאית', emoji:'🛍️', queries:[
-    'retail worker POV customer skit',
-    'store owner behind the scenes',
-    'cashier POV funny situations',
-    'shop employee comedy'
-  ], queriesHe:['חנות מאחורי הקלעים','מוכר סיטואציות לקוח','חנות צוות סקיט']},
-  { id:'tech', label:'טכנולוגיה / סטארטאפ', emoji:'💻', queries:[
-    'startup office POV skit',
-    'tech company behind scenes',
-    'developer team comedy',
-    'startup employee funny situations'
-  ], queriesHe:['סטארטאפ מאחורי הקלעים','הייטק סיטואציות צוות','משרד הייטק סקיט']},
 ];
 
 // Global skit filter keywords (EN + HE)
@@ -1541,9 +1523,6 @@ async function startSearch(industryId) {
       bakery: ['מאפיית לחמנו','רולדין','בייקרי תל אביב','קונדיטוריית עילית','לחם ארטיזן','מאפיית הכרמל','ביסקוטי מאפייה','עוגות מעוצבות ישראל','מאפיית יפעת','bakery israel'],
       realestate: ['נדלן ישראל טיקטוק','מתווך תל אביב','נדלן בפוקוס','סוכן נדלן','דירות למכירה טיקטוק','real estate israel','מתווך ירושלים','נדלן חיפה','נדלן להשקעה','מתווך ישראלי'],
       law: ['עורך דין טיקטוק','עוד נועם קוריס','עורך דין פלילי','עורך דין משפחה','עורך דין נדלן','lawyer israel','משרד עורכי דין','עורך דין תל אביב','עורך דין חיפה','עורך דין ירושלים'],
-      clinic: ['ד״ר טיקטוק ישראל','רופא שיניים','מרפאת שיניים','קליניקה אסתטית','מרפאת עור','dermatologist israel','רופא עיניים','dental clinic israel','מרפאה תל אביב','דוקטור ישראלי'],
-      retail: ['בוטיק ישראלי','חנות אופנה תל אביב','אופנה ישראלית','shop israel','סטריט סטייל ישראל','fashion israel','בוטיק ירושלים','חנות וינטג׳','עיצוב ישראלי','חנות אונליין ישראל'],
-      tech: ['סטארטאפ ישראלי','הייטק ישראל','startup israel','tech tlv','יזמות ישראלית','wix israel','monday.com','חברת הייטק','סייבר ישראל','developer israel'],
     };
 
     const indLabel = state.industry.label;
@@ -1648,9 +1627,6 @@ async function startSearch(industryId) {
       bakery: ['מאפי','bakery','עוגות','cake','לחם','bread','קונדיטור','בייקרי','מאפה','עוגה'],
       realestate: ['נדלן','נכסים','תיווך','realty','real estate','דירות','מתווך','property'],
       law: ['עורך דין','עוד','law','attorney','משפט','legal','עו"ד','lawyer','דין'],
-      clinic: ['מרפאה','קליניקה','רופא','דוקטור','clinic','doctor','רפואה','טיפול','dental','שיניים','דר','dr'],
-      retail: ['חנות','shop','store','בוטיק','boutique','אופנה','fashion','לבוש'],
-      tech: ['טק','tech','סטארטאפ','startup','digital','דיגיטל','software','תוכנה','dev','code','הייטק','cyber'],
     };
     const keywords = INDUSTRY_KEYWORDS[industryId] || [];
     
