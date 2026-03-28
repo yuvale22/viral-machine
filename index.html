@@ -1638,10 +1638,43 @@ async function startSearch(industryId) {
       if (i < videoQueries.length - 1) await sleep(2000);
     }
 
-    // Sort by followers — bigger accounts first
-    discoveredAccounts.sort((a, b) => b.followers - a.followers);
-    const topAccounts = discoveredAccounts.slice(0, 6);
-    console.log('Discovered accounts:', topAccounts.map(a => `@${a.uid} "${a.nickname}" (${a.followers} followers)`));
+    // Filter: keep only accounts relevant to the industry
+    const INDUSTRY_KEYWORDS = {
+      restaurant: ['מסעדה','מסעדת','קפה','שף','chef','restaurant','cafe','bistro','kitchen','food','מטבח','בר','bar','פיצה','pizza','בורגר','burger','סושי','sushi','גריל','grill'],
+      salon: ['מספרה','סלון','ספר','hair','salon','barber','תספורת','stylist','ביוטי','beauty','שיער'],
+      gym: ['כושר','gym','fitness','פיטנס','סטודיו','studio','מאמן','trainer','אימון','crossfit','פילאטיס','sport','ספורט','holme','profit','active','אקטיב','muscle','שריר'],
+      beauty: ['ביוטי','beauty','nails','ציפורניים','מניקור','לש','lash','קוסמטיקה','טיפוח','makeup','איפור','גבות'],
+      bakery: ['מאפי','bakery','עוגות','cake','לחם','bread','קונדיטור','בייקרי','מאפה','עוגה'],
+      realestate: ['נדלן','נכסים','תיווך','realty','real estate','דירות','מתווך','property'],
+      law: ['עורך דין','עוד','law','attorney','משפט','legal','עו"ד','lawyer','דין'],
+      clinic: ['מרפאה','קליניקה','רופא','דוקטור','clinic','doctor','רפואה','טיפול','dental','שיניים','דר','dr'],
+      retail: ['חנות','shop','store','בוטיק','boutique','אופנה','fashion','לבוש'],
+      tech: ['טק','tech','סטארטאפ','startup','digital','דיגיטל','software','תוכנה','dev','code','הייטק','cyber'],
+    };
+    const keywords = INDUSTRY_KEYWORDS[industryId] || [];
+    
+    // Score each account by relevance
+    discoveredAccounts.forEach(a => {
+      const text = (a.uid + ' ' + a.nickname).toLowerCase();
+      let relevance = 0;
+      keywords.forEach(kw => { if (text.includes(kw.toLowerCase())) relevance += 10; });
+      if (a.followers >= 1000) relevance += 2;
+      if (a.followers >= 10000) relevance += 3;
+      a.relevance = relevance;
+    });
+
+    // Sort by relevance first, then followers
+    discoveredAccounts.sort((a, b) => b.relevance - a.relevance || b.followers - a.followers);
+    
+    // Take top 8, prefer relevant ones
+    const topAccounts = discoveredAccounts.filter(a => a.relevance > 0).slice(0, 8);
+    // If not enough relevant accounts, fill with top followers
+    if (topAccounts.length < 4) {
+      discoveredAccounts.forEach(a => {
+        if (topAccounts.length < 6 && !topAccounts.find(t => t.uid === a.uid)) topAccounts.push(a);
+      });
+    }
+    console.log('Top accounts:', topAccounts.map(a => `@${a.uid} "${a.nickname}" (rel:${a.relevance}, fol:${a.followers})`));
 
     if (topAccounts.length === 0) {
       toast('לא נמצאו בעלי עסקים בתחום — נסה שוב', 'err');
@@ -1654,7 +1687,7 @@ async function startSearch(industryId) {
       try {
         await supa.insert('discovered_accounts', {
           username: acc.uid, nickname: acc.nickname,
-          follower_count: acc.followers, industry_id: industryId, relevance_score: acc.followers
+          follower_count: acc.followers, industry_id: industryId, relevance_score: acc.relevance || 0
         });
       } catch(e) {}
     }
