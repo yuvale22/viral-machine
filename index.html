@@ -1534,16 +1534,16 @@ async function startSearch(industryId) {
   try {
     // ===== Predefined search queries per industry =====
     const INDUSTRY_SEARCHES = {
-      restaurant: ['מחניודה מסעדה','OCD restaurant','מסעדת קלארו','north abraxas','מסעדת פורטו','HaSalon restaurant','ברברי מסעדה','קפה ביאליק','מסעדת יפו','מסעדה ישראלית טיקטוק'],
-      salon: ['סלון ז׳קלין','רוני זריהן מספרה','מספרת ניסים','אורלי ביוטי סלון','סלון דניאל','aveda israel salon','מספרת שגב','סלון רונית','barber shop israel','מספרה ישראלית טיקטוק'],
-      gym: ['הולמס פלייס','profit כושר','גו אקטיב כושר','רב חן ספורט','טופ לבל ספורט','אקסלנט ספורט','crossfit israel','עולם הכושר','סטודיו כושר ישראל','gym owner israel'],
-      beauty: ['ביוטי סטודיו ישראל','nails art israel','קוסמטיקאית טיקטוק','לש בר ישראל','מניקור ישראלי','makeup artist israel','עיצוב גבות','ציפורניים ישראל','סטודיו יופי תל אביב','beauty salon israel'],
-      bakery: ['מאפיית לחמנו','רולדין','בייקרי תל אביב','קונדיטוריית עילית','לחם ארטיזן','מאפיית הכרמל','ביסקוטי מאפייה','עוגות מעוצבות ישראל','מאפיית יפעת','bakery israel tiktok'],
-      realestate: ['נדלן ישראל טיקטוק','מתווך תל אביב','נדלן בפוקוס','סוכן נדלן ישראל','דירות למכירה טיקטוק','real estate israel','מתווך ירושלים','נדלן חיפה','נדלן להשקעה','מתווך ישראלי טיקטוק'],
-      law: ['עורך דין טיקטוק ישראל','עוד נועם קוריס','עורך דין פלילי','עורך דין משפחה ישראל','עורך דין נדלן','lawyer israel tiktok','משרד עורכי דין','עורך דין תל אביב','עורך דין חיפה','עורך דין ירושלים'],
-      clinic: ['ד״ר טיקטוק ישראל','רופא שיניים ישראל','מרפאת שיניים','קליניקה אסתטית ישראל','מרפאת עור','dermatologist israel','רופא עיניים ישראל','dental clinic israel','מרפאה תל אביב','דוקטור ישראלי'],
-      retail: ['בוטיק ישראלי','חנות אופנה תל אביב','אופנה ישראלית טיקטוק','shop israel','סטריט סטייל ישראל','fashion israel','בוטיק ירושלים','חנות וינטג׳ ישראל','עיצוב ישראלי','חנות אונליין ישראל'],
-      tech: ['סטארטאפ ישראלי','הייטק ישראל טיקטוק','startup israel','tech tlv','יזמות ישראלית','wix israel','monday.com','חברת הייטק','סייבר ישראל','developer israel'],
+      restaurant: ['מחניודה','OCD מסעדה','קלארו','מסעדת ברברי','HaSalon','north abraxas','פורטו מסעדה','קפה ביאליק','מסעדת יפו תל אביב','שף ישראלי טיקטוק'],
+      salon: ['סלון ז׳קלין','רוני זריהן','מספרת ניסים','סלון דניאל','אורלי ביוטי','מספרת שגב','barber shop israel','סלון רונית','תספורת ישראל','מספרה ישראלית'],
+      gym: ['holmes place israel','profit gym israel','גו אקטיב go active','רב חן ספורט','טופ לבל ספורט','אקסלנט ספורט','crossfit תל אביב','studio c fitness','planet fitness israel','מכון כושר ישראל'],
+      beauty: ['ביוטי סטודיו ישראל','nails art israel','קוסמטיקאית טיקטוק','לש בר','מניקור ישראל','makeup artist israel','עיצוב גבות ישראל','ציפורניים ישראל','סטודיו יופי תל אביב','beauty salon israel'],
+      bakery: ['מאפיית לחמנו','רולדין','בייקרי תל אביב','קונדיטוריית עילית','לחם ארטיזן','מאפיית הכרמל','ביסקוטי מאפייה','עוגות מעוצבות ישראל','מאפיית יפעת','bakery israel'],
+      realestate: ['נדלן ישראל טיקטוק','מתווך תל אביב','נדלן בפוקוס','סוכן נדלן','דירות למכירה טיקטוק','real estate israel','מתווך ירושלים','נדלן חיפה','נדלן להשקעה','מתווך ישראלי'],
+      law: ['עורך דין טיקטוק','עוד נועם קוריס','עורך דין פלילי','עורך דין משפחה','עורך דין נדלן','lawyer israel','משרד עורכי דין','עורך דין תל אביב','עורך דין חיפה','עורך דין ירושלים'],
+      clinic: ['ד״ר טיקטוק ישראל','רופא שיניים','מרפאת שיניים','קליניקה אסתטית','מרפאת עור','dermatologist israel','רופא עיניים','dental clinic israel','מרפאה תל אביב','דוקטור ישראלי'],
+      retail: ['בוטיק ישראלי','חנות אופנה תל אביב','אופנה ישראלית','shop israel','סטריט סטייל ישראל','fashion israel','בוטיק ירושלים','חנות וינטג׳','עיצוב ישראלי','חנות אונליין ישראל'],
+      tech: ['סטארטאפ ישראלי','הייטק ישראל','startup israel','tech tlv','יזמות ישראלית','wix israel','monday.com','חברת הייטק','סייבר ישראל','developer israel'],
     };
 
     const indLabel = state.industry.label;
@@ -1607,6 +1607,7 @@ async function startSearch(industryId) {
             discoveredAccounts.push({
               uid,
               nickname: u.user?.nickname || u.user_info?.nickname || u.nickname || uid,
+              bio: u.user?.signature || u.user_info?.signature || '',
               followers: u.user?.follower_count || u.user_info?.follower_count || u.follower_count || 0,
             });
           }
@@ -1642,7 +1643,7 @@ async function startSearch(industryId) {
     const INDUSTRY_KEYWORDS = {
       restaurant: ['מסעדה','מסעדת','קפה','שף','chef','restaurant','cafe','bistro','kitchen','food','מטבח','בר','bar','פיצה','pizza','בורגר','burger','סושי','sushi','גריל','grill'],
       salon: ['מספרה','סלון','ספר','hair','salon','barber','תספורת','stylist','ביוטי','beauty','שיער'],
-      gym: ['כושר','gym','fitness','פיטנס','סטודיו','studio','מאמן','trainer','אימון','crossfit','פילאטיס','sport','ספורט','holme','profit','active','אקטיב','muscle','שריר'],
+      gym: ['כושר','gym','fitness','פיטנס','סטודיו','studio','מאמן','trainer','אימון','crossfit','פילאטיס','sport','ספורט','holme','profit','active','אקטיב','muscle','שריר','מכון','club','קלאב','רב חן','טופ לבל','אקסלנט','planet'],
       beauty: ['ביוטי','beauty','nails','ציפורניים','מניקור','לש','lash','קוסמטיקה','טיפוח','makeup','איפור','גבות'],
       bakery: ['מאפי','bakery','עוגות','cake','לחם','bread','קונדיטור','בייקרי','מאפה','עוגה'],
       realestate: ['נדלן','נכסים','תיווך','realty','real estate','דירות','מתווך','property'],
@@ -1655,7 +1656,7 @@ async function startSearch(industryId) {
     
     // Score each account by relevance
     discoveredAccounts.forEach(a => {
-      const text = (a.uid + ' ' + a.nickname).toLowerCase();
+      const text = (a.uid + ' ' + a.nickname + ' ' + (a.bio || '')).toLowerCase();
       let relevance = 0;
       keywords.forEach(kw => { if (text.includes(kw.toLowerCase())) relevance += 10; });
       if (a.followers >= 1000) relevance += 2;
@@ -1666,15 +1667,14 @@ async function startSearch(industryId) {
     // Sort by relevance first, then followers
     discoveredAccounts.sort((a, b) => b.relevance - a.relevance || b.followers - a.followers);
     
-    // Take top 8, prefer relevant ones
-    const topAccounts = discoveredAccounts.filter(a => a.relevance > 0).slice(0, 8);
-    // If not enough relevant accounts, fill with top followers
-    if (topAccounts.length < 4) {
-      discoveredAccounts.forEach(a => {
-        if (topAccounts.length < 6 && !topAccounts.find(t => t.uid === a.uid)) topAccounts.push(a);
-      });
+    // Take top relevant accounts only
+    let topAccounts = discoveredAccounts.filter(a => a.relevance > 0).slice(0, 8);
+    // If nothing relevant found, take top 4 by followers as last resort
+    if (topAccounts.length === 0 && discoveredAccounts.length > 0) {
+      console.log('No relevant accounts found, using top by followers');
+      topAccounts = discoveredAccounts.sort((a, b) => b.followers - a.followers).slice(0, 4);
     }
-    console.log('Top accounts:', topAccounts.map(a => `@${a.uid} "${a.nickname}" (rel:${a.relevance}, fol:${a.followers})`));
+    console.log('Top accounts:', topAccounts.map(a => `@${a.uid} "${a.nickname}" bio:"${(a.bio||'').slice(0,50)}" (rel:${a.relevance}, fol:${a.followers})`));
 
     if (topAccounts.length === 0) {
       toast('לא נמצאו בעלי עסקים בתחום — נסה שוב', 'err');
