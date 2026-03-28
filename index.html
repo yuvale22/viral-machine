@@ -1580,35 +1580,20 @@ async function startSearch(industryId) {
 
     let searchQueries = [];
     try {
-      // Industry-specific search patterns
-      const industryPatterns = {
-        restaurant: 'מסעדות, בתי קפה, שפים. דפוסי שמות: "[שם] מסעדה", "מסעדת [שם]", "[שם] קפה", "קפה [שם]", "[שם] ביסטרו"',
-        salon: 'מספרות, סלוני יופי, ספרים. דפוסי שמות: "סלון [שם]", "מספרת [שם]", "[שם] hair", "[שם] ביוטי"',
-        gym: 'חדרי כושר, סטודיואים, מאמנים. דפוסי שמות: "[שם] פיטנס", "סטודיו [שם]", "[שם] gym", "[שם] כושר"',
-        beauty: 'קוסמטיקאיות, מניקור, לש. דפוסי שמות: "[שם] ביוטי", "[שם] nails", "סטודיו [שם]", "[שם] לשים"',
-        bakery: 'מאפיות, קונדיטוריות. דפוסי שמות: "מאפיית [שם]", "[שם] בייקרי", "[שם] עוגות", "הלחם של [שם]"',
-        realestate: 'משרדי תיווך, מתווכים. דפוסי שמות: "[שם] נדלן", "[שם] נכסים", "[שם] realty"',
-        law: 'משרדי עורכי דין. דפוסי שמות: "עוד [שם]", "משרד עוד [שם]", "[שם] law"',
-        clinic: 'מרפאות, רופאים, מטפלים. דפוסי שמות: "ד״ר [שם]", "מרפאת [שם]", "קליניקת [שם]"',
-        retail: 'חנויות, בוטיקים. דפוסי שמות: "[שם] שופ", "בוטיק [שם]", "חנות [שם]"',
-        tech: 'סטארטאפים, חברות טכנולוגיה. דפוסי שמות: "[שם] tech", "[שם] digital", "[שם] סטארטאפ"',
-      };
-      const patterns = industryPatterns[industryId] || '';
-
-      const prompt = `אתה מומחה לעסקים ישראליים בטיקטוק.
+      const prompt = `אתה מומחה לעסקים ישראליים. 
 
 תחום: ${indLabel}
-${patterns ? `סוגי עסקים: ${patterns}` : ''}
 
-המטרה: למצוא את חשבונות הטיקטוק של העסקים עצמם (לא בלוגרים, לא ביקורות, לא לקוחות).
+תן לי 10 שמות לחיפוש בטיקטוק שימצאו את החשבונות של בעלי העסקים עצמם.
 
-תן לי 10 שאילתות חיפוש. כלול:
-1. שמות של 5 עסקים ישראליים אמיתיים ומוכרים בתחום שיש להם נוכחות ברשתות חברתיות
-2. 3 דפוסי שמות נפוצים בתחום (למשל "פיצה X", "סלון X")  
-3. 2 חיפושים באנגלית עם מילות מפתח ישראליות
+כלול:
+- שמות של רשתות ועסקים מוכרים בישראל בתחום (למשל בכושר: "הולמס פלייס", "profit", "רב חן ספורט", "גו אקטיב". בפיצריות: "פיצה שמש", "דומינוס ישראל", "פיצה האט". במספרות: "סלון ז׳קלין", "רוני זריהן")
+- שמות של עסקים קטנים-בינוניים פופולריים בתחום שפעילים בטיקטוק
+- מילות חיפוש כלליות שימצאו עסקים בתחום (למשל: "כושר תל אביב", "crossfit israel", "פיצרייה ירושלים")
 
-חובה: JSON array בלבד.
-דוגמה: ["פיצה שמש","מסעדת הנמל","pizza bar tlv","פיצרייה ירושלים","הפיצרייה של"]`;
+חשוב: שמות אמיתיים של עסקים ישראליים, לא שמות בדויים!
+
+JSON array בלבד:`;
 
       const text = await callClaude(prompt, 500);
       const match = text.match(/\[[\s\S]*\]/);
@@ -1685,7 +1670,7 @@ ${patterns ? `סוגי עסקים: ${patterns}` : ''}
             const bloggerSignals = ['blogger','בלוגר','influencer','review','ביקורת','המלצות','foodie','טעימות'];
             bloggerSignals.forEach(s => { if (bioText.includes(s)) score -= 10; });
 
-            if (score > 0) foundAccounts.push({ uid, nickname, sig, followers, score });
+            foundAccounts.push({ uid, nickname, sig, followers, score });
           }
         });
       } catch(e) {}
@@ -1693,8 +1678,34 @@ ${patterns ? `סוגי עסקים: ${patterns}` : ''}
     }
 
     foundAccounts.sort((a, b) => b.score - a.score);
+
+    // ===== FALLBACK: If user search found nothing, search videos and extract accounts =====
+    if (foundAccounts.length === 0) {
+      textEl.textContent = '🔍 מחפש סרטונים כדי למצוא בעלי עסקים...';
+      iconEl.textContent = '🔍';
+      progBar.style.width = '35%';
+
+      const fallbackQueries = searchQueries.slice(0, 3);
+      for (let i = 0; i < fallbackQueries.length; i++) {
+        textEl.textContent = `🔍 מחפש: ${fallbackQueries[i]}...`;
+        try {
+          const vids = await searchTikTok(fallbackQueries[i], 'IL');
+          vids.forEach(v => {
+            const uid = v.author?.unique_id || '';
+            if (uid && !accountsSeen.has(uid)) {
+              accountsSeen.add(uid);
+              foundAccounts.push({ uid, nickname: v.author?.nickname || uid, sig: '', followers: v.author?.follower_count || 0, score: 5 });
+            }
+          });
+        } catch(e) {}
+        if (i < fallbackQueries.length - 1) await sleep(2000);
+      }
+      foundAccounts.sort((a, b) => b.score - a.score);
+      console.log('Fallback accounts from videos:', foundAccounts.map(a => `@${a.uid}`));
+    }
+
     const topAccounts = foundAccounts.slice(0, 6);
-    console.log('Top accounts:', topAccounts.map(a => `@${a.uid} (score:${a.score})`));
+    console.log('Top accounts:', topAccounts.map(a => `@${a.uid} "${a.nickname}" (score:${a.score}, followers:${a.followers})`));
 
     // Save discovered accounts to Supabase
     for (const acc of topAccounts) {
