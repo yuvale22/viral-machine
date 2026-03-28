@@ -1532,37 +1532,41 @@ async function startSearch(industryId) {
   loadEl.style.display = 'flex';
   progBar.style.width = '0%';
   try {
+    // ===== Predefined search queries per industry =====
+    const INDUSTRY_SEARCHES = {
+      restaurant: ['מסעדה טיקטוק','שף ישראלי','מסעדה תל אביב','מסעדה ירושלים','מסעדה חיפה','restaurant israel tiktok','בית קפה ישראלי','מסעדה מאחורי הקלעים'],
+      salon: ['מספרה טיקטוק','מספרה תל אביב','מספרה ירושלים','ספר ישראלי','salon israel','מספרה מאחורי הקלעים','תספורת ישראל','barber israel'],
+      gym: ['חדר כושר','חדר כושר תל אביב','חדר כושר ירושלים','חדר כושר חיפה','gym israel','מאמן כושר ישראלי','כושר ישראל','fitness israel'],
+      beauty: ['קוסמטיקאית ישראל','ציפורניים טיקטוק','ביוטי ישראל','nails israel','לשים ישראל','סטודיו יופי','מניקור ישראל','beauty israel'],
+      bakery: ['מאפייה ישראל','מאפייה תל אביב','קונדיטוריה ישראל','עוגות טיקטוק','bakery israel','לחם ישראלי','מאפייה ירושלים','בייקרי ישראל'],
+      realestate: ['נדלן ישראל','מתווך טיקטוק','נדלן תל אביב','דירות ישראל','real estate israel','מתווך ישראלי','נדלן ירושלים','נדלן חיפה'],
+      law: ['עורך דין טיקטוק','עורך דין ישראל','עורך דין תל אביב','עורך דין ירושלים','lawyer israel','משפט ישראלי','עורך דין חיפה','עורך דין באר שבע'],
+      clinic: ['רופא טיקטוק','מרפאה ישראל','רופא שיניים ישראל','דוקטור ישראלי','doctor israel','קליניקה ישראל','מרפאה תל אביב','רופא ירושלים'],
+      retail: ['חנות טיקטוק','חנות תל אביב','בוטיק ישראל','אופנה ישראלית','shop israel','חנות ירושלים','חנות אונליין ישראל','בוטיק תל אביב'],
+      tech: ['סטארטאפ ישראלי','הייטק ישראל','startup israel','tech israel','סטארטאפ טיקטוק','תוכנה ישראל','דיגיטל ישראל','developer israel'],
+    };
+
+    const indLabel = state.industry.label;
+    const searches = INDUSTRY_SEARCHES[industryId] || [indLabel, indLabel + ' ישראל', indLabel + ' תיקטוק'];
+
     // ===== STEP 1: Check cache first =====
-    textEl.textContent = '📦 בודק מאגר סרטונים...';
+    textEl.textContent = '📦 בודק מאגר...';
     iconEl.textContent = '📦';
     progBar.style.width = '5%';
 
     let cachedVideos = [];
     try {
       cachedVideos = await supa.select('cached_videos', `industry_id=eq.${industryId}&order=play_count.desc&limit=30`);
-    } catch(e) { console.log('Cache check:', e); }
+    } catch(e) {}
 
-    // If we have enough cached videos (at least 5), show them
     if (cachedVideos && cachedVideos.length >= 5) {
-      console.log(`Cache hit: ${cachedVideos.length} videos for ${industryId}`);
-      progBar.style.width = '80%';
-      textEl.textContent = '✨ מציג סרטונים מהמאגר...';
-
+      console.log(`Cache hit: ${cachedVideos.length} videos`);
       state.videos = cachedVideos.map(v => ({
-        video_id: v.video_id,
-        title: v.title || '',
-        desc: v.description || '',
-        play_count: v.play_count || 0,
-        digg_count: v.digg_count || 0,
-        duration: v.duration || 0,
-        author: { unique_id: v.account_username },
-        eng: v.engagement || 0,
-        heTitle: v.he_title || '',
-        heSubtitle: v.he_subtitle || '',
-        _ownerAccount: true,
-        _cached: true,
+        video_id: v.video_id, title: v.title || '', desc: v.description || '',
+        play_count: v.play_count || 0, digg_count: v.digg_count || 0, duration: v.duration || 0,
+        author: { unique_id: v.account_username }, eng: v.engagement || 0,
+        heTitle: v.he_title || '', heSubtitle: v.he_subtitle || '', _ownerAccount: true, _cached: true,
       }));
-
       progBar.style.width = '100%';
       await sleep(300);
       loadEl.style.display = 'none';
@@ -1572,38 +1576,11 @@ async function startSearch(industryId) {
       return;
     }
 
-    // ===== STEP 2: Search videos to discover business accounts =====
-    const indLabel = state.industry.label;
-    textEl.textContent = '🔍 מחפש בעלי עסקים בתחום...';
+    // ===== STEP 2: Search videos and discover accounts =====
+    textEl.textContent = '🔍 מחפש בעלי עסקים...';
     iconEl.textContent = '🔍';
     progBar.style.width = '10%';
 
-    let searchQueries = [];
-    try {
-      const prompt = `תן לי 8 שאילתות חיפוש לטיקטוק שימצאו סרטונים שבעלי עסקים ישראליים בתחום "${indLabel}" העלו בעצמם.
-
-דוגמאות לסוג שאילתות שעובדות:
-- שמות עסקים מוכרים: "הולמס פלייס", "פיצה שמש", "סלון ז׳קלין"
-- תחום + POV/סקיט: "עורך דין POV", "מספרה סקיט", "מאמן כושר טיקטוק"
-- תחום + מאחורי הקלעים: "מסעדה מאחורי הקלעים", "חדר כושר יומיום"
-- תחום + עיר: "כושר תל אביב", "עורך דין ירושלים"
-
-חובה: JSON array בלבד.`;
-
-      const text = await callClaude(prompt, 400);
-      const match = text.match(/\[[\s\S]*\]/);
-      if (match) searchQueries = JSON.parse(match[0]);
-    } catch(e) {}
-
-    if (searchQueries.length === 0) {
-      const base = indLabel.split('/')[0].trim();
-      searchQueries = [base + ' טיקטוק', base + ' POV', base + ' ישראל', base + ' מאחורי הקלעים'];
-    }
-    console.log('Search queries:', searchQueries);
-
-    // ===== STEP 3: Search videos and extract unique accounts =====
-    textEl.textContent = '👤 מגלה חשבונות בעלי עסקים...';
-    iconEl.textContent = '👤';
     const accountsSeen = new Set();
     const discoveredAccounts = [];
 
@@ -1613,15 +1590,16 @@ async function startSearch(industryId) {
     creators.forEach(c => {
       const uid = c.username.replace('@','');
       accountsSeen.add(uid);
-      discoveredAccounts.push({ uid, nickname: uid, followers: 0, score: 20 });
+      discoveredAccounts.push({ uid, nickname: uid, followers: 0 });
     });
 
-    const queries = searchQueries.slice(0, 5);
-    for (let i = 0; i < queries.length; i++) {
-      progBar.style.width = (15 + Math.round((i / queries.length) * 30)) + '%';
-      textEl.textContent = `🔍 ${queries[i]}...`;
+    // Search with 5 queries, extract accounts from results
+    const queryList = searches.slice(0, 5);
+    for (let i = 0; i < queryList.length; i++) {
+      progBar.style.width = (10 + Math.round((i / queryList.length) * 35)) + '%';
+      textEl.textContent = `🔍 ${queryList[i]}...`;
       try {
-        const vids = await searchTikTok(queries[i], 'IL');
+        const vids = await searchTikTok(queryList[i], 'IL');
         vids.forEach(v => {
           const uid = v.author?.unique_id || '';
           if (uid && !accountsSeen.has(uid)) {
@@ -1630,41 +1608,42 @@ async function startSearch(industryId) {
               uid,
               nickname: v.author?.nickname || uid,
               followers: v.author?.follower_count || 0,
-              score: 1
             });
           }
         });
       } catch(e) {}
-      if (i < queries.length - 1) await sleep(2000);
+      if (i < queryList.length - 1) await sleep(2000);
     }
 
-    console.log('Discovered accounts:', discoveredAccounts.map(a => `@${a.uid} "${a.nickname}"`));
+    // Sort by followers — bigger accounts first
+    discoveredAccounts.sort((a, b) => b.followers - a.followers);
+    const topAccounts = discoveredAccounts.slice(0, 6);
+    console.log('Discovered accounts:', topAccounts.map(a => `@${a.uid} "${a.nickname}" (${a.followers} followers)`));
 
-    if (discoveredAccounts.length === 0) {
-      toast('לא נמצאו חשבונות בתחום — נסה שוב או תחום אחר', 'err');
+    if (topAccounts.length === 0) {
+      toast('לא נמצאו בעלי עסקים בתחום — נסה שוב', 'err');
       loadEl.style.display = 'none';
       return;
     }
 
-    // Save discovered accounts to Supabase
-    for (const acc of discoveredAccounts) {
+    // Save to Supabase
+    for (const acc of topAccounts) {
       try {
         await supa.insert('discovered_accounts', {
           username: acc.uid, nickname: acc.nickname,
-          follower_count: acc.followers, industry_id: industryId, relevance_score: acc.score
+          follower_count: acc.followers, industry_id: industryId, relevance_score: acc.followers
         });
       } catch(e) {}
     }
 
-    // ===== STEP 4: Go to each account and pull their videos =====
+    // ===== STEP 3: Pull videos from each account =====
     textEl.textContent = '🎬 מושך סרטונים מבעלי עסקים...';
     iconEl.textContent = '🎬';
     const allFoundVideos = [];
-    const topAccounts = discoveredAccounts.slice(0, 6);
 
     for (let i = 0; i < topAccounts.length; i++) {
       progBar.style.width = (45 + Math.round((i / topAccounts.length) * 30)) + '%';
-      textEl.textContent = `🎬 @${topAccounts[i].uid}`;
+      textEl.textContent = `🎬 @${topAccounts[i].uid} — ${topAccounts[i].nickname}`;
       try {
         const vids = await fetchUserPosts(topAccounts[i].uid);
         vids.forEach(v => { v._ownerAccount = true; });
@@ -1672,6 +1651,7 @@ async function startSearch(industryId) {
       } catch(e) {}
       if (i < topAccounts.length - 1) await sleep(2000);
     }
+
     // ===== STEP 5: Filter and rank =====
     progBar.style.width = '80%';
     textEl.textContent = '🧹 מסנן ומדרג תוצאות...';
