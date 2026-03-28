@@ -1534,16 +1534,16 @@ async function startSearch(industryId) {
   try {
     // ===== Predefined search queries per industry =====
     const INDUSTRY_SEARCHES = {
-      restaurant: ['מסעדה טיקטוק','שף ישראלי','מסעדה תל אביב','מסעדה ירושלים','מסעדה חיפה','restaurant israel tiktok','בית קפה ישראלי','מסעדה מאחורי הקלעים'],
-      salon: ['מספרה טיקטוק','מספרה תל אביב','מספרה ירושלים','ספר ישראלי','salon israel','מספרה מאחורי הקלעים','תספורת ישראל','barber israel'],
-      gym: ['חדר כושר','חדר כושר תל אביב','חדר כושר ירושלים','חדר כושר חיפה','gym israel','מאמן כושר ישראלי','כושר ישראל','fitness israel'],
-      beauty: ['קוסמטיקאית ישראל','ציפורניים טיקטוק','ביוטי ישראל','nails israel','לשים ישראל','סטודיו יופי','מניקור ישראל','beauty israel'],
-      bakery: ['מאפייה ישראל','מאפייה תל אביב','קונדיטוריה ישראל','עוגות טיקטוק','bakery israel','לחם ישראלי','מאפייה ירושלים','בייקרי ישראל'],
-      realestate: ['נדלן ישראל','מתווך טיקטוק','נדלן תל אביב','דירות ישראל','real estate israel','מתווך ישראלי','נדלן ירושלים','נדלן חיפה'],
-      law: ['עורך דין טיקטוק','עורך דין ישראל','עורך דין תל אביב','עורך דין ירושלים','lawyer israel','משפט ישראלי','עורך דין חיפה','עורך דין באר שבע'],
-      clinic: ['רופא טיקטוק','מרפאה ישראל','רופא שיניים ישראל','דוקטור ישראלי','doctor israel','קליניקה ישראל','מרפאה תל אביב','רופא ירושלים'],
-      retail: ['חנות טיקטוק','חנות תל אביב','בוטיק ישראל','אופנה ישראלית','shop israel','חנות ירושלים','חנות אונליין ישראל','בוטיק תל אביב'],
-      tech: ['סטארטאפ ישראלי','הייטק ישראל','startup israel','tech israel','סטארטאפ טיקטוק','תוכנה ישראל','דיגיטל ישראל','developer israel'],
+      restaurant: ['מחניודה מסעדה','OCD restaurant','מסעדת קלארו','north abraxas','מסעדת פורטו','HaSalon restaurant','ברברי מסעדה','קפה ביאליק','מסעדת יפו','מסעדה ישראלית טיקטוק'],
+      salon: ['סלון ז׳קלין','רוני זריהן מספרה','מספרת ניסים','אורלי ביוטי סלון','סלון דניאל','aveda israel salon','מספרת שגב','סלון רונית','barber shop israel','מספרה ישראלית טיקטוק'],
+      gym: ['הולמס פלייס','profit כושר','גו אקטיב כושר','רב חן ספורט','טופ לבל ספורט','אקסלנט ספורט','crossfit israel','עולם הכושר','סטודיו כושר ישראל','gym owner israel'],
+      beauty: ['ביוטי סטודיו ישראל','nails art israel','קוסמטיקאית טיקטוק','לש בר ישראל','מניקור ישראלי','makeup artist israel','עיצוב גבות','ציפורניים ישראל','סטודיו יופי תל אביב','beauty salon israel'],
+      bakery: ['מאפיית לחמנו','רולדין','בייקרי תל אביב','קונדיטוריית עילית','לחם ארטיזן','מאפיית הכרמל','ביסקוטי מאפייה','עוגות מעוצבות ישראל','מאפיית יפעת','bakery israel tiktok'],
+      realestate: ['נדלן ישראל טיקטוק','מתווך תל אביב','נדלן בפוקוס','סוכן נדלן ישראל','דירות למכירה טיקטוק','real estate israel','מתווך ירושלים','נדלן חיפה','נדלן להשקעה','מתווך ישראלי טיקטוק'],
+      law: ['עורך דין טיקטוק ישראל','עוד נועם קוריס','עורך דין פלילי','עורך דין משפחה ישראל','עורך דין נדלן','lawyer israel tiktok','משרד עורכי דין','עורך דין תל אביב','עורך דין חיפה','עורך דין ירושלים'],
+      clinic: ['ד״ר טיקטוק ישראל','רופא שיניים ישראל','מרפאת שיניים','קליניקה אסתטית ישראל','מרפאת עור','dermatologist israel','רופא עיניים ישראל','dental clinic israel','מרפאה תל אביב','דוקטור ישראלי'],
+      retail: ['בוטיק ישראלי','חנות אופנה תל אביב','אופנה ישראלית טיקטוק','shop israel','סטריט סטייל ישראל','fashion israel','בוטיק ירושלים','חנות וינטג׳ ישראל','עיצוב ישראלי','חנות אונליין ישראל'],
+      tech: ['סטארטאפ ישראלי','הייטק ישראל טיקטוק','startup israel','tech tlv','יזמות ישראלית','wix israel','monday.com','חברת הייטק','סייבר ישראל','developer israel'],
     };
 
     const indLabel = state.industry.label;
@@ -1576,7 +1576,7 @@ async function startSearch(industryId) {
       return;
     }
 
-    // ===== STEP 2: Search videos and discover accounts =====
+    // ===== STEP 2: Find business accounts =====
     textEl.textContent = '🔍 מחפש בעלי עסקים...';
     iconEl.textContent = '🔍';
     progBar.style.width = '10%';
@@ -1593,13 +1593,36 @@ async function startSearch(industryId) {
       discoveredAccounts.push({ uid, nickname: uid, followers: 0 });
     });
 
-    // Search with 5 queries, extract accounts from results
-    const queryList = searches.slice(0, 5);
-    for (let i = 0; i < queryList.length; i++) {
-      progBar.style.width = (10 + Math.round((i / queryList.length) * 35)) + '%';
-      textEl.textContent = `🔍 ${queryList[i]}...`;
+    // APPROACH 1: Search for business accounts directly
+    const userQueries = searches.slice(0, 3);
+    for (let i = 0; i < userQueries.length; i++) {
+      progBar.style.width = (10 + Math.round((i / userQueries.length) * 15)) + '%';
+      textEl.textContent = `👤 ${userQueries[i]}...`;
       try {
-        const vids = await searchTikTok(queryList[i], 'IL');
+        const users = await searchUsers(userQueries[i]);
+        users.forEach(u => {
+          const uid = u.user_info?.unique_id || u.unique_id || '';
+          if (uid && !accountsSeen.has(uid)) {
+            accountsSeen.add(uid);
+            discoveredAccounts.push({
+              uid,
+              nickname: u.user_info?.nickname || u.nickname || uid,
+              followers: u.user_info?.follower_count || u.follower_count || 0,
+            });
+          }
+        });
+      } catch(e) {}
+      if (i < userQueries.length - 1) await sleep(2000);
+    }
+    console.log('User search found:', discoveredAccounts.length, 'accounts');
+
+    // APPROACH 2: Also search videos and extract accounts from them
+    const videoQueries = searches.slice(3, 7);
+    for (let i = 0; i < videoQueries.length; i++) {
+      progBar.style.width = (25 + Math.round((i / videoQueries.length) * 20)) + '%';
+      textEl.textContent = `🔍 ${videoQueries[i]}...`;
+      try {
+        const vids = await searchTikTok(videoQueries[i], 'IL');
         vids.forEach(v => {
           const uid = v.author?.unique_id || '';
           if (uid && !accountsSeen.has(uid)) {
@@ -1612,7 +1635,7 @@ async function startSearch(industryId) {
           }
         });
       } catch(e) {}
-      if (i < queryList.length - 1) await sleep(2000);
+      if (i < videoQueries.length - 1) await sleep(2000);
     }
 
     // Sort by followers — bigger accounts first
