@@ -112,12 +112,12 @@
   .divider { width: 60px; height: 3px; background: var(--sand); border-radius: 2px; margin: 0 auto 32px; }
 
   /* ========== INDUSTRY GRID ========== */
-  .industry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-top: 40px; }
-  .ind-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 28px 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 14px; transition: all 0.35s cubic-bezier(0.4,0,0.2,1); font-family: inherit; color: var(--text-secondary); font-size: 14px; font-weight: 500; text-align: center; position: relative; overflow: hidden; box-shadow: var(--shadow-sm); }
+  .industry-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 40px; }
+  .ind-card { background: var(--surface); border: 1px solid var(--sand); border-radius: 16px; padding: 20px 14px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: all 0.35s cubic-bezier(0.4,0,0.2,1); font-family: inherit; color: var(--text-secondary); font-size: 13px; font-weight: 600; text-align: center; position: relative; overflow: hidden; box-shadow: var(--shadow-sm); width: 120px; min-height: 100px; }
   .ind-card::after { content:''; position:absolute; inset:0; border-radius:var(--radius); background:radial-gradient(circle at 50% 30%,rgba(196,133,59,0.06) 0%,transparent 70%); opacity:0; transition:opacity 0.3s; pointer-events:none; }
   .ind-card:hover { border-color: var(--border-hover); transform: translateY(-4px); box-shadow: var(--shadow-lg); color: var(--brown); }
   .ind-card:hover::after { opacity: 1; }
-  .ind-emoji { font-size: 36px; transition: transform 0.3s; position: relative; z-index: 1; }
+  .ind-emoji { font-size: 32px; transition: transform 0.3s; position: relative; z-index: 1; }
   .ind-card:hover .ind-emoji { transform: scale(1.2) rotate(-3deg); }
 
   /* ========== VIDEO GRID ========== */
@@ -258,7 +258,8 @@
     .setup-title { font-size: 32px; }
     .setup-card { padding: 28px; }
     .home-heading h1 { font-size: 26px; }
-    .industry-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .industry-grid { gap: 8px; }
+    .ind-card { width: calc(33% - 8px); min-height: 90px; padding: 16px 8px; font-size: 12px; }
     .video-grid { grid-template-columns: 1fr; }
     .scripts-grid { grid-template-columns: 1fr; }
     .calendar-grid { grid-template-columns: 1fr; }
