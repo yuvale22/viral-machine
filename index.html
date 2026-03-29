@@ -112,8 +112,8 @@
   .divider { width: 60px; height: 3px; background: var(--sand); border-radius: 2px; margin: 0 auto 32px; }
 
   /* ========== INDUSTRY GRID ========== */
-  .industry-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 40px; }
-  .ind-card { background: var(--surface); border: 1px solid var(--sand); border-radius: 16px; padding: 20px 14px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: all 0.35s cubic-bezier(0.4,0,0.2,1); font-family: inherit; color: var(--text-secondary); font-size: 13px; font-weight: 600; text-align: center; position: relative; overflow: hidden; box-shadow: var(--shadow-sm); width: 120px; min-height: 100px; }
+  .industry-grid { display: flex; flex-wrap: nowrap; justify-content: center; gap: 10px; margin-top: 40px; }
+  .ind-card { background: var(--surface); border: 1px solid var(--sand); border-radius: 14px; padding: 18px 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.35s cubic-bezier(0.4,0,0.2,1); font-family: inherit; color: var(--text-secondary); font-size: 12px; font-weight: 600; text-align: center; position: relative; overflow: hidden; box-shadow: var(--shadow-sm); flex: 1; max-width: 130px; min-height: 90px; }
   .ind-card::after { content:''; position:absolute; inset:0; border-radius:var(--radius); background:radial-gradient(circle at 50% 30%,rgba(196,133,59,0.06) 0%,transparent 70%); opacity:0; transition:opacity 0.3s; pointer-events:none; }
   .ind-card:hover { border-color: var(--border-hover); transform: translateY(-4px); box-shadow: var(--shadow-lg); color: var(--brown); }
   .ind-card:hover::after { opacity: 1; }
@@ -258,8 +258,8 @@
     .setup-title { font-size: 32px; }
     .setup-card { padding: 28px; }
     .home-heading h1 { font-size: 26px; }
-    .industry-grid { gap: 8px; }
-    .ind-card { width: calc(33% - 8px); min-height: 90px; padding: 16px 8px; font-size: 12px; }
+    .industry-grid { flex-wrap: wrap; gap: 8px; }
+    .ind-card { flex: unset; width: calc(33% - 8px); max-width: none; min-height: 80px; padding: 14px 6px; font-size: 11px; }
     .video-grid { grid-template-columns: 1fr; }
     .scripts-grid { grid-template-columns: 1fr; }
     .calendar-grid { grid-template-columns: 1fr; }
@@ -1749,6 +1749,7 @@ function renderVideos() {
     const subtitle = v.heSubtitle || '';
     return `<div class="vid-card stagger ${sel?'selected':''}" style="animation-delay:${i*35}ms" onclick="toggleVideo('${v.video_id}')">
       ${sel ? '<div class="vid-check">✓</div>' : ''}
+      ${v.cover ? `<div style="width:100%;height:140px;border-radius:10px;overflow:hidden;margin-bottom:12px;background:var(--cream)"><img src="${esc(v.cover)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display='none'"></div>` : ''}
       <div class="vid-stats">
         <span class="vid-stat">👁 ${fmt(v.play_count)}</span>
         <span class="vid-stat">❤️ ${fmt(v.digg_count)}</span>
@@ -1785,13 +1786,16 @@ async function generateScripts() {
 
   // Build rich video summaries with all available data
   const richSummaries = chosen.map((v,i) => {
-    let s = `${i+1}. TITLE: "${(v.title||v.desc||'').slice(0,120)}"`;
-    s += `\n   VIEWS: ${fmt(v.play_count)} | LIKES: ${fmt(v.digg_count)} | ENGAGEMENT: ${v.eng}%`;
-    if (v.duration) s += ` | DURATION: ${v.duration}s`;
-    if (v.desc && v.desc !== v.title) s += `\n   DESCRIPTION: "${v.desc.slice(0,200)}"`;
+    let s = `סרטון ${i+1}:`;
+    if (v.heTitle) s += `\n   כותרת: "${v.heTitle}"`;
+    if (v.heSubtitle) s += `\n   תיאור: "${v.heSubtitle}"`;
+    s += `\n   כותרת מקורית: "${(v.title||v.desc||'').slice(0,120)}"`;
+    s += `\n   צפיות: ${fmt(v.play_count)} | לייקים: ${fmt(v.digg_count)} | מעורבות: ${v.eng}%`;
+    if (v.duration) s += ` | אורך: ${v.duration} שניות`;
+    if (v.desc && v.desc !== v.title) s += `\n   תיאור מקורי: "${v.desc.slice(0,200)}"`;
+    if (v.author?.unique_id) s += `\n   חשבון: @${v.author.unique_id}`;
     const tags = (v.text_extra||[]).filter(t=>t.hashtag_name).map(t=>'#'+t.hashtag_name).join(' ');
-    if (tags) s += `\n   HASHTAGS: ${tags.slice(0,150)}`;
-    if (v.music_info?.title) s += `\n   MUSIC: "${v.music_info.title}"`;
+    if (tags) s += `\n   האשטאגים: ${tags.slice(0,150)}`;
     return s;
   }).join('\n\n');
 
@@ -1805,30 +1809,31 @@ async function generateScripts() {
   btn.disabled = true;
 
   try {
-    // ===== STEP 1: ANALYZE VIDEOS =====
-    const analyzePrompt = `You are an expert at analyzing viral TikTok content patterns.
+    // Collect cover image URLs from selected videos
+    const coverUrls = chosen.map(v => v.cover || v.origin_cover || v.dynamic_cover || '').filter(u => u);
+    console.log('Video covers:', coverUrls.length, 'images');
 
-Below are ${chosen.length} real viral TikTok videos selected by a social media manager. Analyze each video deeply:
+    // ===== STEP 1: ANALYZE VIDEOS WITH IMAGES =====
+    const analyzePrompt = `אתה מומחה לניתוח סרטוני טיקטוק ויראליים.
+
+${coverUrls.length > 0 ? `מצורפות ${coverUrls.length} תמונות מתוך הסרטונים. תסתכל על כל תמונה ותנתח מה קורה בסרטון — מי מופיע, מה הסיטואציה, איפה זה מתרחש, מה ההבעות והאווירה.` : ''}
+
+להלן ${chosen.length} סרטונים ויראליים שנבחרו כהשראה:
 
 ${richSummaries}
 
-For EACH video, analyze:
-1. FORMAT: What viral format is this? (POV skit / Types of... / When customer... / Day in the life / Acting normal when / Relatable reaction / Other)
-2. STRUCTURE: How is the video built? (setup → twist → punchline? slow build? rapid cuts? etc.)
-3. HUMOR STYLE: What makes it funny? (absurd situation, deadpan delivery, escalation, contrast, relatable pain, awkward silence, etc.)
-4. CHARACTERS: Who appears? (employee, customer types, boss, etc.)
-5. PUNCHLINE: Where is the humor peak? (end twist, mid-video flip, running gag, etc.)
-6. PACING: Fast/slow? How many beats/scenes?
-7. HOOK: What makes someone stop scrolling in the first 2 seconds?
+נתח כל סרטון (בהתבסס על התמונה והנתונים):
+1. מה קורה בסרטון? תאר את הסיטואציה, הדמויות, המיקום והאווירה
+2. מה הפורמט? (POV, סקיט, סוגי לקוחות, יום בחיים, מאחורי הקלעים, תגובה, אחר)
+3. מה עושה את זה מצחיק/ויראלי? (מצב אבסורדי, טוויסט בסוף, מצב מוכר, הגזמה)
+4. מה ה-HOOK ב-2 שניות הראשונות?
+5. איך הסרטון בנוי? (פתיחה → בניה → פאנצ'ליין)
 
-Then provide an OVERALL PATTERN SUMMARY:
-- What do these videos have in common?
-- What viral formula connects them?
-- What tone/energy do they share?
+סיכום: מה הדפוס המשותף לסרטונים האלה? מה הנוסחה שעובדת?
 
-Respond in Hebrew.`;
+ענה בעברית.`;
 
-    const analysis = await callClaude(analyzePrompt);
+    const analysis = await callClaude(analyzePrompt, 4000, coverUrls.length > 0 ? coverUrls : undefined);
     state.videoAnalysis = analysis;
 
     // ===== STEP 2: GENERATE SCRIPTS BASED ON ANALYSIS =====
@@ -2110,11 +2115,13 @@ async function searchUsers(query) {
   } catch(e) { console.log('User search error:', e); return []; }
 }
 
-async function callClaude(prompt, maxTokens) {
+async function callClaude(prompt, maxTokens, imageUrls) {
+  const body = { prompt, max_tokens: maxTokens || 4000 };
+  if (imageUrls && imageUrls.length > 0) body.image_urls = imageUrls;
   const res = await fetch('/api/claude', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, max_tokens: maxTokens || 4000 })
+    body: JSON.stringify(body)
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error);
