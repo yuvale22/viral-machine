@@ -8,10 +8,36 @@ export default async function handler(req, res) {
   const CLAUDE_KEY = process.env.CLAUDE_API_KEY;
   if (!CLAUDE_KEY) return res.status(500).json({ error: 'Claude API key not configured' });
 
-  const { prompt, max_tokens } = req.body;
+  const { prompt, max_tokens, pdf_base64, image_urls } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt required' });
 
   try {
+    let content;
+    if (image_urls && image_urls.length > 0) {
+      content = [];
+      for (const url of image_urls) {
+        try {
+          const imgRes = await fetch(url);
+          if (imgRes.ok) {
+            const buffer = await imgRes.arrayBuffer();
+            const base64 = Buffer.from(buffer).toString('base64');
+            const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+            content.push({
+              type: 'image',
+              source: { type: 'base64', media_type: contentType, data: base64 }
+            });
+          }
+        } catch(e) {}
+      }
+      content.push({ type: 'text', text: prompt });
+    } else if (pdf_base64) {
+      content = [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdf_base64 } },
+        { type: 'text', text: prompt }
+      ];
+    } else {
+      content = prompt;
+    }
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -22,7 +48,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: max_tokens || 4000,
-        messages: [{ role: 'user', content: prompt }]
+        messages: [{ role: 'user', content }]
       })
     });
 
