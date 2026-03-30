@@ -1534,12 +1534,21 @@ async function startSearch(industryId) {
     iconEl.textContent = '📦';
     progBar.style.width = '5%';
 
-    let cachedVideos = [];
+    // Check if admin has curated creators for this industry
+    let hasCuratedCreators = false;
     try {
-      cachedVideos = await supa.select('cached_videos', `industry_id=eq.${industryId}&order=play_count.desc&limit=30`);
+      const creatorsCheck = await supa.select('creators', `industry_id=eq.${industryId}`);
+      hasCuratedCreators = creatorsCheck && creatorsCheck.length > 0;
     } catch(e) {}
 
-    if (cachedVideos && cachedVideos.length >= 5) {
+    let cachedVideos = [];
+    if (!hasCuratedCreators) {
+      try {
+        cachedVideos = await supa.select('cached_videos', `industry_id=eq.${industryId}&order=play_count.desc&limit=30`);
+      } catch(e) {}
+    }
+
+    if (!hasCuratedCreators && cachedVideos && cachedVideos.length >= 5) {
       console.log(`Cache hit: ${cachedVideos.length} videos`);
       state.videos = cachedVideos.map(v => ({
         video_id: v.video_id, title: v.title || '', desc: v.description || '',
@@ -1561,97 +1570,94 @@ async function startSearch(industryId) {
     iconEl.textContent = '🔍';
     progBar.style.width = '10%';
 
-    const accountsSeen = new Set();
-    const discoveredAccounts = [];
-
-    // Include curated creators from admin
+    // Check for curated creators from admin FIRST
     let creators = [];
     try { creators = await supa.select('creators', `industry_id=eq.${industryId}`); } catch(e) {}
-    creators.forEach(c => {
-      const uid = c.username.replace('@','');
-      accountsSeen.add(uid);
-      discoveredAccounts.push({ uid, nickname: uid, followers: 0 });
-    });
-
-    // APPROACH 1: Search for business accounts directly
-    const userQueries = searches.slice(0, 5);
-    for (let i = 0; i < userQueries.length; i++) {
-      progBar.style.width = (10 + Math.round((i / userQueries.length) * 25)) + '%';
-      textEl.textContent = `👤 ${userQueries[i]}...`;
-      try {
-        const users = await searchUsers(userQueries[i]);
-        users.forEach(u => {
-          const uid = u.user?.uniqueId || u.user_info?.unique_id || u.unique_id || '';
-          if (uid && !accountsSeen.has(uid)) {
-            accountsSeen.add(uid);
-            discoveredAccounts.push({
-              uid,
-              nickname: u.user?.nickname || u.user_info?.nickname || u.nickname || uid,
-              bio: u.user?.signature || u.user_info?.signature || '',
-              followers: u.user?.follower_count || u.user_info?.follower_count || u.follower_count || 0,
-            });
-          }
-        });
-      } catch(e) {}
-      if (i < userQueries.length - 1) await sleep(2000);
-    }
-    console.log('User search found:', discoveredAccounts.length, 'accounts');
-
-    // APPROACH 2: Also search videos and extract accounts from them
-    const videoQueries = searches.slice(5, 8);
-    for (let i = 0; i < videoQueries.length; i++) {
-      progBar.style.width = (25 + Math.round((i / videoQueries.length) * 20)) + '%';
-      textEl.textContent = `🔍 ${videoQueries[i]}...`;
-      try {
-        const vids = await searchTikTok(videoQueries[i], 'IL');
-        vids.forEach(v => {
-          const uid = v.author?.unique_id || '';
-          if (uid && !accountsSeen.has(uid)) {
-            accountsSeen.add(uid);
-            discoveredAccounts.push({
-              uid,
-              nickname: v.author?.nickname || uid,
-              followers: v.author?.follower_count || 0,
-            });
-          }
-        });
-      } catch(e) {}
-      if (i < videoQueries.length - 1) await sleep(2000);
-    }
-
-    // Filter: keep only accounts relevant to the industry
-    const INDUSTRY_KEYWORDS = {
-      restaurant: ['מסעדה','מסעדת','קפה','שף','chef','restaurant','cafe','bistro','kitchen','food','מטבח','בר','bar','פיצה','pizza','בורגר','burger','סושי','sushi','גריל','grill'],
-      salon: ['מספרה','סלון','ספר','hair','salon','barber','תספורת','stylist','ביוטי','beauty','שיער'],
-      gym: ['כושר','gym','fitness','פיטנס','סטודיו','studio','מאמן','trainer','אימון','crossfit','פילאטיס','sport','ספורט','holme','profit','active','אקטיב','muscle','שריר','מכון','club','קלאב','רב חן','טופ לבל','אקסלנט','planet'],
-      beauty: ['ביוטי','beauty','nails','ציפורניים','מניקור','לש','lash','קוסמטיקה','טיפוח','makeup','איפור','גבות'],
-      bakery: ['מאפי','bakery','עוגות','cake','לחם','bread','קונדיטור','בייקרי','מאפה','עוגה'],
-      realestate: ['נדלן','נכסים','תיווך','realty','real estate','דירות','מתווך','property'],
-      law: ['עורך דין','עוד','law','attorney','משפט','legal','עו"ד','lawyer','דין'],
-    };
-    const keywords = INDUSTRY_KEYWORDS[industryId] || [];
     
-    // Score each account by relevance
-    discoveredAccounts.forEach(a => {
-      const text = (a.uid + ' ' + a.nickname + ' ' + (a.bio || '')).toLowerCase();
-      let relevance = 0;
-      keywords.forEach(kw => { if (text.includes(kw.toLowerCase())) relevance += 10; });
-      if (a.followers >= 1000) relevance += 2;
-      if (a.followers >= 10000) relevance += 3;
-      a.relevance = relevance;
-    });
+    let topAccounts = [];
 
-    // Sort by relevance first, then followers
-    discoveredAccounts.sort((a, b) => b.relevance - a.relevance || b.followers - a.followers);
-    
-    // Take top relevant accounts only
-    let topAccounts = discoveredAccounts.filter(a => a.relevance > 0).slice(0, 8);
-    // If nothing relevant found, take top 4 by followers as last resort
-    if (topAccounts.length === 0 && discoveredAccounts.length > 0) {
-      console.log('No relevant accounts found, using top by followers');
-      topAccounts = discoveredAccounts.sort((a, b) => b.followers - a.followers).slice(0, 4);
+    if (creators.length > 0) {
+      // ===== USE CURATED CREATORS ONLY =====
+      console.log(`Found ${creators.length} curated creators for ${industryId}`);
+      textEl.textContent = `🎯 ${creators.length} בעלי עסקים במאגר...`;
+      topAccounts = creators.map(c => ({
+        uid: c.username.replace('@',''),
+        nickname: c.notes || c.username,
+        followers: 0,
+        relevance: 100,
+      }));
+      progBar.style.width = '40%';
+    } else {
+      // ===== NO CURATED CREATORS — SEARCH TIKTOK =====
+      const accountsSeen = new Set();
+      const discoveredAccounts = [];
+
+      const userQueries = searches.slice(0, 5);
+      for (let i = 0; i < userQueries.length; i++) {
+        progBar.style.width = (10 + Math.round((i / userQueries.length) * 25)) + '%';
+        textEl.textContent = `👤 ${userQueries[i]}...`;
+        try {
+          const users = await searchUsers(userQueries[i]);
+          users.forEach(u => {
+            const uid = u.user?.uniqueId || u.user_info?.unique_id || u.unique_id || '';
+            if (uid && !accountsSeen.has(uid)) {
+              accountsSeen.add(uid);
+              discoveredAccounts.push({
+                uid,
+                nickname: u.user?.nickname || u.user_info?.nickname || u.nickname || uid,
+                bio: u.user?.signature || u.user_info?.signature || '',
+                followers: u.user?.follower_count || u.user_info?.follower_count || u.follower_count || 0,
+              });
+            }
+          });
+        } catch(e) {}
+        if (i < userQueries.length - 1) await sleep(2000);
+      }
+
+      const videoQueries = searches.slice(5, 8);
+      for (let i = 0; i < videoQueries.length; i++) {
+        progBar.style.width = (35 + Math.round((i / videoQueries.length) * 10)) + '%';
+        textEl.textContent = `🔍 ${videoQueries[i]}...`;
+        try {
+          const vids = await searchTikTok(videoQueries[i], 'IL');
+          vids.forEach(v => {
+            const uid = v.author?.unique_id || '';
+            if (uid && !accountsSeen.has(uid)) {
+              accountsSeen.add(uid);
+              discoveredAccounts.push({ uid, nickname: v.author?.nickname || uid, followers: v.author?.follower_count || 0 });
+            }
+          });
+        } catch(e) {}
+        if (i < videoQueries.length - 1) await sleep(2000);
+      }
+
+      // Score by relevance
+      const INDUSTRY_KEYWORDS = {
+        restaurant: ['מסעדה','מסעדת','קפה','שף','chef','restaurant','cafe','bistro','kitchen','food','מטבח','בר','bar','פיצה','pizza','בורגר','burger','סושי','sushi','גריל','grill'],
+        salon: ['מספרה','סלון','ספר','hair','salon','barber','תספורת','stylist','ביוטי','beauty','שיער'],
+        gym: ['כושר','gym','fitness','פיטנס','סטודיו','studio','מאמן','trainer','אימון','crossfit','פילאטיס','sport','ספורט','holme','profit','active','אקטיב','muscle','שריר','מכון','club','קלאב'],
+        beauty: ['ביוטי','beauty','nails','ציפורניים','מניקור','לש','lash','קוסמטיקה','טיפוח','makeup','איפור','גבות'],
+        bakery: ['מאפי','bakery','עוגות','cake','לחם','bread','קונדיטור','בייקרי','מאפה','עוגה'],
+        realestate: ['נדלן','נכסים','תיווך','realty','real estate','דירות','מתווך','property'],
+        law: ['עורך דין','עוד','law','attorney','משפט','legal','עו"ד','lawyer','דין'],
+      };
+      const keywords = INDUSTRY_KEYWORDS[industryId] || [];
+      discoveredAccounts.forEach(a => {
+        const text = (a.uid + ' ' + a.nickname + ' ' + (a.bio || '')).toLowerCase();
+        let relevance = 0;
+        keywords.forEach(kw => { if (text.includes(kw.toLowerCase())) relevance += 10; });
+        if (a.followers >= 1000) relevance += 2;
+        if (a.followers >= 10000) relevance += 3;
+        a.relevance = relevance;
+      });
+      discoveredAccounts.sort((a, b) => b.relevance - a.relevance || b.followers - a.followers);
+      topAccounts = discoveredAccounts.filter(a => a.relevance > 0).slice(0, 8);
+      if (topAccounts.length === 0 && discoveredAccounts.length > 0) {
+        topAccounts = discoveredAccounts.slice(0, 4);
+      }
     }
-    console.log('Top accounts:', topAccounts.map(a => `@${a.uid} "${a.nickname}" bio:"${(a.bio||'').slice(0,50)}" (rel:${a.relevance}, fol:${a.followers})`));
+
+    console.log('Top accounts:', topAccounts.map(a => `@${a.uid} (rel:${a.relevance})`));
 
     if (topAccounts.length === 0) {
       toast('לא נמצאו בעלי עסקים בתחום — נסה שוב', 'err');
