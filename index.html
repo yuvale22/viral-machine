@@ -1972,13 +1972,15 @@ Create a 7-day content calendar (Sunday to Saturday) for this business.
 For each day, assign 1-2 content slots with:
 - Which script to use (or create a bonus idea)
 - Best posting time for Israel (specific hour)
-- Which platform (TikTok, Instagram Reels, Instagram Stories, or Facebook)
+- Platform is ALWAYS: "TikTok + Instagram + Facebook" — every post should be uploaded to ALL THREE platforms simultaneously
 - A brief note on what to focus on
 
-Also add 1-2 "rest days" where the business only posts a Story or doesn't post.
+Also add 1-2 "rest days" where the business only posts an Instagram Story or doesn't post.
+
+ALL TEXT IN HEBREW.
 
 RESPOND ONLY IN VALID JSON, no markdown, no backticks:
-{"days":[{"day":"ראשון","slots":[{"time":"10:00","platform":"TikTok","title":"שם התסריט","note":"הערה קצרה"}]}]}`;
+{"days":[{"day":"ראשון","slots":[{"time":"10:00","platform":"TikTok + Instagram + Facebook","title":"שם התסריט","note":"הערה קצרה"}]}]}`;
 
   try {
     const text = await callClaude(prompt);
@@ -1997,7 +1999,21 @@ RESPOND ONLY IN VALID JSON, no markdown, no backticks:
 }
 
 function renderCalendar() {
-  document.getElementById('calendar-grid').innerHTML = state.calendar.map((day,i) => `
+  const platformIcons = (p) => {
+    let icons = '';
+    const pl = (p||'').toLowerCase();
+    if (pl.includes('tiktok')) icons += '<span style="font-size:14px">🎵</span> ';
+    if (pl.includes('instagram') || pl.includes('insta')) icons += '<span style="font-size:14px">📸</span> ';
+    if (pl.includes('facebook') || pl.includes('fb')) icons += '<span style="font-size:14px">📘</span> ';
+    if (pl.includes('stor')) icons += '<span style="font-size:14px">📱</span> ';
+    return icons || '🎵 📸 📘';
+  };
+
+  document.getElementById('calendar-grid').innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;grid-column:1/-1">
+      <button class="btn-secondary" onclick="exportCalendarPDF()" style="font-size:13px">📄 ייצא PDF ללקוח</button>
+    </div>
+  ` + state.calendar.map((day,i) => `
     <div class="day-card stagger" style="animation-delay:${i*60}ms">
       <div class="day-header">
         <span class="day-name">יום ${esc(day.day)}</span>
@@ -2005,7 +2021,8 @@ function renderCalendar() {
       ${(day.slots||[]).map(slot => `
         <div class="day-slot">
           <div class="slot-time">🕐 ${esc(slot.time)}</div>
-          <span class="slot-platform">${esc(slot.platform)}</span>
+          <div style="display:flex;gap:4px;margin-bottom:6px">${platformIcons(slot.platform)}</div>
+          <div style="font-size:11px;color:var(--caramel);font-weight:600;margin-bottom:4px">העלה ל: TikTok + Instagram + Facebook</div>
           <div class="slot-title">${esc(slot.title)}</div>
           <div class="slot-desc">${esc(slot.note||'')}</div>
         </div>
@@ -2013,6 +2030,75 @@ function renderCalendar() {
       ${(!day.slots||day.slots.length===0) ? '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px">🌿 יום מנוחה</div>' : ''}
     </div>
   `).join('');
+}
+
+function exportCalendarPDF() {
+  if (!state.calendar || state.calendar.length === 0) { toast('אין לוח תוכן לייצא','err'); return; }
+
+  const days = state.calendar;
+  const bizName = state.bizName || 'העסק';
+  const industry = state.industry?.label || '';
+  const date = new Date().toLocaleDateString('he-IL');
+
+  let html = `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Heebo',sans-serif; background:#FDF6EC; color:#3B2415; padding:40px; }
+  .header { text-align:center; margin-bottom:40px; }
+  .header h1 { font-size:28px; color:#6B4226; margin-bottom:8px; }
+  .header p { font-size:14px; color:#7A6352; }
+  .logo { font-size:20px; font-weight:800; color:#C4853B; margin-bottom:16px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px; }
+  .day { background:white; border-radius:14px; padding:20px; border:1px solid #E8D5B7; page-break-inside:avoid; }
+  .day-name { font-size:18px; font-weight:700; color:#6B4226; margin-bottom:14px; padding-bottom:8px; border-bottom:2px solid #E8D5B7; }
+  .slot { margin-bottom:14px; padding:12px; background:#FDF6EC; border-radius:10px; }
+  .slot-time { font-size:13px; color:#C4853B; font-weight:600; margin-bottom:4px; }
+  .slot-platforms { font-size:12px; color:#6B4226; font-weight:600; margin-bottom:6px; }
+  .slot-title { font-size:15px; font-weight:700; color:#3B2415; margin-bottom:4px; }
+  .slot-note { font-size:13px; color:#7A6352; line-height:1.6; }
+  .rest { text-align:center; padding:20px; color:#A89482; font-size:14px; }
+  .footer { text-align:center; margin-top:30px; font-size:12px; color:#A89482; }
+  @media print { body { padding:20px; } .day { break-inside:avoid; } }
+</style></head><body>
+<div class="header">
+  <div class="logo">⚡ VIRAL MACHINE</div>
+  <h1>📅 לוח תוכן שבועי — ${esc(bizName)}</h1>
+  <p>${esc(industry)} | ${date}</p>
+</div>
+<div class="grid">`;
+
+  days.forEach(day => {
+    html += `<div class="day"><div class="day-name">יום ${esc(day.day)}</div>`;
+    if (day.slots && day.slots.length > 0) {
+      day.slots.forEach(slot => {
+        html += `<div class="slot">
+          <div class="slot-time">🕐 ${esc(slot.time)}</div>
+          <div class="slot-platforms">📱 העלה ל: TikTok + Instagram + Facebook</div>
+          <div class="slot-title">${esc(slot.title)}</div>
+          <div class="slot-note">${esc(slot.note||'')}</div>
+        </div>`;
+      });
+    } else {
+      html += '<div class="rest">🌿 יום מנוחה</div>';
+    }
+    html += '</div>';
+  });
+
+  html += `</div><div class="footer">נוצר ב-Viral Machine | ${date}</div></body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, '_blank');
+  if (w) {
+    toast('הלוח נפתח בחלון חדש — לחץ Ctrl+P כדי לשמור כ-PDF', 'ok');
+  } else {
+    // Fallback: download as HTML
+    const a = document.createElement('a');
+    a.href = url; a.download = `לוח_תוכן_${bizName}_${date}.html`;
+    a.click();
+    toast('הלוח הורד — פתח אותו בדפדפן ולחץ Ctrl+P לשמור כ-PDF', 'ok');
+  }
 }
 
 function copyScript(i) {
