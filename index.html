@@ -1580,7 +1580,9 @@ async function startSearch(industryId) {
       // ===== USE CURATED CREATORS ONLY =====
       console.log(`Found ${creators.length} curated creators for ${industryId}`);
       textEl.textContent = `🎯 ${creators.length} בעלי עסקים במאגר...`;
-      topAccounts = creators.map(c => ({
+      // Shuffle and pick up to 5 to save API calls
+      const shuffled = creators.sort(() => Math.random() - 0.5).slice(0, 5);
+      topAccounts = shuffled.map(c => ({
         uid: c.username.replace('@',''),
         nickname: c.notes || c.username,
         followers: 0,
