@@ -318,7 +318,7 @@
   .summary-num { font-size: 28px; font-weight: 900; margin-bottom: 4px; }
   .summary-label { font-size: 12px; color: var(--text-muted); }
 
-  .client-card { background: var(--surface); border: 1px solid var(--sand); border-radius: var(--radius); padding: 28px; margin-bottom: 14px; box-shadow: var(--shadow-sm); transition: all 0.3s; position: relative; overflow: hidden; }
+  .client-card { background: var(--surface); border: 1px solid var(--sand); border-radius: 16px; padding: 24px; margin-bottom: 12px; box-shadow: 0 2px 12px rgba(107,66,38,0.05); transition: all 0.3s; position: relative; overflow: hidden; }
   .client-card::before { content: ''; position: absolute; top: 0; right: 0; width: 4px; height: 100%; background: var(--caramel); border-radius: 0 4px 4px 0; transition: background 0.3s; }
   .client-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
   .client-card.overdue::before { background: var(--red); animation: overduePulse 2s ease infinite; }
@@ -831,36 +831,31 @@
   <div class="topbar"><div class="topbar-inner">
     <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> הלקוחות שלי</div>
     <div class="topbar-actions">
-      <button class="btn-secondary" onclick="toggleAddClient()">+ לקוח חדש</button>
+      <button class="btn-primary" style="padding:10px 20px;font-size:13px;border-radius:12px" onclick="toggleAddClient()">+ לקוח חדש</button>
       <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
     </div>
   </div></div>
-  <div class="page"><div class="section">
-    <div class="screen-heading">
-      <h2>👥 הלקוחות שלי</h2>
-      <p>ניהול לקוחות, תשלומים וסיכום הכנסות</p>
-    </div>
-    <div class="divider"></div>
+  <div class="page"><div class="section" style="max-width:700px;margin:0 auto">
 
     <!-- Summary -->
-    <div class="summary-grid" id="clients-summary"></div>
+    <div class="summary-grid" id="clients-summary" style="margin-bottom:24px"></div>
 
     <!-- Add Client Form (hidden) -->
-    <div id="add-client-form" style="display:none">
-      <div class="add-client-modal">
-        <h3>➕ הוסף לקוח חדש</h3>
-        <div class="modal-row">
-          <div style="flex:1;min-width:140px"><label class="field-label" style="margin-top:0">שם הלקוח</label><input class="field-input" id="ac-name" placeholder="שם הלקוח"></div>
-          <div style="flex:1;min-width:140px"><label class="field-label" style="margin-top:0">סכום חודשי ₪</label><input class="field-input" id="ac-amount" type="number" placeholder="0"></div>
+    <div id="add-client-form" style="display:none;margin-bottom:24px">
+      <div style="background:var(--surface);border:1px solid var(--sand);border-radius:16px;padding:28px;box-shadow:0 2px 12px rgba(107,66,38,0.06)">
+        <h3 style="font-size:18px;font-weight:700;color:var(--brown);margin-bottom:18px;text-align:center">➕ לקוח חדש</h3>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:140px"><label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block">שם הלקוח</label><input class="field-input" id="ac-name" placeholder="שם הלקוח"></div>
+          <div style="flex:1;min-width:140px"><label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block">סכום חודשי ₪</label><input class="field-input" id="ac-amount" type="number" placeholder="0"></div>
         </div>
-        <div class="modal-row">
-          <div style="flex:1;min-width:140px"><label class="field-label" style="margin-top:0">תאריך התחלה</label><input class="field-input" id="ac-start" type="date"></div>
-          <div style="flex:1;min-width:140px"><label class="field-label" style="margin-top:0">לכמה חודשים</label><input class="field-input" id="ac-months" type="number" placeholder="12" value="12"></div>
-          <div style="flex:1;min-width:140px"><label class="field-label" style="margin-top:0">יום תשלום בחודש (1-28)</label><input class="field-input" id="ac-payday" type="number" placeholder="1" value="1" min="1" max="28"></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px">
+          <div style="flex:1;min-width:130px"><label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block">תאריך התחלה</label><input class="field-input" id="ac-start" type="date"></div>
+          <div style="flex:1;min-width:100px"><label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block">חודשים</label><input class="field-input" id="ac-months" type="number" placeholder="12" value="12"></div>
+          <div style="flex:1;min-width:100px"><label style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;display:block">יום תשלום</label><input class="field-input" id="ac-payday" type="number" placeholder="1" value="1" min="1" max="28"></div>
         </div>
-        <div style="display:flex;gap:10px;margin-top:14px">
-          <button class="btn-primary" style="flex:1" onclick="saveClient()">💾 שמור לקוח</button>
-          <button class="btn-secondary" onclick="toggleAddClient()">ביטול</button>
+        <div style="display:flex;gap:10px;margin-top:18px">
+          <button class="btn-primary" style="flex:1;padding:14px;font-size:15px;border-radius:12px" onclick="saveClient()">💾 שמור לקוח</button>
+          <button class="btn-secondary" style="padding:14px 20px;border-radius:12px" onclick="toggleAddClient()">ביטול</button>
         </div>
       </div>
     </div>
@@ -2781,10 +2776,22 @@ function renderClients() {
   const totalCollected = clients.reduce((sum, c) => sum + c.payments.filter(p => p.paid).length * c.monthlyAmount, 0);
 
   document.getElementById('clients-summary').innerHTML = `
-    <div class="summary-card"><div class="summary-num" style="color:var(--brown)">${active.length}</div><div class="summary-label">לקוחות פעילים</div></div>
-    <div class="summary-card"><div class="summary-num" style="color:var(--caramel)">${totalMonthly.toLocaleString()} ₪</div><div class="summary-label">הכנסה חודשית</div></div>
-    <div class="summary-card"><div class="summary-num" style="color:var(--green)">${paidThisMonth}</div><div class="summary-label">שילמו החודש</div></div>
-    <div class="summary-card"><div class="summary-num" style="color:${pendingThisMonth > 0 ? 'var(--red)' : 'var(--text-muted)'}">${pendingThisMonth}</div><div class="summary-label">ממתינים לתשלום</div></div>
+    <div class="summary-card" style="background:linear-gradient(135deg,rgba(107,66,38,0.08) 0%,var(--surface) 100%);border:1px solid rgba(107,66,38,0.15)">
+      <div class="summary-num" style="color:var(--brown);font-size:24px">${active.length}</div>
+      <div class="summary-label" style="font-size:12px">👥 לקוחות פעילים</div>
+    </div>
+    <div class="summary-card" style="background:linear-gradient(135deg,rgba(196,133,59,0.08) 0%,var(--surface) 100%);border:1px solid rgba(196,133,59,0.15)">
+      <div class="summary-num" style="color:var(--caramel);font-size:24px">₪${totalMonthly.toLocaleString()}</div>
+      <div class="summary-label" style="font-size:12px">💰 הכנסה חודשית</div>
+    </div>
+    <div class="summary-card" style="background:linear-gradient(135deg,rgba(45,122,79,0.08) 0%,var(--surface) 100%);border:1px solid rgba(45,122,79,0.15)">
+      <div class="summary-num" style="color:var(--green);font-size:24px">${paidThisMonth}</div>
+      <div class="summary-label" style="font-size:12px">✅ שילמו החודש</div>
+    </div>
+    <div class="summary-card" style="background:linear-gradient(135deg,rgba(180,60,60,0.06) 0%,var(--surface) 100%);border:1px solid rgba(180,60,60,0.12)">
+      <div class="summary-num" style="color:${pendingThisMonth > 0 ? 'var(--red)' : 'var(--text-muted)'};font-size:24px">${pendingThisMonth}</div>
+      <div class="summary-label" style="font-size:12px">${pendingThisMonth > 0 ? '⏳' : '🎉'} ממתינים לתשלום</div>
+    </div>
   `;
 
   const listEl = document.getElementById('clients-list');
