@@ -985,11 +985,14 @@
 
     <!-- Quick Actions -->
     <div style="display:flex;gap:10px;margin-bottom:20px">
-      <button id="exp-show-expenses" style="flex:1;padding:14px;border:2px solid var(--red);background:rgba(180,60,60,0.04);border-radius:14px;font:600 14px Heebo;color:var(--red);cursor:pointer;transition:all 0.2s" onclick="switchExpTab('expenses')">
+      <button id="exp-show-expenses" style="flex:1;padding:14px;border:2px solid var(--red);background:rgba(180,60,60,0.08);border-radius:14px;font:600 14px Heebo;color:var(--red);cursor:pointer;transition:all 0.2s" onclick="switchExpTab('expenses')">
         💸 כל ההוצאות
       </button>
       <button id="exp-show-income" style="flex:1;padding:14px;border:2px solid var(--green);background:rgba(45,122,79,0.04);border-radius:14px;font:600 14px Heebo;color:var(--green);cursor:pointer;transition:all 0.2s" onclick="switchExpTab('income')">
         💰 כל ההכנסות
+      </button>
+      <button id="exp-show-invoices" style="flex:1;padding:14px;border:2px solid var(--caramel);background:rgba(196,133,59,0.04);border-radius:14px;font:600 14px Heebo;color:var(--caramel);cursor:pointer;transition:all 0.2s" onclick="switchExpTab('invoices')">
+        📎 חשבוניות
       </button>
     </div>
 
@@ -3557,6 +3560,8 @@ const EXPENSE_CATEGORIES = {
   'חומרי לימוד': '📚', 'אחר': '📌'
 };
 
+let pendingInvoice = null; // stores {base64, type, filename} until saved
+
 function toggleAddExpense() {
   const form = document.getElementById('add-expense-form');
   form.style.display = form.style.display === 'none' ? 'block' : 'none';
@@ -3567,6 +3572,7 @@ function toggleAddExpense() {
     document.getElementById('exp-category').value = 'אחר';
     document.getElementById('invoice-result').style.display = 'none';
     document.getElementById('invoice-reading').style.display = 'none';
+    pendingInvoice = null;
   }
 }
 
@@ -3609,10 +3615,14 @@ async function handleInvoiceUpload(event) {
       }
     }
 
+    // Store invoice for saving later
+    pendingInvoice = { base64, type: fileType, filename: file.name };
+
     const conf = data.confidence === 'high' ? '✅ זיהוי מדויק' : data.confidence === 'medium' ? '⚠️ בדוק את הפרטים' : '❓ רמת ודאות נמוכה';
     resultEl.innerHTML = `<div style="padding:14px;background:rgba(45,122,79,0.08);border-radius:10px;font-size:13px;text-align:center;color:var(--green)">
       🤖 החשבונית נקראה בהצלחה! ${conf}<br>
       <span style="font-weight:700">₪${data.amount}</span> — ${esc(data.vendor || '')} — ${esc(data.category || '')}
+      <br><span style="font-size:11px;color:var(--text-muted)">📎 ${esc(file.name)} — החשבונית תישמר עם ההוצאה</span>
     </div>`;
     resultEl.style.display = 'block';
     toast('חשבונית נקראה בהצלחה!', 'ok');
@@ -3642,15 +3652,25 @@ async function saveExpense() {
   if (!date) { toast('נא לבחור תאריך', 'err'); return; }
 
   try {
-    await supa.insert('expenses', {
+    const expenseData = {
       user_id: state.user.id,
       amount,
       description: vendor,
       vendor: vendor.split('—')[0]?.trim() || vendor,
       category,
       expense_date: date,
-    });
-    toast('הוצאה נשמרה!', 'ok');
+    };
+
+    // Attach invoice if uploaded
+    if (pendingInvoice) {
+      expenseData.invoice_data = pendingInvoice.base64;
+      expenseData.invoice_type = pendingInvoice.type;
+      expenseData.invoice_filename = pendingInvoice.filename;
+    }
+
+    await supa.insert('expenses', expenseData);
+    toast(pendingInvoice ? 'הוצאה + חשבונית נשמרו!' : 'הוצאה נשמרה!', 'ok');
+    pendingInvoice = null;
     toggleAddExpense();
     renderExpenses();
   } catch(e) {
@@ -3665,6 +3685,23 @@ async function deleteExpense(id) {
     toast('נמחק', 'ok');
     renderExpenses();
   } catch(e) { toast('שגיאה: ' + e.message, 'err'); }
+}
+
+async function viewInvoice(id) {
+  try {
+    const results = await supa.select('expenses', `id=eq.${id}`);
+    const exp = results?.[0];
+    if (!exp || !exp.invoice_data) { toast('אין חשבונית מצורפת', 'err'); return; }
+    
+    const type = exp.invoice_type || 'application/pdf';
+    const binary = atob(exp.invoice_data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    toast('החשבונית נפתחה בחלון חדש', 'ok');
+  } catch(e) { toast('שגיאה בפתיחת חשבונית: ' + e.message, 'err'); }
 }
 
 let expChartMonths = 1;
@@ -3683,10 +3720,15 @@ function switchExpPeriod(period) {
 
 function switchExpTab(tab) {
   expTab = tab;
-  document.getElementById('exp-show-expenses').style.borderWidth = tab === 'expenses' ? '3px' : '2px';
-  document.getElementById('exp-show-expenses').style.background = tab === 'expenses' ? 'rgba(180,60,60,0.08)' : 'rgba(180,60,60,0.04)';
-  document.getElementById('exp-show-income').style.borderWidth = tab === 'income' ? '3px' : '2px';
-  document.getElementById('exp-show-income').style.background = tab === 'income' ? 'rgba(45,122,79,0.08)' : 'rgba(45,122,79,0.04)';
+  const tabs = {expenses: 'exp-show-expenses', income: 'exp-show-income', invoices: 'exp-show-invoices'};
+  Object.entries(tabs).forEach(([key, id]) => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.style.borderWidth = key === tab ? '3px' : '2px';
+      const colors = {expenses: '180,60,60', income: '45,122,79', invoices: '196,133,59'};
+      btn.style.background = key === tab ? `rgba(${colors[key]},0.08)` : `rgba(${colors[key]},0.04)`;
+    }
+  });
   renderExpenses();
 }
 
@@ -3774,6 +3816,40 @@ async function renderExpenses() {
     return;
   }
 
+  if (expTab === 'invoices') {
+    // ===== INVOICES VIEW =====
+    const withInvoices = (expenses || []).filter(e => e.invoice_filename);
+    if (withInvoices.length === 0) {
+      listEl.innerHTML = '<div style="text-align:center;padding:50px;color:var(--text-muted)"><div style="font-size:36px;margin-bottom:12px">📎</div><p>אין חשבוניות שהועלו עדיין.<br>העלה חשבונית דרך "+ הוצאה חדשה".</p></div>';
+      return;
+    }
+    let html = `<div style="margin-bottom:12px"><h3 style="font-size:17px;font-weight:700;color:var(--caramel)">📎 ריכוז חשבוניות (${withInvoices.length})</h3></div>`;
+    withInvoices.forEach((e, i) => {
+      const date = e.expense_date ? new Date(e.expense_date).toLocaleDateString('he-IL') : '';
+      const emoji = EXPENSE_CATEGORIES[e.category] || '📌';
+      const isImg = (e.invoice_type || '').startsWith('image/');
+      html += `<div style="background:var(--surface);border:1px solid rgba(196,133,59,0.2);border-radius:14px;padding:16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(107,66,38,0.04)">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,rgba(196,133,59,0.1),rgba(196,133,59,0.05));display:flex;align-items:center;justify-content:center;font-size:22px">${isImg ? '🖼️' : '📄'}</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--brown)">${esc(e.description || e.vendor || 'ללא תיאור')}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:3px;display:flex;gap:8px;align-items:center">
+              <span>${date}</span>
+              <span>${emoji} ${esc(e.category || '')}</span>
+              <span style="font-weight:700;color:var(--red)">₪${(e.amount||0).toLocaleString()}</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">📎 ${esc(e.invoice_filename || 'חשבונית')}</div>
+          </div>
+        </div>
+        <button onclick="viewInvoice('${e.id}')" style="background:var(--caramel);color:white;border:none;padding:10px 18px;border-radius:10px;font:600 13px Heebo;cursor:pointer;transition:all 0.2s;white-space:nowrap" onmouseover="this.style.background='var(--brown)'" onmouseout="this.style.background='var(--caramel)'">
+          👁️ צפה
+        </button>
+      </div>`;
+    });
+    listEl.innerHTML = html;
+    return;
+  }
+
   // ===== EXPENSES VIEW =====
   if (filteredExp.length === 0) {
     listEl.innerHTML = `<div style="text-align:center;padding:50px;color:var(--text-muted)"><div style="font-size:36px;margin-bottom:12px">📊</div><p>אין הוצאות ${expPeriod === 'month' ? 'החודש' : 'בתקופה זו'}.<br>לחץ "+ הוצאה חדשה" להוסיף.</p></div>`;
@@ -3815,7 +3891,7 @@ async function renderExpenses() {
           <div style="width:30px;height:30px;border-radius:8px;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--brown)">${counter}</div>
           <div>
             <div style="font-size:14px;font-weight:600;color:var(--brown)">${esc(e.description || e.vendor || 'ללא תיאור')}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${date}${e.invoice_filename ? ' • 📎 חשבונית' : ''}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${date}${e.invoice_filename ? ` • <a href="#" onclick="event.preventDefault();event.stopPropagation();viewInvoice('${e.id}')" style="color:var(--caramel);font-weight:600;text-decoration:none">📎 צפה בחשבונית</a>` : ''}</div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
