@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>⚡ UMI</title>
+<title>UMI</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -481,8 +481,8 @@
 <div id="screen-auth" class="screen active">
   <div class="auth-wrap">
     <div style="text-align:center;margin-bottom:32px">
-      <div class="setup-icon">⚡</div>
-      <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px"><span class="highlight">U</span>M<span class="highlight">I</span></span></div>
+      
+      <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px;color:var(--brown)">UMI</span></div>
       <div class="setup-sub">מכונת הרעיונות לתוכן ויראלי לכל עסק</div>
     </div>
     <div class="auth-card">
@@ -520,7 +520,7 @@
 <div id="screen-plans" class="screen">
   <div class="plans-wrap">
     <div class="plans-header">
-      <div style="font-size:48px;margin-bottom:8px">⚡</div>
+      
       <h1>בחר את התוכנית שלך</h1>
       <p>התחל בחינם, שדרג כשתרצה</p>
     </div>
@@ -588,8 +588,8 @@
 <!-- ========== SETUP (API Keys) ========== -->
 <div id="screen-setup" class="screen">
   <div class="setup-wrap">
-    <div class="setup-icon">⚡</div>
-    <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px">UMI</span></div>
+    
+    <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px;color:var(--brown)">UMI</span></div>
     <div class="setup-sub">מכונת הרעיונות שתעזור לך ליצור תוכן ויראלי לכל עסק — ב-3 צעדים פשוטים</div>
     <div class="setup-card">
       <label class="field-label">RapidAPI Key (TikTok Scraper)</label>
@@ -605,9 +605,9 @@
 <!-- ========== HOME ========== -->
 <div id="screen-home" class="screen">
   <div class="topbar">
-    <div class="topbar-inner">
-      <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> <span style="direction:ltr;display:inline-block;font-size:22px;letter-spacing:-1px;font-weight:900"><span style="color:var(--caramel)">U</span>M<span style="color:var(--caramel)">I</span></span> <span id="plan-badge" style="font-size:10px;background:var(--caramel);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px"></span></div>
-      <div class="topbar-actions">
+    <div class="topbar-inner" style="justify-content:center;position:relative">
+      <div class="topbar-logo" onclick="showScreen('home')" style="justify-content:center"><span style="direction:ltr;display:inline-block;font-size:26px;letter-spacing:-1px;font-weight:900;color:var(--brown)">UMI</span> <span id="plan-badge" style="font-size:10px;background:var(--caramel);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px"></span></div>
+      <div class="topbar-actions" style="position:absolute;left:0;top:50%;transform:translateY(-50%)">
         <button class="btn-secondary" onclick="showScreen('history')">📂</button>
         <button class="btn-secondary" onclick="showScreen('plans')" id="btn-upgrade" style="display:none">⬆️ שדרג</button>
         <button class="btn-secondary" onclick="showScreen('admin')" id="btn-admin-home" style="display:none">🛠️</button>
@@ -672,7 +672,7 @@
 <!-- ========== SEARCH ========== -->
 <div id="screen-search" class="screen">
   <div class="topbar"><div class="topbar-inner">
-    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> <span id="search-title-bar"></span></div>
+    <div class="topbar-logo" onclick="showScreen('home')"><span id="search-title-bar"></span></div>
     <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
   </div></div>
   <div class="page"><div class="section">
@@ -721,7 +721,7 @@
 <!-- ========== SCRIPTS ========== -->
 <div id="screen-scripts" class="screen">
   <div class="topbar"><div class="topbar-inner">
-    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> <span id="scripts-title-bar"></span></div>
+    <div class="topbar-logo" onclick="showScreen('home')"><span id="scripts-title-bar"></span></div>
     <div class="topbar-actions">
       <button class="btn-secondary" onclick="showScreen('search')">← חזור</button>
       <button class="btn-secondary" onclick="showScreen('home')">בית</button>
@@ -775,7 +775,7 @@
 <!-- ========== HISTORY ========== -->
 <div id="screen-history" class="screen">
   <div class="topbar"><div class="topbar-inner">
-    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> היסטוריה</div>
+    <div class="topbar-logo" onclick="showScreen('home')">היסטוריה</div>
     <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
   </div></div>
   <div class="page"><div class="section">
@@ -791,7 +791,7 @@
 <!-- ========== TRENDS ========== -->
 <div id="screen-trends" class="screen">
   <div class="topbar"><div class="topbar-inner">
-    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> טרנדים חמים</div>
+    <div class="topbar-logo" onclick="showScreen('home')">טרנדים חמים</div>
     <div class="topbar-actions">
       <button class="btn-secondary" onclick="refreshTrends(true)">🔄 רענן</button>
       <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
@@ -829,7 +829,7 @@
 <!-- ========== CLIENTS ========== -->
 <div id="screen-clients" class="screen">
   <div class="topbar"><div class="topbar-inner">
-    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> הלקוחות שלי</div>
+    <div class="topbar-logo" onclick="showScreen('home')">הלקוחות שלי</div>
     <div class="topbar-actions">
       <button class="btn-primary" style="padding:10px 20px;font-size:13px;border-radius:12px" onclick="toggleAddClient()">+ לקוח חדש</button>
       <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
@@ -868,7 +868,7 @@
 <!-- ========== PROFILE ========== -->
 <div id="screen-profile" class="screen">
   <div class="topbar"><div class="topbar-inner">
-    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> הפרופיל שלי</div>
+    <div class="topbar-logo" onclick="showScreen('home')">הפרופיל שלי</div>
     <button class="btn-secondary" onclick="showScreen('quotes')">← חזור</button>
   </div></div>
   <div class="page"><div class="section">
@@ -912,7 +912,7 @@
 <!-- ========== QUOTES ========== -->
 <div id="screen-quotes" class="screen">
   <div class="topbar"><div class="topbar-inner">
-    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> הצעות מחיר</div>
+    <div class="topbar-logo" onclick="showScreen('home')">הצעות מחיר</div>
     <div class="topbar-actions">
       <button class="btn-secondary" onclick="showScreen('profile')">⚙️ הפרופיל שלי</button>
       <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
@@ -955,7 +955,7 @@
 <!-- ========== EXPENSES ========== -->
 <div id="screen-expenses" class="screen">
   <div class="topbar"><div class="topbar-inner">
-    <div class="topbar-logo" onclick="showScreen('home')"><span class="bolt">⚡</span> הוצאות והכנסות</div>
+    <div class="topbar-logo" onclick="showScreen('home')">הוצאות והכנסות</div>
     <div class="topbar-actions">
       <button class="btn-primary" style="padding:10px 20px;font-size:13px;border-radius:12px" onclick="toggleAddExpense()">+ הוצאה חדשה</button>
       <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
@@ -1065,7 +1065,7 @@
 <!-- ========== ADMIN DASHBOARD ========== -->
 <div id="screen-admin" class="screen">
   <div class="topbar admin-topbar"><div class="topbar-inner">
-    <div class="topbar-logo"><span class="bolt">⚡</span> <span class="admin-badge">ADMIN</span> <span style="direction:ltr;display:inline-block;font-size:22px;letter-spacing:-1px;font-weight:900"><span style="color:var(--caramel-light)">U</span>M<span style="color:var(--caramel-light)">I</span></span></div>
+    <div class="topbar-logo" style="justify-content:center;width:100%"><span class="admin-badge">ADMIN</span> <span style="direction:ltr;display:inline-block;font-size:24px;letter-spacing:-1px;font-weight:900;color:var(--cream)">UMI</span></div>
     <div class="topbar-actions">
       <button class="btn-secondary" onclick="adminLogout()">🚪 התנתק</button>
     </div>
@@ -2100,7 +2100,7 @@ function exportCalendarPDF() {
 </div>
 <style>.no-print{display:block}@media print{.no-print{display:none!important}}</style>
 <div class="header">
-  <div class="logo"><span style="direction:ltr;display:inline-block">⚡ UMI</span></div>
+  <div class="logo"><span style="direction:ltr;display:inline-block">UMI</span></div>
   <h1>📅 לוח תוכן שבועי — ${esc(bizName)}</h1>
   <p>${esc(industry)} | הופק בתאריך: ${date}</p>
 </div>
@@ -2123,7 +2123,7 @@ function exportCalendarPDF() {
     html += '</div>';
   });
 
-  html += `</div><div class="footer">⚡ UMI — לוח תוכן שבועי | ${esc(bizName)} | ${date}</div></body></html>`;
+  html += `</div><div class="footer">UMI — לוח תוכן שבועי | ${esc(bizName)} | ${date}</div></body></html>`;
 
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
