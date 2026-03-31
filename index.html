@@ -976,10 +976,22 @@
     <!-- Summary Cards -->
     <div class="summary-grid" id="expenses-summary"></div>
 
-    <!-- Monthly Chart -->
-    <div class="profile-section" id="expenses-chart-section" style="margin-bottom:24px">
-      <h3>📈 גרף חודשי</h3>
+    <!-- Chart with period toggle -->
+    <div class="profile-section" style="margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3>📈 גרף</h3>
+        <div style="display:flex;gap:6px">
+          <button id="chart-6m" class="btn-secondary" style="padding:6px 14px;font-size:12px;background:var(--brown);color:white" onclick="switchChartPeriod(6)">חודשי</button>
+          <button id="chart-12m" class="btn-secondary" style="padding:6px 14px;font-size:12px" onclick="switchChartPeriod(12)">חצי שנתי</button>
+        </div>
+      </div>
       <div id="expenses-chart" style="height:200px;position:relative"></div>
+    </div>
+
+    <!-- View tabs: list vs categories -->
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button id="exp-tab-list" class="btn-secondary" style="padding:8px 18px;font-size:13px;background:var(--brown);color:white" onclick="switchExpView('list')">📋 רשימה</button>
+      <button id="exp-tab-cat" class="btn-secondary" style="padding:8px 18px;font-size:13px" onclick="switchExpView('category')">📂 לפי קטגוריה</button>
     </div>
 
     <!-- Add Expense Form (hidden) -->
@@ -3656,11 +3668,31 @@ async function deleteExpense(id) {
   } catch(e) { toast('שגיאה: ' + e.message, 'err'); }
 }
 
+let expChartMonths = 6;
+let expViewMode = 'list';
+
+function switchChartPeriod(months) {
+  expChartMonths = months;
+  document.getElementById('chart-6m').style.background = months === 6 ? 'var(--brown)' : '';
+  document.getElementById('chart-6m').style.color = months === 6 ? 'white' : '';
+  document.getElementById('chart-12m').style.background = months === 12 ? 'var(--brown)' : '';
+  document.getElementById('chart-12m').style.color = months === 12 ? 'white' : '';
+  renderExpenses();
+}
+
+function switchExpView(mode) {
+  expViewMode = mode;
+  document.getElementById('exp-tab-list').style.background = mode === 'list' ? 'var(--brown)' : '';
+  document.getElementById('exp-tab-list').style.color = mode === 'list' ? 'white' : '';
+  document.getElementById('exp-tab-cat').style.background = mode === 'category' ? 'var(--brown)' : '';
+  document.getElementById('exp-tab-cat').style.color = mode === 'category' ? 'white' : '';
+  renderExpenses();
+}
+
 async function renderExpenses() {
   let expenses = [];
   try { expenses = await supa.select('expenses', `user_id=eq.${state.user.id}&order=expense_date.desc`); } catch(e) {}
 
-  // Get income from clients
   const clients = getClients();
   const now = new Date();
   const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
@@ -3668,23 +3700,22 @@ async function renderExpenses() {
     const pm = c.payments?.find(p => p.month === currentMonth && p.paid);
     return sum + (pm ? c.monthlyAmount : 0);
   }, 0);
-  const totalIncome = clients.reduce((sum, c) => sum + c.payments.filter(p => p.paid).length * c.monthlyAmount, 0);
 
-  // Current month expenses
   const monthExpenses = (expenses || []).filter(e => e.expense_date?.startsWith(currentMonth));
   const monthExpTotal = monthExpenses.reduce((s, e) => s + (e.amount || 0), 0);
   const totalExpenses = (expenses || []).reduce((s, e) => s + (e.amount || 0), 0);
+  const totalIncome = clients.reduce((sum, c) => sum + c.payments.filter(p => p.paid).length * c.monthlyAmount, 0);
   const monthProfit = monthlyIncome - monthExpTotal;
 
-  // Summary
+  // Summary cards
   document.getElementById('expenses-summary').innerHTML = `
     <div class="summary-card"><div class="summary-num" style="color:var(--green)">₪${monthlyIncome.toLocaleString()}</div><div class="summary-label">הכנסות החודש</div></div>
     <div class="summary-card"><div class="summary-num" style="color:var(--red)">₪${monthExpTotal.toLocaleString()}</div><div class="summary-label">הוצאות החודש</div></div>
     <div class="summary-card"><div class="summary-num" style="color:${monthProfit >= 0 ? 'var(--caramel)' : 'var(--red)'}">₪${monthProfit.toLocaleString()}</div><div class="summary-label">רווח החודש</div></div>
-    <div class="summary-card"><div class="summary-num" style="color:var(--brown)">${(expenses||[]).length}</div><div class="summary-label">סה"כ הוצאות</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:var(--brown)">${(expenses||[]).length}</div><div class="summary-label">סה"כ מסמכים</div></div>
   `;
 
-  // Monthly chart (last 6 months)
+  // Chart
   renderExpensesChart(expenses || [], clients);
 
   // Expenses list
@@ -3694,50 +3725,101 @@ async function renderExpenses() {
     return;
   }
 
-  // Group by month
-  const byMonth = {};
-  expenses.forEach(e => {
-    const month = e.expense_date?.slice(0, 7) || 'unknown';
-    if (!byMonth[month]) byMonth[month] = [];
-    byMonth[month].push(e);
-  });
-
   let html = '';
-  Object.keys(byMonth).sort().reverse().forEach(month => {
-    const items = byMonth[month];
-    const monthTotal = items.reduce((s, e) => s + (e.amount || 0), 0);
-    const monthLabel = new Date(month + '-01').toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+  let counter = 1;
 
-    html += `<div style="margin-bottom:24px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="font-size:16px;font-weight:700;color:var(--brown)">${monthLabel}</h3>
-        <span style="font-size:15px;font-weight:800;color:var(--red)">₪${monthTotal.toLocaleString()}</span>
-      </div>`;
+  if (expViewMode === 'category') {
+    // ===== GROUP BY CATEGORY =====
+    const byCategory = {};
+    expenses.forEach(e => {
+      const cat = e.category || 'אחר';
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(e);
+    });
 
-    items.forEach(e => {
-      const emoji = EXPENSE_CATEGORIES[e.category] || '📌';
-      const date = e.expense_date ? new Date(e.expense_date).toLocaleDateString('he-IL') : '';
-      html += `<div class="client-card" style="margin-bottom:10px;padding:18px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:38px;height:38px;border-radius:10px;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:18px">${emoji}</div>
-            <div>
-              <div style="font-size:14px;font-weight:700;color:var(--brown)">${esc(e.description || e.vendor || 'ללא תיאור')}</div>
-              <div style="font-size:12px;color:var(--text-muted);display:flex;gap:8px;margin-top:2px">
-                <span>${date}</span>
-                <span style="background:rgba(196,133,59,0.1);padding:1px 8px;border-radius:4px">${esc(e.category || 'אחר')}</span>
+    Object.keys(byCategory).sort().forEach(cat => {
+      const items = byCategory[cat];
+      const catTotal = items.reduce((s, e) => s + (e.amount || 0), 0);
+      const emoji = EXPENSE_CATEGORIES[cat] || '📌';
+
+      html += `<div style="margin-bottom:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:12px 16px;background:var(--cream);border-radius:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:22px">${emoji}</span>
+            <h3 style="font-size:16px;font-weight:700;color:var(--brown)">${esc(cat)}</h3>
+            <span style="font-size:13px;color:var(--text-muted)">(${items.length} מסמכים)</span>
+          </div>
+          <span style="font-size:16px;font-weight:800;color:var(--red)">₪${catTotal.toLocaleString()}</span>
+        </div>`;
+
+      items.forEach(e => {
+        const date = e.expense_date ? new Date(e.expense_date).toLocaleDateString('he-IL') : '';
+        html += `<div class="client-card" style="margin-bottom:8px;padding:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:32px;height:32px;border-radius:8px;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--brown)">${counter}</div>
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--brown)">${esc(e.description || e.vendor || 'ללא תיאור')}</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${date}</div>
               </div>
             </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:16px;font-weight:800;color:var(--red)">₪${(e.amount||0).toLocaleString()}</span>
+              <button class="btn-danger-ghost" style="padding:5px 8px;font-size:12px" onclick="deleteExpense('${e.id}')">🗑️</button>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:17px;font-weight:800;color:var(--red)">₪${(e.amount||0).toLocaleString()}</span>
-            <button class="btn-danger-ghost" style="padding:6px 10px" onclick="deleteExpense('${e.id}')">🗑️</button>
-          </div>
-        </div>
-      </div>`;
+        </div>`;
+        counter++;
+      });
+      html += '</div>';
     });
-    html += '</div>';
-  });
+  } else {
+    // ===== LIST BY MONTH =====
+    const byMonth = {};
+    expenses.forEach(e => {
+      const month = e.expense_date?.slice(0, 7) || 'unknown';
+      if (!byMonth[month]) byMonth[month] = [];
+      byMonth[month].push(e);
+    });
+
+    Object.keys(byMonth).sort().reverse().forEach(month => {
+      const items = byMonth[month];
+      const monthTotal = items.reduce((s, e) => s + (e.amount || 0), 0);
+      const monthLabel = new Date(month + '-01').toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+
+      html += `<div style="margin-bottom:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="font-size:16px;font-weight:700;color:var(--brown)">${monthLabel}</h3>
+          <span style="font-size:15px;font-weight:800;color:var(--red)">₪${monthTotal.toLocaleString()}</span>
+        </div>`;
+
+      items.forEach(e => {
+        const emoji = EXPENSE_CATEGORIES[e.category] || '📌';
+        const date = e.expense_date ? new Date(e.expense_date).toLocaleDateString('he-IL') : '';
+        html += `<div class="client-card" style="margin-bottom:8px;padding:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:32px;height:32px;border-radius:8px;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--brown)">${counter}</div>
+              <div style="width:32px;height:32px;border-radius:8px;background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:16px">${emoji}</div>
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--brown)">${esc(e.description || e.vendor || 'ללא תיאור')}</div>
+                <div style="font-size:12px;color:var(--text-muted);display:flex;gap:8px;margin-top:2px">
+                  <span>${date}</span>
+                  <span style="background:rgba(196,133,59,0.1);padding:1px 8px;border-radius:4px">${esc(e.category || 'אחר')}</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:16px;font-weight:800;color:var(--red)">₪${(e.amount||0).toLocaleString()}</span>
+              <button class="btn-danger-ghost" style="padding:5px 8px;font-size:12px" onclick="deleteExpense('${e.id}')">🗑️</button>
+            </div>
+          </div>
+        </div>`;
+        counter++;
+      });
+      html += '</div>';
+    });
+  }
 
   listEl.innerHTML = html;
 }
@@ -3746,9 +3828,9 @@ function renderExpensesChart(expenses, clients) {
   const chartEl = document.getElementById('expenses-chart');
   const months = [];
   const now = new Date();
+  const numMonths = expChartMonths || 6;
 
-  // Last 6 months
-  for (let i = 5; i >= 0; i--) {
+  for (let i = numMonths - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const label = d.toLocaleDateString('he-IL', { month: 'short' });
@@ -3763,18 +3845,19 @@ function renderExpensesChart(expenses, clients) {
   }
 
   const maxVal = Math.max(...months.map(m => Math.max(m.expenses, m.income)), 1);
+  const barW = numMonths <= 6 ? 18 : 12;
 
   chartEl.innerHTML = `
-    <div style="display:flex;align-items:flex-end;justify-content:space-around;height:160px;padding:0 8px;gap:8px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-around;height:160px;padding:0 4px;gap:${numMonths <= 6 ? 8 : 4}px">
       ${months.map(m => {
         const incH = Math.round((m.income / maxVal) * 130);
         const expH = Math.round((m.expenses / maxVal) * 130);
-        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-          <div style="display:flex;gap:3px;align-items:flex-end;height:140px">
-            <div style="width:16px;background:var(--green);border-radius:4px 4px 0 0;height:${Math.max(incH, 2)}px;opacity:0.8" title="הכנסות: ₪${m.income}"></div>
-            <div style="width:16px;background:var(--red);border-radius:4px 4px 0 0;height:${Math.max(expH, 2)}px;opacity:0.8" title="הוצאות: ₪${m.expenses}"></div>
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0">
+          <div style="display:flex;gap:2px;align-items:flex-end;height:140px">
+            <div style="width:${barW}px;background:var(--green);border-radius:3px 3px 0 0;height:${Math.max(incH, 2)}px;opacity:0.8" title="הכנסות: ₪${m.income.toLocaleString()}"></div>
+            <div style="width:${barW}px;background:var(--red);border-radius:3px 3px 0 0;height:${Math.max(expH, 2)}px;opacity:0.8" title="הוצאות: ₪${m.expenses.toLocaleString()}"></div>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);font-weight:600">${m.label}</div>
+          <div style="font-size:${numMonths <= 6 ? 11 : 9}px;color:var(--text-muted);font-weight:600">${m.label}</div>
         </div>`;
       }).join('')}
     </div>
