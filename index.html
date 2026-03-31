@@ -2084,8 +2084,12 @@ function exportCalendarPDF() {
   .footer { text-align:center; margin-top:24px; font-size:11px; color:#A89482; border-top:1px solid #E8D5B7; padding-top:12px; }
   @media print { body { padding:20px; } .day { break-inside:avoid; } }
 </style>
-<script>window.onload = function() { setTimeout(function() { window.print(); }, 500); }<\/script>
+<script>window.onload = function() { setTimeout(function() { window.print(); }, 800); }<\/script>
 </head><body>
+<div style="text-align:center;margin-bottom:20px;print-display:none" class="no-print">
+  <button onclick="window.print()" style="background:#C4853B;color:white;border:none;padding:14px 40px;border-radius:10px;font-size:16px;font-weight:700;font-family:Heebo,sans-serif;cursor:pointer">📄 שמור כ-PDF</button>
+</div>
+<style>.no-print{display:block}@media print{.no-print{display:none!important}}</style>
 <div class="header">
   <div class="logo">⚡ VIRAL MACHINE</div>
   <h1>📅 לוח תוכן שבועי — ${esc(bizName)}</h1>
