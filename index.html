@@ -1550,12 +1550,21 @@ async function startSearch(industryId) {
 
     if (!hasCuratedCreators && cachedVideos && cachedVideos.length >= 5) {
       console.log(`Cache hit: ${cachedVideos.length} videos`);
-      state.videos = cachedVideos.map(v => ({
+      let allCached = cachedVideos.map(v => ({
         video_id: v.video_id, title: v.title || '', desc: v.description || '',
         play_count: v.play_count || 0, digg_count: v.digg_count || 0, duration: v.duration || 0,
         author: { unique_id: v.account_username }, eng: v.engagement || 0,
         heTitle: v.he_title || '', heSubtitle: v.he_subtitle || '', _ownerAccount: true, _cached: true,
       }));
+      // Filter out already seen
+      const seenKey = `vm_seen_${state.user?.id || 'anon'}_${industryId}`;
+      let seenIds = [];
+      try { seenIds = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch(e) {}
+      const unseen = allCached.filter(v => !seenIds.includes(v.video_id));
+      state.videos = unseen.length >= 3 ? unseen.slice(0, 25) : allCached.slice(0, 25);
+      const newSeen = [...seenIds, ...state.videos.map(v => v.video_id)];
+      try { localStorage.setItem(seenKey, JSON.stringify(newSeen.slice(-200))); } catch(e) {}
+      
       progBar.style.width = '100%';
       await sleep(300);
       loadEl.style.display = 'none';
@@ -1698,8 +1707,20 @@ async function startSearch(industryId) {
     textEl.textContent = '🧹 מסנן ומדרג תוצאות...';
     await sleep(200);
 
-    const { filtered } = smartFilter(allFoundVideos, 25, industryId);
-    state.videos = filtered;
+    const { filtered } = smartFilter(allFoundVideos, 50, industryId);
+    
+    // Filter out videos the user has already seen
+    const seenKey = `vm_seen_${state.user?.id || 'anon'}_${industryId}`;
+    let seenIds = [];
+    try { seenIds = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch(e) {}
+    const unseen = filtered.filter(v => !seenIds.includes(v.video_id));
+    
+    // If all videos were seen, reset and show all
+    state.videos = unseen.length >= 3 ? unseen.slice(0, 25) : filtered.slice(0, 25);
+    
+    // Mark these videos as seen
+    const newSeen = [...seenIds, ...state.videos.map(v => v.video_id)];
+    try { localStorage.setItem(seenKey, JSON.stringify(newSeen.slice(-200))); } catch(e) {} // keep last 200
 
     if (state.videos.length === 0) { toast('לא נמצאו סרטונים בתחום — נסה שוב או תחום אחר','err'); loadEl.style.display = 'none'; return; }
 
@@ -1859,7 +1880,7 @@ ${analysis}
 ORIGINAL VIDEO DATA:
 ${richSummaries}
 
-Based on the SPECIFIC patterns, formats, humor styles, and structures identified in the analysis above, create 6 short Hebrew comedy scripts (15-25 seconds each).
+Based on the SPECIFIC patterns, formats, humor styles, and structures identified in the analysis above, create 8 short Hebrew comedy scripts (15-25 seconds each).
 
 CRITICAL RULES:
 - Each script MUST mimic the EXACT style of the analyzed videos — same structure, same type of humor, same pacing
@@ -2046,27 +2067,29 @@ function exportCalendarPDF() {
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap');
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Heebo',sans-serif; background:#FDF6EC; color:#3B2415; padding:40px; }
-  .header { text-align:center; margin-bottom:40px; }
-  .header h1 { font-size:28px; color:#6B4226; margin-bottom:8px; }
-  .header p { font-size:14px; color:#7A6352; }
-  .logo { font-size:20px; font-weight:800; color:#C4853B; margin-bottom:16px; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px; }
-  .day { background:white; border-radius:14px; padding:20px; border:1px solid #E8D5B7; page-break-inside:avoid; }
-  .day-name { font-size:18px; font-weight:700; color:#6B4226; margin-bottom:14px; padding-bottom:8px; border-bottom:2px solid #E8D5B7; }
-  .slot { margin-bottom:14px; padding:12px; background:#FDF6EC; border-radius:10px; }
-  .slot-time { font-size:13px; color:#C4853B; font-weight:600; margin-bottom:4px; }
-  .slot-platforms { font-size:12px; color:#6B4226; font-weight:600; margin-bottom:6px; }
-  .slot-title { font-size:15px; font-weight:700; color:#3B2415; margin-bottom:4px; }
-  .slot-note { font-size:13px; color:#7A6352; line-height:1.6; }
-  .rest { text-align:center; padding:20px; color:#A89482; font-size:14px; }
-  .footer { text-align:center; margin-top:30px; font-size:12px; color:#A89482; }
+  body { font-family:'Heebo',sans-serif; background:white; color:#3B2415; padding:40px; }
+  .header { text-align:center; margin-bottom:40px; border-bottom:3px solid #C4853B; padding-bottom:24px; }
+  .header h1 { font-size:26px; color:#6B4226; margin-bottom:6px; }
+  .header p { font-size:13px; color:#7A6352; }
+  .logo { font-size:18px; font-weight:800; color:#C4853B; margin-bottom:12px; letter-spacing:2px; }
+  .grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; }
+  .day { background:#FDFAF5; border-radius:12px; padding:18px; border:1px solid #E8D5B7; page-break-inside:avoid; }
+  .day-name { font-size:16px; font-weight:700; color:#6B4226; margin-bottom:12px; padding-bottom:6px; border-bottom:2px solid #E8D5B7; }
+  .slot { margin-bottom:12px; padding:10px; background:white; border-radius:8px; border:1px solid #F0E2CE; }
+  .slot-time { font-size:12px; color:#C4853B; font-weight:600; margin-bottom:3px; }
+  .slot-platforms { font-size:11px; color:#6B4226; font-weight:600; margin-bottom:4px; }
+  .slot-title { font-size:14px; font-weight:700; color:#3B2415; margin-bottom:3px; }
+  .slot-note { font-size:12px; color:#7A6352; line-height:1.5; }
+  .rest { text-align:center; padding:16px; color:#A89482; font-size:13px; }
+  .footer { text-align:center; margin-top:24px; font-size:11px; color:#A89482; border-top:1px solid #E8D5B7; padding-top:12px; }
   @media print { body { padding:20px; } .day { break-inside:avoid; } }
-</style></head><body>
+</style>
+<script>window.onload = function() { setTimeout(function() { window.print(); }, 500); }<\/script>
+</head><body>
 <div class="header">
   <div class="logo">⚡ VIRAL MACHINE</div>
   <h1>📅 לוח תוכן שבועי — ${esc(bizName)}</h1>
-  <p>${esc(industry)} | ${date}</p>
+  <p>${esc(industry)} | הופק בתאריך: ${date}</p>
 </div>
 <div class="grid">`;
 
@@ -2087,20 +2110,12 @@ function exportCalendarPDF() {
     html += '</div>';
   });
 
-  html += `</div><div class="footer">נוצר ב-Viral Machine | ${date}</div></body></html>`;
+  html += `</div><div class="footer">⚡ Viral Machine — לוח תוכן שבועי | ${esc(bizName)} | ${date}</div></body></html>`;
 
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
-  const w = window.open(url, '_blank');
-  if (w) {
-    toast('הלוח נפתח בחלון חדש — לחץ Ctrl+P כדי לשמור כ-PDF', 'ok');
-  } else {
-    // Fallback: download as HTML
-    const a = document.createElement('a');
-    a.href = url; a.download = `לוח_תוכן_${bizName}_${date}.html`;
-    a.click();
-    toast('הלוח הורד — פתח אותו בדפדפן ולחץ Ctrl+P לשמור כ-PDF', 'ok');
-  }
+  window.open(url, '_blank');
+  toast('חלון ההדפסה ייפתח אוטומטית — שמור כ-PDF', 'ok');
 }
 
 function copyScript(i) {
