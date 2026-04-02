@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UMI</title>
+<title>YUMi</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -482,7 +482,7 @@
   <div class="auth-wrap">
     <div style="text-align:center;margin-bottom:32px">
       
-      <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px;color:var(--brown)">UMI</span></div>
+      <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px;color:var(--brown)">YUMi</span></div>
       <div class="setup-sub">מכונת הרעיונות לתוכן ויראלי לכל עסק</div>
     </div>
     <div class="auth-card">
@@ -589,7 +589,7 @@
 <div id="screen-setup" class="screen">
   <div class="setup-wrap">
     
-    <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px;color:var(--brown)">UMI</span></div>
+    <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px;color:var(--brown)">YUMi</span></div>
     <div class="setup-sub">מכונת הרעיונות שתעזור לך ליצור תוכן ויראלי לכל עסק — ב-3 צעדים פשוטים</div>
     <div class="setup-card">
       <label class="field-label">RapidAPI Key (TikTok Scraper)</label>
@@ -606,7 +606,7 @@
 <div id="screen-home" class="screen">
   <div class="topbar">
     <div class="topbar-inner" style="justify-content:center;position:relative">
-      <div class="topbar-logo" onclick="showScreen('home')" style="justify-content:center"><span style="direction:ltr;display:inline-block;font-size:26px;letter-spacing:-1px;font-weight:900;color:var(--brown)">UMI</span> <span id="plan-badge" style="font-size:10px;background:var(--caramel);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px"></span></div>
+      <div class="topbar-logo" onclick="showScreen('home')" style="justify-content:center"><span style="direction:ltr;display:inline-block;font-size:26px;letter-spacing:-1px;font-weight:900;color:var(--brown)">YUMi</span> <span id="plan-badge" style="font-size:10px;background:var(--caramel);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px"></span></div>
       <div class="topbar-actions" style="position:absolute;left:0;top:50%;transform:translateY(-50%)">
         <button class="btn-secondary" onclick="showScreen('history')">📂</button>
         <button class="btn-secondary" onclick="showScreen('plans')" id="btn-upgrade" style="display:none">⬆️ שדרג</button>
@@ -1048,7 +1048,7 @@
   <div class="setup-wrap" style="background:linear-gradient(180deg,#2a1a0e 0%,#1a1008 100%)">
     <div class="setup-icon">🔐</div>
     <div class="setup-title" style="color:var(--caramel-light)">ADMIN</div>
-    <div class="setup-sub" style="color:rgba(255,255,255,0.5)">כניסת מנהל — UMI</div>
+    <div class="setup-sub" style="color:rgba(255,255,255,0.5)">כניסת מנהל — YUMi</div>
     <div class="admin-login-card">
       <label class="field-label">אימייל</label>
       <input class="field-input" type="email" id="admin-email" placeholder="you@email.com">
@@ -1065,7 +1065,7 @@
 <!-- ========== ADMIN DASHBOARD ========== -->
 <div id="screen-admin" class="screen">
   <div class="topbar admin-topbar"><div class="topbar-inner">
-    <div class="topbar-logo" style="justify-content:center;width:100%"><span class="admin-badge">ADMIN</span> <span style="direction:ltr;display:inline-block;font-size:24px;letter-spacing:-1px;font-weight:900;color:var(--cream)">UMI</span></div>
+    <div class="topbar-logo" style="justify-content:center;width:100%"><span class="admin-badge">ADMIN</span> <span style="direction:ltr;display:inline-block;font-size:24px;letter-spacing:-1px;font-weight:900;color:var(--cream)">YUMi</span></div>
     <div class="topbar-actions">
       <button class="btn-secondary" onclick="adminLogout()">🚪 התנתק</button>
     </div>
@@ -2100,7 +2100,7 @@ function exportCalendarPDF() {
 </div>
 <style>.no-print{display:block}@media print{.no-print{display:none!important}}</style>
 <div class="header">
-  <div class="logo"><span style="direction:ltr;display:inline-block">UMI</span></div>
+  <div class="logo"><span style="direction:ltr;display:inline-block">YUMi</span></div>
   <h1>📅 לוח תוכן שבועי — ${esc(bizName)}</h1>
   <p>${esc(industry)} | הופק בתאריך: ${date}</p>
 </div>
@@ -2123,7 +2123,7 @@ function exportCalendarPDF() {
     html += '</div>';
   });
 
-  html += `</div><div class="footer">UMI — לוח תוכן שבועי | ${esc(bizName)} | ${date}</div></body></html>`;
+  html += `</div><div class="footer">YUMi — לוח תוכן שבועי | ${esc(bizName)} | ${date}</div></body></html>`;
 
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
