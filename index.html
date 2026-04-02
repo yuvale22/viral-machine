@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UMI</title>
+<title>YUMI</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -110,6 +110,13 @@
   .screen-heading h2 { font-size: 28px; font-weight: 800; margin-bottom: 8px; color: var(--brown-dark); }
   .screen-heading p { color: var(--text-secondary); font-size: 14px; font-weight: 300; }
   .divider { width: 60px; height: 3px; background: var(--sand); border-radius: 2px; margin: 0 auto 32px; }
+
+  
+  /* ========== DECORATIVE DOTS ========== */
+  .ind-card .deco-dot { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: var(--caramel-light); opacity: 0.4; }
+  .ind-card .deco-dot-1 { top: 12px; right: 12px; }
+  .ind-card .deco-dot-2 { top: 12px; left: 12px; }
+  .ind-card .deco-dot-3 { bottom: 12px; right: 12px; }
 
   /* ========== INDUSTRY GRID ========== */
   .industry-grid { display: flex; flex-wrap: nowrap; justify-content: center; gap: 10px; margin-top: 40px; }
@@ -481,8 +488,21 @@
 <div id="screen-auth" class="screen active">
   <div class="auth-wrap">
     <div style="text-align:center;margin-bottom:32px">
-      
-      <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px;color:var(--brown)">UMI</span></div>
+      <div class="sun-icon"><svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="28" cy="28" r="8" fill="var(--caramel)"/>
+<g stroke="var(--caramel)" stroke-width="2" stroke-linecap="round">
+<line x1="28" y1="4" x2="28" y2="12"/>
+<line x1="28" y1="44" x2="28" y2="52"/>
+<line x1="4" y1="28" x2="12" y2="28"/>
+<line x1="44" y1="28" x2="52" y2="28"/>
+<line x1="11" y1="11" x2="16.6" y2="16.6"/>
+<line x1="39.4" y1="39.4" x2="45" y2="45"/>
+<line x1="45" y1="11" x2="39.4" y2="16.6"/>
+<line x1="16.6" y1="39.4" x2="11" y2="45"/>
+</g>
+<circle cx="28" cy="28" r="5" fill="var(--caramel-light)" opacity="0.4"/>
+</svg></div>
+      <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px;color:var(--brown)">YUMI</span></div>
       <div class="setup-sub">מכונת הרעיונות לתוכן ויראלי לכל עסק</div>
     </div>
     <div class="auth-card">
@@ -520,7 +540,20 @@
 <div id="screen-plans" class="screen">
   <div class="plans-wrap">
     <div class="plans-header">
-      
+      <div class="sun-icon"><svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="28" cy="28" r="8" fill="var(--caramel)"/>
+<g stroke="var(--caramel)" stroke-width="2" stroke-linecap="round">
+<line x1="28" y1="4" x2="28" y2="12"/>
+<line x1="28" y1="44" x2="28" y2="52"/>
+<line x1="4" y1="28" x2="12" y2="28"/>
+<line x1="44" y1="28" x2="52" y2="28"/>
+<line x1="11" y1="11" x2="16.6" y2="16.6"/>
+<line x1="39.4" y1="39.4" x2="45" y2="45"/>
+<line x1="45" y1="11" x2="39.4" y2="16.6"/>
+<line x1="16.6" y1="39.4" x2="11" y2="45"/>
+</g>
+<circle cx="28" cy="28" r="5" fill="var(--caramel-light)" opacity="0.4"/>
+</svg></div>
       <h1>בחר את התוכנית שלך</h1>
       <p>התחל בחינם, שדרג כשתרצה</p>
     </div>
@@ -528,7 +561,7 @@
 
       <!-- FREE -->
       <div class="plan-card">
-        <div class="plan-emoji">🆓</div>
+        <div class="plan-emoji" style="font-size:28px;width:48px;height:48px;border:2px dashed var(--sand);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:var(--text-muted);font-family:Rubik;font-weight:800">F</div>
         <div class="plan-name">חינם</div>
         <div class="plan-price">₪0 <span>/ לנצח</span></div>
         <ul class="plan-features">
@@ -537,45 +570,41 @@
           <li class="disabled">תסריטים בעברית</li>
           <li class="disabled">לוח תוכן שבועי</li>
           <li class="disabled">ניהול לקוחות</li>
-          <li class="disabled">הצעות מחיר</li>
-          <li class="disabled">מעקב הוצאות והכנסות</li>
         </ul>
-        <button class="plan-btn plan-btn-outline" onclick="selectPlan('free')">התחל בחינם</button>
+        <button class="plan-btn plan-btn-outline" onclick="selectPlan('free')">בחר תוכנית</button>
       </div>
 
       <!-- BASIC -->
       <div class="plan-card popular">
         <div class="plan-badge">הכי פופולרי</div>
         <div class="plan-emoji">🚀</div>
-        <div class="plan-name">בייסיק</div>
-        <div class="plan-price">₪99 <span>/ חודש</span></div>
+        <div class="plan-name">בסיסי</div>
+        <div class="plan-price">₪149 <span>/ חודש</span></div>
         <ul class="plan-features">
-          <li>חיפוש עסק 1 ביום</li>
+          <li>חיפושים ללא הגבלה</li>
           <li>צפייה בסרטונים ויראליים</li>
-          <li>10 תסריטים ביום</li>
+          <li>תסריטים בעברית</li>
           <li>לוח תוכן שבועי</li>
           <li>ניהול לקוחות</li>
-          <li>הצעות מחיר</li>
-          <li>מעקב הוצאות והכנסות</li>
+          <li class="disabled">הצעות מחיר</li>
+          <li class="disabled">מעקב הוצאות והכנסות</li>
         </ul>
-        <button class="plan-btn plan-btn-primary" onclick="selectPlan('basic')">שדרג עכשיו ←</button>
+        <button class="plan-btn plan-btn-primary" onclick="selectPlan('basic')">בחר תוכנית</button>
       </div>
 
       <!-- PRO -->
       <div class="plan-card">
-        <div class="plan-emoji">💎</div>
-        <div class="plan-name">פרו</div>
-        <div class="plan-price">₪199 <span>/ חודש</span></div>
+        <div class="plan-emoji">👑</div>
+        <div class="plan-name">מקצועי</div>
+        <div class="plan-price">₪249 <span>/ חודש</span></div>
         <ul class="plan-features">
-          <li>חיפושים ללא הגבלה</li>
-          <li>צפייה בסרטונים ויראליים</li>
-          <li>תסריטים ללא הגבלה</li>
-          <li>לוח תוכן שבועי</li>
-          <li>ניהול לקוחות</li>
-          <li>הצעות מחיר ופקטורות</li>
+          <li>כל התכונות של בסיסי</li>
+          <li>הצעות מחיר מקצועיות</li>
           <li>מעקב הוצאות והכנסות</li>
+          <li>דוחות חודשיים</li>
+          <li>תמיכה מועדפת</li>
         </ul>
-        <button class="plan-btn plan-btn-outline" onclick="selectPlan('pro')">שדרג לפרו ←</button>
+        <button class="plan-btn plan-btn-outline" onclick="selectPlan('pro')">בחר תוכנית</button>
       </div>
 
     </div>
@@ -589,7 +618,7 @@
 <div id="screen-setup" class="screen">
   <div class="setup-wrap">
     
-    <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px;color:var(--brown)">UMI</span></div>
+    <div class="setup-title"><span style="direction:ltr;display:inline-block;letter-spacing:-2px;color:var(--brown)">YUMI</span></div>
     <div class="setup-sub">מכונת הרעיונות שתעזור לך ליצור תוכן ויראלי לכל עסק — ב-3 צעדים פשוטים</div>
     <div class="setup-card">
       <label class="field-label">RapidAPI Key (TikTok Scraper)</label>
@@ -606,7 +635,7 @@
 <div id="screen-home" class="screen">
   <div class="topbar">
     <div class="topbar-inner" style="justify-content:center;position:relative">
-      <div class="topbar-logo" onclick="showScreen('home')" style="justify-content:center"><span style="direction:ltr;display:inline-block;font-size:26px;letter-spacing:-1px;font-weight:900;color:var(--brown)">UMI</span> <span id="plan-badge" style="font-size:10px;background:var(--caramel);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px"></span></div>
+      <div class="topbar-logo" onclick="showScreen('home')" style="justify-content:center"><span style="direction:ltr;display:inline-block;font-size:26px;letter-spacing:-1px;font-weight:900;color:var(--brown)">YUMI</span> <span id="plan-badge" style="font-size:10px;background:var(--caramel);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px"></span></div>
       <div class="topbar-actions" style="position:absolute;left:0;top:50%;transform:translateY(-50%)">
         <button class="btn-secondary" onclick="showScreen('history')">📂</button>
         <button class="btn-secondary" onclick="showScreen('plans')" id="btn-upgrade" style="display:none">⬆️ שדרג</button>
@@ -1048,7 +1077,7 @@
   <div class="setup-wrap" style="background:linear-gradient(180deg,#2a1a0e 0%,#1a1008 100%)">
     <div class="setup-icon">🔐</div>
     <div class="setup-title" style="color:var(--caramel-light)">ADMIN</div>
-    <div class="setup-sub" style="color:rgba(255,255,255,0.5)">כניסת מנהל — UMI</div>
+    <div class="setup-sub" style="color:rgba(255,255,255,0.5)">כניסת מנהל — YUMI</div>
     <div class="admin-login-card">
       <label class="field-label">אימייל</label>
       <input class="field-input" type="email" id="admin-email" placeholder="you@email.com">
@@ -1065,7 +1094,7 @@
 <!-- ========== ADMIN DASHBOARD ========== -->
 <div id="screen-admin" class="screen">
   <div class="topbar admin-topbar"><div class="topbar-inner">
-    <div class="topbar-logo" style="justify-content:center;width:100%"><span class="admin-badge">ADMIN</span> <span style="direction:ltr;display:inline-block;font-size:24px;letter-spacing:-1px;font-weight:900;color:var(--cream)">UMI</span></div>
+    <div class="topbar-logo" style="justify-content:center;width:100%"><span class="admin-badge">ADMIN</span> <span style="direction:ltr;display:inline-block;font-size:24px;letter-spacing:-1px;font-weight:900;color:var(--cream)">YUMI</span></div>
     <div class="topbar-actions">
       <button class="btn-secondary" onclick="adminLogout()">🚪 התנתק</button>
     </div>
@@ -1130,7 +1159,7 @@
               <option value="restaurant">🍕 מסעדה / קפה</option>
               <option value="salon">✂️ מספרה / סלון</option>
               <option value="gym">💪 חדר כושר</option>
-              <option value="beauty">💅 יופי / ציפורניים</option>
+              <option value="graphicdesign">🎨 מעצב גרפי</option>
               <option value="bakery">🥐 מאפייה</option>
               <option value="realestate">🏠 נדל"ן</option>
               <option value="law">⚖️ עורך דין</option>
@@ -1221,7 +1250,7 @@ let state = {
 
 const PLAN_LIMITS = {
   free:  { searches: 3, scripts: 0, calendar: false, clients: false, quotes: false, trends: false, expenses: false },
-  basic: { searches: 1, scripts: 10, calendar: true, clients: true, quotes: true, trends: true, expenses: true },
+  basic: { searches: 999, scripts: 999, calendar: true, clients: true, quotes: false, trends: true, expenses: false },
   pro:   { searches: 999, scripts: 999, calendar: true, clients: true, quotes: true, trends: true, expenses: true },
 };
 
@@ -1229,30 +1258,30 @@ const PLAN_LIMITS = {
 const SUPER_ADMIN_EMAIL = 'yuval.elgisser@gmail.com';
 
 const INDUSTRIES = [
-  { id:'restaurant', label:'מסעדה / ג׳אנק פוד', emoji:'🍕', queries:[
+  { id:'restaurant', label:'פיצריה / דום טופ', emoji:'🍕', queries:[
     'POV restaurant owner skit',
     'restaurant staff behind the scenes',
     'waiter POV funny skit',
     'restaurant kitchen team comedy'
   ], queriesHe:['מסעדה מאחורי הקלעים','מסעדה סיטואציות צוות','מלצר POV סקיט']},
-  { id:'salon', label:'ספר גברים ונשים', emoji:'✂️', queries:[
+  { id:'salon', label:'ספר גברים וזקנים', emoji:'✂️', queries:[
     'POV hairstylist salon skit',
     'salon owner behind the scenes',
     'barber POV client comedy',
     'salon staff funny situations'
   ], queriesHe:['מספרה מאחורי הקלעים','ספר סיטואציות לקוח','סלון צוות סקיט']},
-  { id:'gym', label:'חדר כושר', emoji:'💪', queries:[
+  { id:'gym', label:'מדריך כושר', emoji:'💪', queries:[
     'gym owner POV skit',
     'personal trainer client skit',
     'gym staff behind scenes funny',
     'gym employee POV comedy'
   ], queriesHe:['חדר כושר מאחורי הקלעים','מאמן כושר סיטואציות','חדר כושר צוות סקיט']},
-  { id:'beauty', label:'מניקוריסטית', emoji:'💅', queries:[
-    'nail tech POV client skit',
-    'esthetician behind the scenes',
-    'beauty salon owner comedy',
-    'nail salon staff funny'
-  ], queriesHe:['קוסמטיקאית סיטואציות','סלון יופי מאחורי הקלעים','ציפורניים סקיט לקוחה']},
+  { id:'graphicdesign', label:'מעצב גרפי', emoji:'🎨', queries:[
+    'graphic designer POV client skit',
+    'designer client requests funny',
+    'freelance designer comedy skit',
+    'design agency behind the scenes'
+  ], queriesHe:['מעצב גרפי סיטואציות','מעצב לקוחות מצחיק','עיצוב גרפי POV']},
   { id:'bakery', label:'מאפייה', emoji:'🥐', queries:[
     'bakery owner POV skit',
     'baker behind the scenes',
@@ -1307,7 +1336,7 @@ const INDUSTRY_KEYWORDS = {
   restaurant: ['restaurant','waiter','chef','menu','kitchen','order','server','cook','מסעדה','מלצר','שף','מטבח','הזמנה','שולחן','תפריט','פיצה','מנה','העסק שלנו','הצוות','מאחורי הקלעים','pov','skit','סיטואציה'],
   salon: ['salon','barber','hair','haircut','stylist','color','מספרה','סלון','ספר','תספורת','צבע','לקוחה','שיער','העסק שלנו','מאחורי הקלעים'],
   gym: ['gym','trainer','workout','fitness','exercise','חדר כושר','מאמן','אימון','כושר','מתאמן','העסק שלנו'],
-  beauty: ['nail','beauty','lash','wax','esthetician','ציפורניים','יופי','קוסמטיקאית','לק','טיפול','העסק שלנו'],
+  graphicdesign: ['design','designer','graphic','logo','branding','עיצוב','מעצב','גרפי','לוגו','מיתוג','פרילנסר','canva','פוטושופ','אילוסטרייטור','העסק שלנו'],
   bakery: ['bakery','cake','bread','dough','bake','מאפייה','עוגה','לחם','בצק','אפייה','קונדיטור','העסק שלנו'],
   realestate: ['realtor','house','apartment','showing','buyer','נדלן','דירה','בית','מתווך','סוכן','נכס','העסק שלנו'],
   law: ['lawyer','attorney','court','legal','עורך דין','משפט','לקוח','תיק','משרד','העסק שלנו'],
@@ -1453,6 +1482,7 @@ function updateHistoryCount() {
 function buildGrid() {
   document.getElementById('industry-grid').innerHTML = INDUSTRIES.map((ind, i) =>
     `<button class="ind-card stagger" style="animation-delay:${i*45}ms" onclick="startSearch('${ind.id}')">
+      <span class="deco-dot deco-dot-1"></span><span class="deco-dot deco-dot-2"></span><span class="deco-dot deco-dot-3"></span>
       <span class="ind-emoji">${ind.emoji}</span><span>${ind.label}</span>
     </button>`
   ).join('');
@@ -1529,7 +1559,7 @@ async function startSearch(industryId) {
       restaurant: ['מחניודה','OCD מסעדה','קלארו','מסעדת ברברי','HaSalon','north abraxas','פורטו מסעדה','קפה ביאליק','מסעדת יפו תל אביב','שף ישראלי טיקטוק'],
       salon: ['סלון ז׳קלין','רוני זריהן','מספרת ניסים','סלון דניאל','אורלי ביוטי','מספרת שגב','barber shop israel','סלון רונית','תספורת ישראל','מספרה ישראלית'],
       gym: ['holmes place israel','profit gym israel','גו אקטיב go active','רב חן ספורט','טופ לבל ספורט','אקסלנט ספורט','crossfit תל אביב','studio c fitness','planet fitness israel','מכון כושר ישראל'],
-      beauty: ['ביוטי סטודיו ישראל','nails art israel','קוסמטיקאית טיקטוק','לש בר','מניקור ישראל','makeup artist israel','עיצוב גבות ישראל','ציפורניים ישראל','סטודיו יופי תל אביב','beauty salon israel'],
+      graphicdesign: ['מעצב גרפי ישראל טיקטוק','עיצוב גרפי פרילנסר','graphic designer israel','מעצב לוגו ישראל','עיצוב שיווקי ישראל','branding israel','canva designer israel','מעצב גרפי פרילנסר','עיצוב סושיאל ישראל','graphic design freelancer'],
       bakery: ['מאפיית לחמנו','רולדין','בייקרי תל אביב','קונדיטוריית עילית','לחם ארטיזן','מאפיית הכרמל','ביסקוטי מאפייה','עוגות מעוצבות ישראל','מאפיית יפעת','bakery israel'],
       realestate: ['נדלן ישראל טיקטוק','מתווך תל אביב','נדלן בפוקוס','סוכן נדלן','דירות למכירה טיקטוק','real estate israel','מתווך ירושלים','נדלן חיפה','נדלן להשקעה','מתווך ישראלי'],
       law: ['עורך דין טיקטוק','עוד נועם קוריס','עורך דין פלילי','עורך דין משפחה','עורך דין נדלן','lawyer israel','משרד עורכי דין','עורך דין תל אביב','עורך דין חיפה','עורך דין ירושלים'],
@@ -2100,7 +2130,7 @@ function exportCalendarPDF() {
 </div>
 <style>.no-print{display:block}@media print{.no-print{display:none!important}}</style>
 <div class="header">
-  <div class="logo"><span style="direction:ltr;display:inline-block">UMI</span></div>
+  <div class="logo"><span style="direction:ltr;display:inline-block">YUMI</span></div>
   <h1>📅 לוח תוכן שבועי — ${esc(bizName)}</h1>
   <p>${esc(industry)} | הופק בתאריך: ${date}</p>
 </div>
@@ -2123,7 +2153,7 @@ function exportCalendarPDF() {
     html += '</div>';
   });
 
-  html += `</div><div class="footer">UMI — לוח תוכן שבועי | ${esc(bizName)} | ${date}</div></body></html>`;
+  html += `</div><div class="footer">YUMI — לוח תוכן שבועי | ${esc(bizName)} | ${date}</div></body></html>`;
 
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
@@ -3027,7 +3057,7 @@ function updatePlanUI() {
       badge.textContent = 'ADMIN';
       badge.style.background = '#d33';
     } else {
-      const labels = { free: 'FREE', basic: 'BASIC', pro: 'PRO' };
+      const labels = { free: 'FREE', basic: 'בסיסי', pro: 'מקצועי' };
       badge.textContent = labels[plan] || 'FREE';
       badge.style.background = plan === 'pro' ? '#8B6343' : plan === 'basic' ? 'var(--caramel)' : 'var(--text-muted)';
     }
@@ -3104,7 +3134,7 @@ async function selectPlan(plan) {
   const IS_HOSTED = window.location.protocol === 'https:';
   const CARDCOM_TERMINAL = '170602';
   const CARDCOM_API_NAME = 'nBpN6Pz2AqazwWsiicQM';
-  const PLAN_PRICES = { basic: 99, pro: 199 };
+  const PLAN_PRICES = { basic: 149, pro: 249 };
   const price = PLAN_PRICES[plan];
   if (!price) return;
 
@@ -3192,7 +3222,7 @@ async function handlePaymentReturn() {
         });
         await supa.insert('payments', {
           user_id: state.user.id,
-          amount: plan === 'pro' ? 199 : 99,
+          amount: plan === 'pro' ? 249 : 149,
           plan: plan,
           status: 'completed',
         });
@@ -3313,7 +3343,7 @@ async function renderAdminDashboard() {
   const basicUsers = (users||[]).filter(u => u.plan === 'basic' && (!u.plan_expires_at || new Date(u.plan_expires_at) >= now)).length;
   const proUsers = (users||[]).filter(u => u.plan === 'pro' && (!u.plan_expires_at || new Date(u.plan_expires_at) >= now)).length;
   const paidUsers = basicUsers + proUsers;
-  const mrr = basicUsers * 99 + proUsers * 199;
+  const mrr = basicUsers * 149 + proUsers * 249;
   const totalRevenue = (payments||[]).filter(p => p.status === 'completed').reduce((s,p) => s + (p.amount||0), 0);
 
   // Top stats
@@ -3340,7 +3370,7 @@ async function renderAdminDashboard() {
     </div>
     <div style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:13px;color:var(--text-secondary)">🚀 Basic — ₪99</span>
+        <span style="font-size:13px;color:var(--text-secondary)">🚀 בסיסי — ₪149</span>
         <span style="font-size:14px;font-weight:700;color:var(--caramel)">${basicUsers}</span>
       </div>
       <div style="height:8px;background:var(--sand);border-radius:4px;overflow:hidden">
@@ -3349,7 +3379,7 @@ async function renderAdminDashboard() {
     </div>
     <div style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:13px;color:var(--text-secondary)">💎 Pro — ₪199</span>
+        <span style="font-size:13px;color:var(--text-secondary)">💎 מקצועי — ₪249</span>
         <span style="font-size:14px;font-weight:700;color:var(--brown)">${proUsers}</span>
       </div>
       <div style="height:8px;background:var(--sand);border-radius:4px;overflow:hidden">
