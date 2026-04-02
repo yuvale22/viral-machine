@@ -1175,7 +1175,7 @@ const supa = {
   async select(table, filters) {
     let url = `${SUPA_URL}/rest/v1/${table}?select=*`;
     if (filters) url += '&' + filters;
-    const res = await fetch(url, { headers: supaHeaders() });
+    const res = await fetch(url, { headers: supaHeaders(true) });
     if (!res.ok) throw new Error('Supabase select error ' + res.status);
     return await res.json();
   },
@@ -3658,51 +3658,30 @@ async function saveExpense() {
   if (amount <= 0) { toast('נא להכניס סכום', 'err'); return; }
   if (!date) { toast('נא לבחור תאריך', 'err'); return; }
 
-  // Base expense data (always works)
-  const baseData = {
-    user_id: state.user.id,
-    amount,
-    description: vendor,
-    vendor: vendor.split('—')[0]?.trim() || vendor,
-    category,
-    expense_date: date,
-  };
-
   try {
+    const expenseData = {
+      user_id: state.user.id,
+      amount,
+      description: vendor,
+      vendor: vendor.split('—')[0]?.trim() || vendor,
+      category,
+      expense_date: date,
+    };
+
+    // Attach invoice if uploaded
     if (pendingInvoice) {
-      // Try with invoice data first
-      try {
-        const withInvoice = {
-          ...baseData,
-          invoice_data: pendingInvoice.base64,
-          invoice_type: pendingInvoice.type,
-          invoice_filename: pendingInvoice.filename,
-        };
-        await supa.insert('expenses', withInvoice);
-        toast('הוצאה + חשבונית נשמרו!', 'ok');
-      } catch(invoiceErr) {
-        // Invoice columns might not exist — save without invoice
-        console.warn('Invoice save failed, saving without:', invoiceErr.message);
-        const withFilename = { ...baseData, invoice_filename: pendingInvoice.filename };
-        try {
-          await supa.insert('expenses', withFilename);
-          toast('הוצאה נשמרה (חשבונית לא נשמרה — עמודות חסרות בטבלה)', 'ok');
-        } catch(e2) {
-          // Even filename column missing — save bare expense
-          await supa.insert('expenses', baseData);
-          toast('הוצאה נשמרה בלבד', 'ok');
-        }
-      }
-    } else {
-      await supa.insert('expenses', baseData);
-      toast('הוצאה נשמרה!', 'ok');
+      expenseData.invoice_data = pendingInvoice.base64;
+      expenseData.invoice_type = pendingInvoice.type;
+      expenseData.invoice_filename = pendingInvoice.filename;
     }
+
+    await supa.insert('expenses', expenseData);
+    toast(pendingInvoice ? 'הוצאה + חשבונית נשמרו!' : 'הוצאה נשמרה!', 'ok');
     pendingInvoice = null;
     toggleAddExpense();
     renderExpenses();
   } catch(e) {
-    console.error('Expense save error:', e);
-    toast('שגיאה בשמירת הוצאה: ' + e.message, 'err');
+    toast('שגיאה: ' + e.message, 'err');
   }
 }
 
