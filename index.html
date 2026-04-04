@@ -444,6 +444,33 @@
   ::-webkit-scrollbar-track { background: var(--cream); }
   ::-webkit-scrollbar-thumb { background: var(--sand); border-radius: 3px; }
 
+
+  
+  @keyframes confettiFall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+  /* ========== SEARCH QUOTA BAR ========== */
+  .quota-bar { background: var(--surface); border: 1px solid var(--sand); border-radius: 14px; padding: 16px 20px; margin-bottom: 28px; box-shadow: var(--shadow-sm); }
+  .quota-bar-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .quota-bar-label { font-size: 14px; font-weight: 600; color: var(--brown); }
+  .quota-bar-count { font-size: 14px; font-weight: 700; color: var(--caramel); }
+  .quota-bar-track { height: 6px; background: var(--sand); border-radius: 3px; overflow: hidden; }
+  .quota-bar-fill { height: 100%; background: linear-gradient(90deg, var(--caramel), var(--brown-warm)); border-radius: 3px; transition: width 0.4s ease; }
+  .quota-bar-bonus { font-size: 12px; color: var(--green); margin-top: 8px; display: flex; align-items: center; gap: 4px; }
+
+  /* ========== BONUS OVERLAY ========== */
+  .bonus-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(74,46,25,0.4); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+  .bonus-overlay.active { opacity: 1; pointer-events: auto; }
+  .bonus-card { background: var(--surface); border: 2px solid var(--caramel); border-radius: 24px; padding: 40px 32px; text-align: center; max-width: 320px; box-shadow: 0 24px 64px rgba(74,46,25,0.2); animation: bonusPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+  @keyframes bonusPop { 0% { transform: scale(0.3) rotate(-8deg); opacity: 0; } 50% { transform: scale(1.05) rotate(2deg); } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+  .bonus-trophy { font-size: 56px; animation: trophyBounce 0.6s ease 0.3s both; }
+  @keyframes trophyBounce { 0% { transform: translateY(-30px); opacity: 0; } 60% { transform: translateY(5px); } 100% { transform: translateY(0); opacity: 1; } }
+  .bonus-count { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, rgba(196,133,59,0.15), rgba(196,133,59,0.05)); border: 1px solid rgba(196,133,59,0.3); border-radius: 50px; padding: 12px 24px; font-size: 20px; font-weight: 800; color: var(--caramel); animation: countPop 0.4s ease 0.6s both; }
+  @keyframes countPop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+  /* ========== SEARCH LIMIT MODAL ========== */
+  .limit-modal { position: fixed; inset: 0; z-index: 250; background: rgba(74,46,25,0.4); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; }
+  .limit-modal.active { display: flex; }
+  .limit-modal-card { background: var(--surface); border-radius: 20px; padding: 36px 28px; text-align: center; max-width: 340px; box-shadow: var(--shadow-lg); animation: fadeUp 0.3s ease; }
+
   /* ========== PAYWALL ========== */
   .paywall-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, var(--cream) 0%, var(--cream-dark) 100%); padding: 40px 20px; }
   .paywall-card { background: var(--surface); border: 1px solid var(--sand); border-radius: 20px; padding: 40px 32px; width: 100%; max-width: 440px; box-shadow: var(--shadow-lg); }
@@ -673,6 +700,16 @@
   </div>
   <div class="marquee"><div class="marquee-inner"><span class="marquee-item">TIKTOK <span class="dot"></span> REELS <span class="dot"></span> CONTENT <span class="dot"></span> VIRAL <span class="dot"></span> SCRIPTS <span class="dot"></span> SOCIAL MEDIA <span class="dot"></span> TIKTOK <span class="dot"></span> REELS <span class="dot"></span> CONTENT <span class="dot"></span> VIRAL <span class="dot"></span> SCRIPTS <span class="dot"></span> SOCIAL MEDIA <span class="dot"></span> TIKTOK <span class="dot"></span> REELS <span class="dot"></span> CONTENT <span class="dot"></span> VIRAL <span class="dot"></span> SCRIPTS <span class="dot"></span> SOCIAL MEDIA <span class="dot"></span></span></div></div>
   <div class="page"><div class="section">
+    <!-- Search Quota Bar -->
+    <div class="quota-bar" id="search-quota-bar" style="display:none">
+      <div class="quota-bar-top">
+        <span class="quota-bar-label">🔍 חיפושים היום</span>
+        <span class="quota-bar-count" id="quota-count">0/2</span>
+      </div>
+      <div class="quota-bar-track"><div class="quota-bar-fill" id="quota-fill" style="width:0%"></div></div>
+      <div class="quota-bar-bonus" id="quota-bonus" style="display:none">🎁 +1 בונוס פעיל!</div>
+    </div>
+
     <div class="stats-row">
       <div class="stat"><div class="stat-num">10+</div><div class="stat-label">תחומים</div></div>
       <div class="stat"><div class="stat-num" id="history-count-stat">0</div><div class="stat-label">תסריטים שנוצרו</div></div>
@@ -1510,7 +1547,7 @@ function updateHistoryCount() {
   const el = document.getElementById('history-count-stat');
   if (el) el.textContent = getHistory().length;
   const cl = document.getElementById('clients-count-stat');
-  if (cl) cl.textContent = getClients().length;
+  if (cl) cl.textContent = (_clientsCache || []).length;
 }
 
 function buildGrid() {
@@ -1532,7 +1569,7 @@ function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  if (name === 'home') { buildGrid(); updateHistoryCount(); updateGateLocks(); updatePlanUI(); }
+  if (name === 'home') { buildGrid(); updateHistoryCount(); updateGateLocks(); updatePlanUI(); loadQuotaBar(); }
   if (name === 'plans') updatePlanUI();
   if (name === 'history') renderHistory();
   if (name === 'trends') loadTrends();
@@ -1571,7 +1608,7 @@ function saveKeys() {
 
 async function startSearch(industryId) {
   // Check search limit
-  if (!IS_ADMIN && !checkSearchLimit()) return;
+  if (!IS_ADMIN && !(await checkSearchLimit())) return;
   state.industry = INDUSTRIES.find(i => i.id === industryId);
   state.videos = []; state.selected = []; state.scripts = []; state.calendar = [];
   document.getElementById('search-title').textContent = state.industry.emoji + ' סיטואציות ויראליות — ' + state.industry.label;
@@ -2186,7 +2223,32 @@ function exportCalendarPDF() {
     html += '</div>';
   });
 
-  html += `</div><div class="footer">YUMi — לוח תוכן שבועי | ${esc(bizName)} | ${date}</div></body></html>`;
+  html += `</div><div class="footer">YUMi — לוח תוכן שבועי | ${esc(bizName)} | ${date}</div>
+<!-- BONUS REWARD OVERLAY -->
+<div class="bonus-overlay" id="bonus-overlay" onclick="this.classList.remove('active')">
+  <div class="bonus-card" onclick="event.stopPropagation()">
+    <div class="bonus-trophy">🏆</div>
+    <div style="font-size:22px;font-weight:800;color:var(--brown-dark);margin:16px 0 8px">!אלוף! הסטודיו מתוקתק להיום</div>
+    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">הוספת רשומה פיננסית היום —<br>קבל בונוס חיפוש!</div>
+    <div class="bonus-count">+1 🔍 חיפוש נוסף במתנה</div>
+    <button class="btn-caramel" style="margin-top:20px;width:100%" onclick="document.getElementById('bonus-overlay').classList.remove('active');showScreen('home')">🔥 לחפש טרנדים עכשיו!</button>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:12px">הבונוס פעיל עד חצות הלילה</div>
+  </div>
+</div>
+
+<!-- SEARCH LIMIT MODAL -->
+<div class="limit-modal" id="limit-modal" onclick="this.classList.remove('active')">
+  <div class="limit-modal-card" onclick="event.stopPropagation()">
+    <div style="font-size:40px;margin-bottom:12px">🔍</div>
+    <div style="font-size:20px;font-weight:800;color:var(--brown-dark);margin-bottom:8px">ניצלת את החיפושים להיום</div>
+    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">💡 ידעת? אם תוסיף הוצאה או הכנסה היום, תקבל חיפוש נוסף במתנה! 🎁</div>
+    <button class="btn-primary full" style="margin-bottom:10px" onclick="document.getElementById('limit-modal').classList.remove('active');gatedScreen('expenses')">📊 הוסף רשומה פיננסית</button>
+    <button class="btn-caramel full" onclick="document.getElementById('limit-modal').classList.remove('active');showScreen('plans')">⬆️ שדרג תוכנית</button>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:14px">מחר יתחדשו החיפושים שלך ⏰</div>
+  </div>
+</div>
+
+</body></html>`;
 
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
@@ -2711,6 +2773,31 @@ function generateQuotePDF() {
   </div>
 </div>
 <script>window.onload=()=>window.print();<\/script>
+
+<!-- BONUS REWARD OVERLAY -->
+<div class="bonus-overlay" id="bonus-overlay" onclick="this.classList.remove('active')">
+  <div class="bonus-card" onclick="event.stopPropagation()">
+    <div class="bonus-trophy">🏆</div>
+    <div style="font-size:22px;font-weight:800;color:var(--brown-dark);margin:16px 0 8px">!אלוף! הסטודיו מתוקתק להיום</div>
+    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">הוספת רשומה פיננסית היום —<br>קבל בונוס חיפוש!</div>
+    <div class="bonus-count">+1 🔍 חיפוש נוסף במתנה</div>
+    <button class="btn-caramel" style="margin-top:20px;width:100%" onclick="document.getElementById('bonus-overlay').classList.remove('active');showScreen('home')">🔥 לחפש טרנדים עכשיו!</button>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:12px">הבונוס פעיל עד חצות הלילה</div>
+  </div>
+</div>
+
+<!-- SEARCH LIMIT MODAL -->
+<div class="limit-modal" id="limit-modal" onclick="this.classList.remove('active')">
+  <div class="limit-modal-card" onclick="event.stopPropagation()">
+    <div style="font-size:40px;margin-bottom:12px">🔍</div>
+    <div style="font-size:20px;font-weight:800;color:var(--brown-dark);margin-bottom:8px">ניצלת את החיפושים להיום</div>
+    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">💡 ידעת? אם תוסיף הוצאה או הכנסה היום, תקבל חיפוש נוסף במתנה! 🎁</div>
+    <button class="btn-primary full" style="margin-bottom:10px" onclick="document.getElementById('limit-modal').classList.remove('active');gatedScreen('expenses')">📊 הוסף רשומה פיננסית</button>
+    <button class="btn-caramel full" onclick="document.getElementById('limit-modal').classList.remove('active');showScreen('plans')">⬆️ שדרג תוכנית</button>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:14px">מחר יתחדשו החיפושים שלך ⏰</div>
+  </div>
+</div>
+
 </body></html>`;
 
   const win = window.open('', '_blank');
@@ -2764,11 +2851,36 @@ function deleteQuote(idx) {
 }
 
 // ========== CLIENTS ==========
-function getClients() {
-  try { return JSON.parse(localStorage.getItem('vm_clients') || '[]'); } catch { return []; }
+// Clients cache (loaded from Supabase)
+let _clientsCache = null;
+
+async function getClientsAsync() {
+  try {
+    const clients = await supa.select('clients', 'user_id=eq.' + state.user.id + '&is_active=eq.true&order=created_at.desc');
+    // For each client, fetch their payments
+    for (const c of clients) {
+      try {
+        const payments = await supa.select('client_payments', 'client_id=eq.' + c.id + '&order=month.asc');
+        c.payments = (payments || []).map(p => ({ month: p.month ? p.month.slice(0,7) : '', paid: p.paid, id: p.id }));
+      } catch(e) { c.payments = []; }
+      // Map DB fields to match old format
+      c.monthlyAmount = c.monthly_amount || 0;
+      c.startDate = c.start_date || '';
+      c.totalMonths = c.total_months || 12;
+      c.paymentDay = c.payment_day || 1;
+    }
+    _clientsCache = clients;
+    return clients;
+  } catch(e) { console.error('getClients error:', e); return _clientsCache || []; }
 }
+
+// Sync wrapper for places that need it (summary counts etc)
+function getClients() {
+  return _clientsCache || [];
+}
+
 function saveClients(clients) {
-  localStorage.setItem('vm_clients', JSON.stringify(clients));
+  _clientsCache = clients; // just update cache, Supabase is source of truth
 }
 
 function toggleAddClient(forceOpen) {
@@ -2784,7 +2896,7 @@ function toggleAddClient(forceOpen) {
   }
 }
 
-function saveClient() {
+async function saveClient() {
   const name = document.getElementById('ac-name').value.trim();
   const amount = parseInt(document.getElementById('ac-amount').value) || 0;
   const start = document.getElementById('ac-start').value;
@@ -2794,34 +2906,51 @@ function saveClient() {
   if (!name || amount <= 0) { toast('נא למלא שם וסכום', 'err'); return; }
   if (!start) { toast('נא לבחור תאריך התחלה', 'err'); return; }
 
-  const clients = getClients();
-  const client = {
-    id: Date.now(),
-    name,
-    monthlyAmount: amount,
-    startDate: start,
-    totalMonths: months,
-    paymentDay: payday,
-    payments: []
-  };
-
-  // Generate payment entries for each month
-  const startD = new Date(start);
-  for (let i = 0; i < months; i++) {
-    const m = new Date(startD.getFullYear(), startD.getMonth() + i, 1);
-    const key = m.getFullYear() + '-' + String(m.getMonth() + 1).padStart(2, '0');
-    client.payments.push({ month: key, paid: false });
+  // Check client limit
+  const currentClients = getClients();
+  const plan = getUserPlan();
+  const maxClients = { basic: 2, pro: 10, agency: 30 }[plan] || 2;
+  if (currentClients.length >= maxClients) {
+    toast('הגעת למגבלת ' + maxClients + ' לקוחות בחבילה שלך — שדרג!', 'err');
+    showScreen('plans');
+    return;
   }
 
-  clients.push(client);
-  saveClients(clients);
-  toggleAddClient();
-  renderClients();
-  toast(`${name} נוסף ללקוחות!`, 'ok');
+  try {
+    // Insert client to Supabase
+    const result = await supa.insert('clients', {
+      user_id: state.user.id,
+      name,
+      monthly_amount: amount,
+      start_date: start,
+      total_months: months,
+      payment_day: payday,
+      is_active: true,
+    });
+    const clientId = result[0]?.id;
+
+    // Generate payment entries
+    if (clientId) {
+      const startD = new Date(start);
+      for (let i = 0; i < months; i++) {
+        const m = new Date(startD.getFullYear(), startD.getMonth() + i, 1);
+        const monthDate = m.toISOString().split('T')[0]; // '2026-04-01'
+        try {
+          await supa.insert('client_payments', { client_id: clientId, month: monthDate, paid: false });
+        } catch(e) {} // ignore duplicates
+      }
+    }
+
+    toggleAddClient();
+    await renderClients();
+    toast(name + ' נוסף ללקוחות!', 'ok');
+  } catch(e) {
+    toast('שגיאה: ' + e.message, 'err');
+  }
 }
 
-function renderClients() {
-  const clients = getClients();
+async function renderClients() {
+  const clients = await getClientsAsync();
   const now = new Date();
   const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
 
@@ -2898,9 +3027,9 @@ function renderClients() {
         ${nextPayDate ? `<div class="meta-item"><div class="meta-icon">${svgClock}</div><span>תשלום הבא: ${new Date(nextPayDate).toLocaleDateString('he-IL')}</span></div>` : ''}
       </div>
       <div class="client-actions">
-        ${!paidNow && currentPayment ? `<button class="btn-paid" onclick="markPayment(${idx},'${currentMonth}',true)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> שילם החודש</button>` : ''}
-        ${paidNow && currentPayment ? `<button class="btn-unpaid" onclick="markPayment(${idx},'${currentMonth}',false)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M12 3l-4 4 4 4"/></svg> בטל תשלום</button>` : ''}
-        <button class="btn-delete-client" onclick="deleteClient(${idx})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg> מחק</button>
+        ${!paidNow && currentPayment ? `<button class="btn-paid" onclick="markPayment('${c.id}','${currentMonth}',true)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> שילם החודש</button>` : ''}
+        ${paidNow && currentPayment ? `<button class="btn-unpaid" onclick="markPayment('${c.id}','${currentMonth}',false)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M12 3l-4 4 4 4"/></svg> בטל תשלום</button>` : ''}
+        <button class="btn-delete-client" onclick="deleteClient('${c.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg> מחק</button>
       </div>
     </div>`;
   }).join('');
@@ -2912,27 +3041,45 @@ function getNextPaymentDate(client, currentMonth) {
   return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function markPayment(clientIdx, month, paid) {
-  const clients = getClients();
-  const client = clients[clientIdx];
-  if (!client) return;
-  const pm = client.payments.find(p => p.month === month);
-  if (pm) {
-    pm.paid = paid;
-    saveClients(clients);
-    renderClients();
-    toast(paid ? `✅ ${client.name} — סומן כשולם` : `↩️ ${client.name} — תשלום בוטל`, 'ok');
-  }
+async function markPayment(clientId, monthStr, paid) {
+  try {
+    // monthStr is '2026-04', convert to date '2026-04-01'
+    const monthDate = monthStr + '-01';
+    // Find existing payment record
+    const payments = await supa.select('client_payments', 'client_id=eq.' + clientId + '&month=eq.' + monthDate);
+    if (payments && payments.length > 0) {
+      // Update existing
+      const payId = payments[0].id;
+      await fetch(SUPA_URL + '/rest/v1/client_payments?id=eq.' + payId, {
+        method: 'PATCH',
+        headers: { ...supaHeaders(true), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paid: paid, paid_at: paid ? new Date().toISOString() : null })
+      });
+    } else {
+      // Insert new
+      await supa.insert('client_payments', { client_id: clientId, month: monthDate, paid: paid, paid_at: paid ? new Date().toISOString() : null });
+    }
+    const clients = getClients();
+    const client = clients.find(c => c.id === clientId);
+    toast(paid ? '✅ ' + (client?.name||'') + ' — סומן כשולם' : '↩️ ' + (client?.name||'') + ' — תשלום בוטל', 'ok');
+    await renderClients();
+  } catch(e) { toast('שגיאה: ' + e.message, 'err'); }
 }
 
-function deleteClient(idx) {
+async function deleteClient(clientId) {
   if (!confirm('למחוק את הלקוח?')) return;
-  const clients = getClients();
-  const name = clients[idx]?.name || '';
-  clients.splice(idx, 1);
-  saveClients(clients);
-  renderClients();
-  toast(`${name} נמחק`, 'ok');
+  try {
+    const clients = getClients();
+    const client = clients.find(c => c.id === clientId);
+    // Soft delete
+    await fetch(SUPA_URL + '/rest/v1/clients?id=eq.' + clientId, {
+      method: 'PATCH',
+      headers: { ...supaHeaders(true), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: false })
+    });
+    toast((client?.name || '') + ' נמחק', 'ok');
+    await renderClients();
+  } catch(e) { toast('שגיאה: ' + e.message, 'err'); }
 }
 
 
@@ -3118,22 +3265,64 @@ function canUseFeature(feature) {
   return true;
 }
 
-function checkSearchLimit() {
-  const limits = getPlanLimits();
-  const profile = state.userProfile;
-  if (!profile) return true;
-  const today = new Date().toISOString().slice(0,10);
-  if (profile.last_search_date !== today) {
-    profile.daily_searches = 0;
-    profile.last_search_date = today;
-  }
-  if (profile.daily_searches >= limits.searches) {
-    toast(`הגעת למגבלת ${limits.searches} חיפושים ביום — שדרג את התוכנית!`, 'err');
-    showScreen('plans');
+async function checkSearchLimit() {
+  // Check if user can use creative features
+  if (!canUseCreative()) {
+    showPaywall(state.userProfile?.full_name);
     return false;
   }
-  profile.daily_searches++;
-  return true;
+
+  const plan = getUserPlan();
+  const baseLimit = { basic: 2, pro: 50, agency: 50 }[plan] || 2;
+  const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
+  const totalLimit = baseLimit + (hasBonus ? 1 : 0);
+
+  // Count today's searches from search_log
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const logs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
+    const usedToday = (logs || []).length;
+
+    if (usedToday >= totalLimit) {
+      document.getElementById('limit-modal').classList.add('active');
+      return false;
+    }
+
+    // Log this search
+    await supa.insert('search_log', {
+      user_id: state.user.id,
+      search_type: 'videos',
+    });
+
+    updateQuotaBar(usedToday + 1, totalLimit, hasBonus);
+    return true;
+  } catch(e) {
+    console.error('Search limit check error:', e);
+    return true; // fail open
+  }
+}
+
+function updateQuotaBar(used, total, hasBonus) {
+  const bar = document.getElementById('search-quota-bar');
+  if (!bar) return;
+  bar.style.display = 'block';
+  document.getElementById('quota-count').textContent = used + '/' + total;
+  document.getElementById('quota-fill').style.width = Math.min(100, Math.round(used/total*100)) + '%';
+  const bonusEl = document.getElementById('quota-bonus');
+  if (bonusEl) bonusEl.style.display = hasBonus ? 'flex' : 'none';
+}
+
+async function loadQuotaBar() {
+  const plan = getUserPlan();
+  if (!state.user) return;
+  const baseLimit = { basic: 2, pro: 50, agency: 50 }[plan] || 2;
+  const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
+  const totalLimit = baseLimit + (hasBonus ? 1 : 0);
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const logs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
+    updateQuotaBar((logs||[]).length, totalLimit, hasBonus);
+  } catch(e) {}
 }
 
 async function selectPlan(plan) {
@@ -3731,6 +3920,23 @@ async function saveExpense() {
 
     await supa.insert('expenses', expenseData);
     toast(pendingInvoice ? 'הוצאה + חשבונית נשמרו!' : 'הוצאה נשמרה!', 'ok');
+
+    // ⭐ GAMIFICATION BONUS CHECK
+    try {
+      const today = new Date().toISOString().slice(0,10);
+      if (state.userProfile && state.userProfile.last_bonus_date !== today) {
+        // Grant bonus!
+        state.userProfile.last_bonus_date = today;
+        // Update in Supabase
+        await fetch(SUPA_URL + '/rest/v1/user_profiles?id=eq.' + state.user.id, {
+          method: 'PATCH',
+          headers: { ...supaHeaders(true), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ last_bonus_date: today })
+        });
+        // Show bonus overlay
+        setTimeout(() => showBonusReward(), 500);
+      }
+    } catch(bonusErr) { console.log('Bonus check error:', bonusErr); }
     pendingInvoice = null;
     toggleAddExpense();
     renderExpenses();
@@ -3794,6 +4000,7 @@ function switchExpTab(tab) {
 }
 
 async function renderExpenses() {
+  if (!_clientsCache) await getClientsAsync();
   let expenses = [];
   try { expenses = await supa.select('expenses', `user_id=eq.${state.user.id}&order=expense_date.desc`); } catch(e) {}
 
@@ -4165,10 +4372,52 @@ function skipPaywall() {
   showScreen('home');
 }
 
+
+// ========== GAMIFICATION BONUS ==========
+function showBonusReward() {
+  // Create confetti
+  const confetti = document.createElement('div');
+  confetti.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:301';
+  const colors = ['#C4853B','#6B4226','#D4A05A','#2D7A4F','#E8D5B7'];
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.style.cssText = 'position:absolute;border-radius:2px;animation:confettiFall ' + (2+Math.random()*1.5) + 's ease-in forwards;animation-delay:' + (Math.random()*0.8) + 's;left:' + (Math.random()*100) + 'vw;top:-10px;width:' + (4+Math.random()*6) + 'px;height:' + (4+Math.random()*6) + 'px;background:' + colors[Math.floor(Math.random()*colors.length)];
+    confetti.appendChild(p);
+  }
+  document.body.appendChild(confetti);
+  document.getElementById('bonus-overlay').classList.add('active');
+  setTimeout(() => { document.getElementById('bonus-overlay').classList.remove('active'); confetti.remove(); }, 5000);
+}
+
 function canUseCreative() {
   const status = state.userProfile?.status;
   return status === 'trialing' || status === 'active';
 }
 </script>
+
+<!-- BONUS REWARD OVERLAY -->
+<div class="bonus-overlay" id="bonus-overlay" onclick="this.classList.remove('active')">
+  <div class="bonus-card" onclick="event.stopPropagation()">
+    <div class="bonus-trophy">🏆</div>
+    <div style="font-size:22px;font-weight:800;color:var(--brown-dark);margin:16px 0 8px">!אלוף! הסטודיו מתוקתק להיום</div>
+    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">הוספת רשומה פיננסית היום —<br>קבל בונוס חיפוש!</div>
+    <div class="bonus-count">+1 🔍 חיפוש נוסף במתנה</div>
+    <button class="btn-caramel" style="margin-top:20px;width:100%" onclick="document.getElementById('bonus-overlay').classList.remove('active');showScreen('home')">🔥 לחפש טרנדים עכשיו!</button>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:12px">הבונוס פעיל עד חצות הלילה</div>
+  </div>
+</div>
+
+<!-- SEARCH LIMIT MODAL -->
+<div class="limit-modal" id="limit-modal" onclick="this.classList.remove('active')">
+  <div class="limit-modal-card" onclick="event.stopPropagation()">
+    <div style="font-size:40px;margin-bottom:12px">🔍</div>
+    <div style="font-size:20px;font-weight:800;color:var(--brown-dark);margin-bottom:8px">ניצלת את החיפושים להיום</div>
+    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">💡 ידעת? אם תוסיף הוצאה או הכנסה היום, תקבל חיפוש נוסף במתנה! 🎁</div>
+    <button class="btn-primary full" style="margin-bottom:10px" onclick="document.getElementById('limit-modal').classList.remove('active');gatedScreen('expenses')">📊 הוסף רשומה פיננסית</button>
+    <button class="btn-caramel full" onclick="document.getElementById('limit-modal').classList.remove('active');showScreen('plans')">⬆️ שדרג תוכנית</button>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:14px">מחר יתחדשו החיפושים שלך ⏰</div>
+  </div>
+</div>
+
 </body>
 </html>
