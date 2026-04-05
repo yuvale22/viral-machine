@@ -487,6 +487,8 @@
   .cardcom-frame-wrap { width: 100%; border: 1px solid var(--sand); border-radius: 14px; overflow: hidden; background: #fff; min-height: 280px; position: relative; margin-bottom: 8px; }
   .cardcom-frame-wrap iframe { width: 100%; height: 280px; border: none; }
   .cardcom-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--cream); font-size: 14px; color: var(--text-muted); gap: 8px; }
+  .paywall-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 860px) { .paywall-cards-grid { grid-template-columns: 1fr; max-width: 380px; margin-left: auto; margin-right: auto; } }
 </style>
 </head>
 <body>
@@ -587,7 +589,7 @@
     </div>
 
     <!-- 3 Plan Cards -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px">
+    <div class="paywall-cards-grid">
 
       <!-- BASIC -->
       <div class="plan-card" style="position:relative;padding-top:48px">
@@ -605,7 +607,7 @@
           <li class="disabled">הצעות מחיר</li>
           <li class="disabled">דשבורד פיננסי</li>
         </ul>
-        <button class="plan-btn plan-btn-outline" onclick="selectPaywallPlan('basic')">בחר Basic ←</button>
+        <button class="plan-btn plan-btn-outline" onclick="selectPaywallPlan('basic')">התחל 5 ימי ניסיון ←</button>
       </div>
 
       <!-- PRO (highlighted) -->
@@ -625,7 +627,7 @@
           <li class="disabled">הצעות מחיר White-label</li>
           <li class="disabled">דשבורד פיננסי</li>
         </ul>
-        <button class="plan-btn plan-btn-primary" onclick="selectPaywallPlan('pro')">בחר PRO ←</button>
+        <button class="plan-btn plan-btn-primary" onclick="selectPaywallPlan('pro')">בחר ושלם עכשיו ←</button>
       </div>
 
       <!-- MAX -->
@@ -644,7 +646,7 @@
           <li>הצעות מחיר White-label</li>
           <li>דשבורד פיננסי מלא</li>
         </ul>
-        <button class="plan-btn plan-btn-outline" onclick="selectPaywallPlan('max')">בחר MAX ←</button>
+        <button class="plan-btn plan-btn-outline" onclick="selectPaywallPlan('max')">בחר ושלם עכשיו ←</button>
       </div>
     </div>
 
@@ -4387,8 +4389,10 @@ function selectPaywallPlan(plan) {
   const isYearly = selectedBillingCycle === 'yearly';
   const price = isYearly ? p.yearly : p.monthly;
   const label = { basic: 'Basic', pro: 'PRO', max: 'MAX' }[plan];
+  const isTrial = (plan === 'basic'); // Only Basic gets trial
 
-  document.getElementById('selected-plan-label').textContent = 'מסלול ' + label;
+  document.getElementById('selected-plan-label').textContent = 
+    isTrial ? 'מסלול ' + label + ' — 5 ימי ניסיון' : 'מסלול ' + label + ' — תשלום מיידי';
   document.getElementById('selected-plan-price').textContent = '₪' + price + '/' + (isYearly ? 'שנה' : 'חודש');
 
   openCardcomPayment();
@@ -4399,7 +4403,7 @@ async function openCardcomPayment() {
     const res = await fetch('/api/cardcom/create-token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
-      body: JSON.stringify({ plan: selectedPlan, cycle: selectedBillingCycle }),
+      body: JSON.stringify({ plan: selectedPlan, cycle: selectedBillingCycle, immediate: selectedPlan !== 'basic' }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -4451,16 +4455,17 @@ async function handleCardcomSuccess() {
     const res = await fetch('/api/auth/start-trial', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
-      body: JSON.stringify({ low_profile_code: cardcomLowProfileCode, plan: selectedPlan, cycle: selectedBillingCycle }),
+      body: JSON.stringify({ low_profile_code: cardcomLowProfileCode, plan: selectedPlan, cycle: selectedBillingCycle, immediate: selectedPlan !== 'basic' }),
     });
     const data = await res.json();
     if (data.error) { toast('שגיאה: ' + data.error, 'err'); showPaywall(state.userProfile?.full_name); return; }
 
-    state.userProfile.status = 'trialing';
+    state.userProfile.status = data.status || (selectedPlan === 'basic' ? 'trialing' : 'active');
+    state.userProfile.plan = data.plan || selectedPlan;
     state.userProfile.trial_ends_at = data.trial_end;
     state.userProfile.cardcom_last_four = data.last_four;
 
-    toast('🎉 5 ימי ניסיון הופעלו!', 'ok');
+    toast(selectedPlan === 'basic' ? '🎁 5 ימי ניסיון הופעלו!' : '🎉 מסלול ' + selectedPlan.toUpperCase() + ' הופעל!', 'ok');
     setTimeout(() => { updatePlanUI(); showScreen('home'); }, 1000);
   } catch(e) {
     console.error('Start trial error:', e);
