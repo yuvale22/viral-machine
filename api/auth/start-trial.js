@@ -3,7 +3,12 @@
 
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrem10dW56bWRsZmlhcHd6a29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzcyMTcsImV4cCI6MjA4OTE1MzIxN30.td9gx19iEU4jl8ph6JX33LHm-K-vQtNG5TW9q_kHWRs';
-const PLAN_PRICES = { basic: 9900, pro: 19900, agency: 39900 };
+const PLAN_PRICES = {
+  basic: { monthly: 9900, yearly: 99000 },  // ₪99/mo or ₪990/yr
+  pro:   { monthly: 13900, yearly: 139000 }, // ₪139/mo or ₪1390/yr
+  max:   { monthly: 25900, yearly: 259000 }, // ₪259/mo or ₪2590/yr
+};
+const TRIAL_DAYS = 5;
 
 async function getUserFromToken(authHeader) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
@@ -41,11 +46,13 @@ module.exports = async function handler(req, res) {
   const user = await getUserFromToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { low_profile_code, plan } = req.body || {};
+  const { low_profile_code, plan, cycle } = req.body || {};
   if (!low_profile_code) return res.status(400).json({ error: 'Missing low_profile_code' });
 
   const planName = plan || 'pro';
-  const amount = PLAN_PRICES[planName] || PLAN_PRICES.pro;
+  const billingCycle = cycle || 'monthly';
+  const planPrices = PLAN_PRICES[planName] || PLAN_PRICES.pro;
+  const amount = billingCycle === 'yearly' ? planPrices.yearly : planPrices.monthly;
   const TERMINAL = process.env.CARDCOM_TERMINAL || '170602';
   const API_NAME = process.env.CARDCOM_API_NAME || 'nBpN6Pz2AqazwWsiicQM';
 
@@ -77,7 +84,7 @@ module.exports = async function handler(req, res) {
 
     // 2. Calculate trial
     const now = new Date();
-    const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const trialEnd = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
 
     // 3. Save subscription (service_role bypasses RLS)
     const subRes = await supaAdmin('POST', 'subscriptions', {
@@ -86,6 +93,7 @@ module.exports = async function handler(req, res) {
       cardcom_last_four: lastFour,
       cardcom_expiry: cardExpiry,
       plan: planName,
+      billing_cycle: billingCycle,
       status: 'trialing',
       amount_ils: amount,
       current_period_start: now.toISOString(),
@@ -97,12 +105,13 @@ module.exports = async function handler(req, res) {
     if (!subRes.ok) {
       const subErr = await subRes.json().catch(() => ({}));
       console.error('Subscription insert error:', subErr);
-      // Don't fail — profile update is more important
     }
 
     // 4. Update user profile
     await supaAdmin('PATCH', 'user_profiles?id=eq.' + user.id, {
       status: 'trialing',
+      plan: planName,
+      billing_cycle: billingCycle,
       cardcom_token: cardToken,
       cardcom_last_four: lastFour,
       trial_ends_at: trialEnd.toISOString(),
