@@ -46,11 +46,12 @@ module.exports = async function handler(req, res) {
   const user = await getUserFromToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { low_profile_code, plan, cycle } = req.body || {};
+  const { low_profile_code, plan, cycle, immediate } = req.body || {};
   if (!low_profile_code) return res.status(400).json({ error: 'Missing low_profile_code' });
 
   const planName = plan || 'pro';
   const billingCycle = cycle || 'monthly';
+  const isImmediate = immediate === true; // PRO/MAX pay now, no trial
   const planPrices = PLAN_PRICES[planName] || PLAN_PRICES.pro;
   const amount = billingCycle === 'yearly' ? planPrices.yearly : planPrices.monthly;
   const TERMINAL = process.env.CARDCOM_TERMINAL || '170602';
@@ -82,9 +83,14 @@ module.exports = async function handler(req, res) {
 
     if (!cardToken) return res.status(400).json({ error: 'לא התקבל אסימון — נסה שוב' });
 
-    // 2. Calculate trial
+    // 2. Calculate period
     const now = new Date();
-    const trialEnd = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+    const periodDays = isImmediate
+      ? (billingCycle === 'yearly' ? 365 : 30)  // Paid: full period
+      : TRIAL_DAYS;                              // Trial: 5 days
+    const periodEnd = new Date(now.getTime() + periodDays * 24 * 60 * 60 * 1000);
+    const subStatus = isImmediate ? 'active' : 'trialing';
+    const userStatus = isImmediate ? 'active' : 'trialing';
 
     // 3. Save subscription (service_role bypasses RLS)
     const subRes = await supaAdmin('POST', 'subscriptions', {
@@ -94,12 +100,13 @@ module.exports = async function handler(req, res) {
       cardcom_expiry: cardExpiry,
       plan: planName,
       billing_cycle: billingCycle,
-      status: 'trialing',
+      status: subStatus,
       amount_ils: amount,
       current_period_start: now.toISOString(),
-      current_period_end: trialEnd.toISOString(),
-      trial_end: trialEnd.toISOString(),
-      last_charge_status: 'pending',
+      current_period_end: periodEnd.toISOString(),
+      trial_end: isImmediate ? null : periodEnd.toISOString(),
+      last_charge_status: isImmediate ? 'success' : 'pending',
+      last_charge_date: isImmediate ? now.toISOString() : null,
     });
 
     if (!subRes.ok) {
@@ -109,19 +116,21 @@ module.exports = async function handler(req, res) {
 
     // 4. Update user profile
     await supaAdmin('PATCH', 'user_profiles?id=eq.' + user.id, {
-      status: 'trialing',
+      status: userStatus,
       plan: planName,
       billing_cycle: billingCycle,
       cardcom_token: cardToken,
       cardcom_last_four: lastFour,
-      trial_ends_at: trialEnd.toISOString(),
+      trial_ends_at: isImmediate ? null : periodEnd.toISOString(),
     });
 
     return res.status(200).json({
       plan: planName,
-      status: 'trialing',
-      trial_end: trialEnd.toISOString(),
-      trial_end_display: trialEnd.toLocaleDateString('he-IL'),
+      status: subStatus,
+      immediate: isImmediate,
+      trial_end: isImmediate ? null : periodEnd.toISOString(),
+      period_end: periodEnd.toISOString(),
+      period_end_display: periodEnd.toLocaleDateString('he-IL'),
       last_four: lastFour,
     });
 
