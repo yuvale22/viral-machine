@@ -24,27 +24,46 @@ module.exports = async function handler(req, res) {
 
   const TERMINAL = process.env.CARDCOM_TERMINAL || '170602';
   const API_NAME = process.env.CARDCOM_API_NAME || 'nBpN6Pz2AqazwWsiicQM';
-  const plan = (req.body || {}).plan || 'pro';
+  const body = req.body || {};
+  const plan = body.plan || 'pro';
+  const cycle = body.cycle || 'monthly';
+  const immediate = body.immediate === true; // PRO/MAX = charge now
+
+  // Price calculation
+  const PRICES = {
+    basic: { monthly: 99, yearly: 990 },
+    pro:   { monthly: 139, yearly: 1390 },
+    max:   { monthly: 259, yearly: 2590 },
+  };
+  const planPrices = PRICES[plan] || PRICES.pro;
+  const chargeAmount = cycle === 'yearly' ? planPrices.yearly : planPrices.monthly;
 
   const baseUrl = req.headers.origin || 'https://viral-machine-alpha.vercel.app';
   const successUrl = baseUrl + '?cardcom_success=1&user_id=' + user.id + '&plan=' + plan;
   const failUrl = baseUrl + '?cardcom_fail=1';
   const ipnUrl = baseUrl + '/api/cardcom/ipn';
 
+  // Operation: 2 = token only (trial), 1 = charge (immediate)
+  const operation = immediate ? '1' : '2';
+  const amount = immediate ? String(chargeAmount) : '1';
+  const productLabel = immediate
+    ? 'YUMi ' + plan.toUpperCase() + ' — ' + (cycle === 'yearly' ? 'שנתי' : 'חודשי')
+    : 'YUMi Basic — 5 ימי ניסיון';
+
   try {
     const params = new URLSearchParams({
       'TerminalNumber': TERMINAL,
       'ApiName': API_NAME,
       'ReturnValue': user.id,
-      'Operation': '2',
-      'Amount': '1',
+      'Operation': operation,
+      'Amount': amount,
       'Currency': '1',
       'Language': 'he',
       'TokenToReturn': 'true',
       'SuccessRedirectUrl': successUrl,
       'ErrorRedirectUrl': failUrl,
       'IndicatorUrl': ipnUrl,
-      'ProductName': 'YUMi ' + plan.toUpperCase() + ' - 7 ימי ניסיון',
+      'ProductName': productLabel,
       'IsIframe': 'true',
       'HideCardOwnerName': 'false',
       'ShowCardOwnerEmail': 'true',
@@ -52,6 +71,7 @@ module.exports = async function handler(req, res) {
       'MaxNumOfPayments': '1',
       'CustomFields.Field1': user.id,
       'CustomFields.Field2': plan,
+      'CustomFields.Field3': immediate ? 'immediate' : 'trial',
     });
 
     const cardcomRes = await fetch('https://secure.cardcom.solutions/api/v11/LowProfile/Create', {
