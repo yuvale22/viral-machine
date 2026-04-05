@@ -562,108 +562,121 @@
 
 <!-- ========== PAYWALL (Trial + Cardcom) ========== -->
 <div id="screen-paywall" class="screen">
-  <div class="paywall-wrap">
-    <div class="yumi-logo" style="margin-bottom:16px">
-      <svg width="64" height="64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <div class="paywall-wrap" style="max-width:1100px;margin:0 auto">
+    <!-- Header -->
+    <div class="yumi-logo" style="margin-bottom:12px">
+      <svg width="56" height="56" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
         <circle cx="50" cy="50" r="48" fill="var(--brown-dark)"/>
         <path d="M35 28C35 28 38 28 40 31L50 48L60 31C62 28 65 28 65 28C68 28 70 30 70 33C70 34 69.5 35.5 69 36.5L55 58V72C55 75 53 77 50 77C47 77 45 75 45 72V58L31 36.5C30.5 35.5 30 34 30 33C30 30 32 28 35 28Z" fill="var(--cream)"/>
       </svg>
     </div>
-    <div class="paywall-card">
-      <div class="paywall-welcome">🎉 ברוכים הבאים, <span id="paywall-name"></span>!</div>
-      <div style="text-align:center;margin:16px 0">
-        <div class="trial-badge"><span class="dot"></span> 7 ימים של PRO — עלינו</div>
-      </div>
-      <div class="paywall-subtitle">נשאיר פרטי אשראי לביטחון,<br>לא ניגבה שקל עד <strong id="paywall-trial-date"></strong></div>
-      <div class="paywall-features">
-        <div class="paywall-feature"><span class="check">✓</span> חיפושים ללא הגבלה</div>
-        <div class="paywall-feature"><span class="check">✓</span> תסריטים AI בעברית</div>
-        <div class="paywall-feature"><span class="check">✓</span> לוח תוכן שבועי</div>
-        <div class="paywall-feature"><span class="check">✓</span> ניהול עד 10 לקוחות</div>
-        <div class="paywall-feature"><span class="check">✓</span> הצעות מחיר White-label</div>
-        <div class="paywall-feature"><span class="check">✓</span> דשבורד הוצאות/הכנסות</div>
-      </div>
-      <div id="paywall-card-section">
-        <button class="btn-primary full" id="paywall-btn" style="padding:18px" onclick="openCardcomPayment()">🔓 התחל 7 ימי ניסיון חינם ←</button>
-      </div>
-      <div id="cardcom-container" style="display:none">
-        <div class="cardcom-frame-wrap">
-          <div class="cardcom-loading" id="cardcom-loading"><span style="animation:pulse 1.5s ease infinite">🔒</span> טוען דף תשלום מאובטח...</div>
-          <iframe id="cardcom-iframe" onload="if(this.src) document.getElementById('cardcom-loading').style.display='none'"></iframe>
-        </div>
-        <div style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:8px">🔒 סליקה מאובטחת עם קארדקום</div>
-      </div>
-      <div class="paywall-trust">🔒 מאובטח &nbsp;•&nbsp; ביטול בכל רגע &nbsp;•&nbsp; ₪0 עד <span id="paywall-trust-date"></span></div>
-      <button class="paywall-skip" onclick="skipPaywall()">דלג — המשך במצב מוגבל</button>
+    <div class="paywall-welcome" style="margin-bottom:4px">🎉 ברוכים הבאים, <span id="paywall-name"></span>!</div>
+    <div style="text-align:center;margin:10px 0 6px">
+      <div class="trial-badge"><span class="dot"></span> 5 ימי ניסיון חינם על כל מסלול</div>
     </div>
+    <div class="paywall-subtitle" style="margin-bottom:20px">בחר מסלול — לא ניגבה שקל עד <strong id="paywall-trial-date"></strong></div>
+
+    <!-- Monthly / Yearly Toggle -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:28px">
+      <span id="toggle-label-monthly" style="font-size:14px;font-weight:700;color:var(--brown)">חודשי</span>
+      <div onclick="toggleBillingCycle()" style="width:52px;height:28px;background:var(--brown);border-radius:14px;cursor:pointer;position:relative;transition:background 0.3s" id="billing-toggle">
+        <div id="billing-toggle-dot" style="width:22px;height:22px;background:#fff;border-radius:50%;position:absolute;top:3px;right:3px;transition:right 0.3s,left 0.3s;box-shadow:0 2px 4px rgba(0,0,0,0.15)"></div>
+      </div>
+      <span id="toggle-label-yearly" style="font-size:14px;font-weight:600;color:var(--text-muted)">שנתי</span>
+      <span style="font-size:11px;background:rgba(45,122,79,0.1);color:var(--green);padding:3px 10px;border-radius:50px;font-weight:700">חודשיים מתנה!</span>
+    </div>
+
+    <!-- 3 Plan Cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px">
+
+      <!-- BASIC -->
+      <div class="plan-card" style="position:relative;padding-top:48px">
+        <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font:700 11px Heebo;padding:4px 14px;border-radius:20px;white-space:nowrap">🔥 33% הנחה!</div>
+        <div style="font-size:28px;margin-bottom:8px">⚡</div>
+        <div class="plan-name">Basic</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">לפרילנסר מתחיל</div>
+        <div style="text-decoration:line-through;color:var(--text-muted);font-size:14px" id="pw-basic-original">₪149</div>
+        <div class="plan-price" id="pw-basic-price">₪99 <span>/ חודש</span></div>
+        <ul class="plan-features" style="margin:16px 0">
+          <li>עד 2 לקוחות</li>
+          <li>30 חיפושים/תסריטים בחודש</li>
+          <li>תסריטים AI בעברית</li>
+          <li class="disabled">לוח תוכן שבועי</li>
+          <li class="disabled">הצעות מחיר</li>
+          <li class="disabled">דשבורד פיננסי</li>
+        </ul>
+        <button class="plan-btn plan-btn-outline" onclick="selectPaywallPlan('basic')">בחר Basic ←</button>
+      </div>
+
+      <!-- PRO (highlighted) -->
+      <div class="plan-card popular" style="position:relative;padding-top:48px;transform:scale(1.02);border-width:2px">
+        <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--caramel);color:#fff;font:700 11px Heebo;padding:4px 14px;border-radius:20px;white-space:nowrap">⭐ הכי פופולרי</div>
+        <div style="position:absolute;top:-12px;right:16px;background:var(--red);color:#fff;font:700 10px Heebo;padding:3px 10px;border-radius:20px;white-space:nowrap">🔥 33%</div>
+        <div style="font-size:28px;margin-bottom:8px">🚀</div>
+        <div class="plan-name">PRO</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">למנהלי סושיאל</div>
+        <div style="text-decoration:line-through;color:var(--text-muted);font-size:14px" id="pw-pro-original">₪209</div>
+        <div class="plan-price" id="pw-pro-price">₪139 <span>/ חודש</span></div>
+        <ul class="plan-features" style="margin:16px 0">
+          <li>עד 10 לקוחות</li>
+          <li>חיפושים ותסריטים ללא הגבלה</li>
+          <li>תסריטים AI בעברית</li>
+          <li>לוח תוכן שבועי</li>
+          <li class="disabled">הצעות מחיר White-label</li>
+          <li class="disabled">דשבורד פיננסי</li>
+        </ul>
+        <button class="plan-btn plan-btn-primary" onclick="selectPaywallPlan('pro')">בחר PRO ←</button>
+      </div>
+
+      <!-- MAX -->
+      <div class="plan-card" style="position:relative;padding-top:48px">
+        <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font:700 11px Heebo;padding:4px 14px;border-radius:20px;white-space:nowrap">🔥 33% הנחה!</div>
+        <div style="font-size:28px;margin-bottom:8px">👑</div>
+        <div class="plan-name">MAX</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">לסוכנויות מקיפות</div>
+        <div style="text-decoration:line-through;color:var(--text-muted);font-size:14px" id="pw-max-original">₪389</div>
+        <div class="plan-price" id="pw-max-price">₪259 <span>/ חודש</span></div>
+        <ul class="plan-features" style="margin:16px 0">
+          <li>לקוחות ללא הגבלה</li>
+          <li>חיפושים ותסריטים ללא הגבלה</li>
+          <li>תסריטים AI בעברית</li>
+          <li>לוח תוכן שבועי</li>
+          <li>הצעות מחיר White-label</li>
+          <li>דשבורד פיננסי מלא</li>
+        </ul>
+        <button class="plan-btn plan-btn-outline" onclick="selectPaywallPlan('max')">בחר MAX ←</button>
+      </div>
+    </div>
+
+    <!-- Cardcom iframe (hidden, shown after plan selection) -->
+    <div id="cardcom-container" style="display:none;max-width:440px;margin:0 auto">
+      <div style="text-align:center;margin-bottom:12px">
+        <span style="font-size:16px;font-weight:700;color:var(--brown)" id="selected-plan-label">מסלול PRO</span>
+        <span style="font-size:14px;color:var(--text-muted);margin-right:8px" id="selected-plan-price">₪139/חודש</span>
+      </div>
+      <div class="cardcom-frame-wrap">
+        <div class="cardcom-loading" id="cardcom-loading"><span style="animation:pulse 1.5s ease infinite">🔒</span> טוען דף תשלום מאובטח...</div>
+        <iframe id="cardcom-iframe" onload="if(this.src) document.getElementById('cardcom-loading').style.display='none'"></iframe>
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:8px">🔒 סליקה מאובטחת עם קארדקום</div>
+    </div>
+
+    <!-- Trust + Skip -->
+    <div class="paywall-trust" style="margin-top:16px">🔒 מאובטח &nbsp;•&nbsp; ביטול בכל רגע &nbsp;•&nbsp; ₪0 עד <span id="paywall-trust-date"></span></div>
+    <button class="paywall-skip" onclick="skipPaywall()">התחל ניסיון חינם ל-5 ימים (בלי כרטיס)</button>
   </div>
 </div>
 
-<!-- ========== PLANS ========== -->
+<!-- ========== PLANS (redirects to paywall) ========== -->
 <div id="screen-plans" class="screen">
-  <div class="plans-wrap">
+  <div class="plans-wrap" style="padding-top:20px">
     <div class="plans-header">
-      <div class="yumi-logo" style="margin-bottom:16px"><svg width="56" height="56" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="var(--brown-dark)"/><path d="M35 28C35 28 38 28 40 31L50 48L60 31C62 28 65 28 65 28C68 28 70 30 70 33C70 34 69.5 35.5 69 36.5L55 58V72C55 75 53 77 50 77C47 77 45 75 45 72V58L31 36.5C30.5 35.5 30 34 30 33C30 30 32 28 35 28Z" fill="var(--cream)"/></svg></div>
-      <h1>בחר את התוכנית שלך</h1>
-      <p>התחל בחינם, שדרג כשתרצה</p>
+      <h1>שדרג את YUMi שלך</h1>
+      <p>בחר את המסלול המתאים לך</p>
     </div>
-    <div class="plans-grid">
-
-      <!-- FREE -->
-      <div class="plan-card">
-        <div class="plan-emoji">🆓</div>
-        <div class="plan-name">חינם</div>
-        <div class="plan-price">₪0 <span>/ לנצח</span></div>
-        <ul class="plan-features">
-          <li>3 חיפושים ביום</li>
-          <li>צפייה בסרטונים ויראליים</li>
-          <li class="disabled">תסריטים בעברית</li>
-          <li class="disabled">לוח תוכן שבועי</li>
-          <li class="disabled">ניהול לקוחות</li>
-          <li class="disabled">הצעות מחיר</li>
-          <li class="disabled">מעקב הוצאות והכנסות</li>
-        </ul>
-        <button class="plan-btn plan-btn-outline" onclick="selectPlan('free')">התחל בחינם</button>
-      </div>
-
-      <!-- BASIC -->
-      <div class="plan-card popular">
-        <div class="plan-badge">הכי פופולרי</div>
-        <div class="plan-emoji">🚀</div>
-        <div class="plan-name">בייסיק</div>
-        <div class="plan-price">₪99 <span>/ חודש</span></div>
-        <ul class="plan-features">
-          <li>חיפוש עסק 1 ביום</li>
-          <li>צפייה בסרטונים ויראליים</li>
-          <li>10 תסריטים ביום</li>
-          <li>לוח תוכן שבועי</li>
-          <li>ניהול לקוחות</li>
-          <li>הצעות מחיר</li>
-          <li>מעקב הוצאות והכנסות</li>
-        </ul>
-        <button class="plan-btn plan-btn-primary" onclick="selectPlan('basic')">שדרג עכשיו ←</button>
-      </div>
-
-      <!-- PRO -->
-      <div class="plan-card">
-        <div class="plan-emoji">💎</div>
-        <div class="plan-name">פרו</div>
-        <div class="plan-price">₪199 <span>/ חודש</span></div>
-        <ul class="plan-features">
-          <li>חיפושים ללא הגבלה</li>
-          <li>צפייה בסרטונים ויראליים</li>
-          <li>תסריטים ללא הגבלה</li>
-          <li>לוח תוכן שבועי</li>
-          <li>ניהול לקוחות</li>
-          <li>הצעות מחיר ופקטורות</li>
-          <li>מעקב הוצאות והכנסות</li>
-        </ul>
-        <button class="plan-btn plan-btn-outline" onclick="selectPlan('pro')">שדרג לפרו ←</button>
-      </div>
-
-    </div>
-    <div style="text-align:center;margin-top:24px">
-      <button class="btn-secondary" onclick="selectPlan('free')" style="font-size:13px">דלג — המשך בחינם</button>
+    <div id="plans-content"></div>
+    <div style="text-align:center;margin-top:16px">
+      <button class="btn-secondary" onclick="showScreen('home')" style="font-size:13px">← חזור</button>
     </div>
   </div>
 </div>
@@ -1312,10 +1325,28 @@ let state = {
   user: null, userProfile: null,
 };
 
+// ========== PRICING CONFIG ==========
+const PLAN_CONFIG = {
+  trial: { maxClients: 2, maxSearches: 2, perClient: true, calendar: false, quotes: false, expenses: false, label: 'ניסיון', emoji: '🎁' },
+  basic: { maxClients: 2, maxSearches: 30, perClient: false, calendar: false, quotes: false, expenses: false, label: 'Basic', emoji: '⚡' },
+  pro:   { maxClients: 10, maxSearches: 999, perClient: false, calendar: true, quotes: false, expenses: false, label: 'PRO', emoji: '🚀' },
+  max:   { maxClients: 999, maxSearches: 999, perClient: false, calendar: true, quotes: true, expenses: true, label: 'MAX', emoji: '👑' },
+};
+
+const PLAN_PRICES = {
+  basic: { monthly: 99, originalMonthly: 149, yearly: 990, originalYearly: 1490 },
+  pro:   { monthly: 139, originalMonthly: 209, yearly: 1390, originalYearly: 2090 },
+  max:   { monthly: 259, originalMonthly: 389, yearly: 2590, originalYearly: 3890 },
+};
+
+const TRIAL_DAYS = 5;
+
 const PLAN_LIMITS = {
-  free:  { searches: 3, scripts: 0, calendar: false, clients: false, quotes: false, trends: false, expenses: false },
-  basic: { searches: 1, scripts: 10, calendar: true, clients: true, quotes: true, trends: true, expenses: true },
-  pro:   { searches: 999, scripts: 999, calendar: true, clients: true, quotes: true, trends: true, expenses: true },
+  free:    { searches: 2, scripts: 0, calendar: false, clients: false, quotes: false, trends: false, expenses: false },
+  trial:   { searches: 2, scripts: 2, calendar: false, clients: true, quotes: false, trends: true, expenses: false },
+  basic:   { searches: 30, scripts: 30, calendar: false, clients: true, quotes: false, trends: true, expenses: false },
+  pro:     { searches: 999, scripts: 999, calendar: true, clients: true, quotes: false, trends: true, expenses: false },
+  max:     { searches: 999, scripts: 999, calendar: true, clients: true, quotes: true, trends: true, expenses: true },
 };
 
 // Super admin — your email gets full access + admin panel from regular UI
@@ -1570,7 +1601,7 @@ function showScreen(name) {
   document.getElementById('screen-' + name).classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (name === 'home') { buildGrid(); updateHistoryCount(); updateGateLocks(); updatePlanUI(); loadQuotaBar(); }
-  if (name === 'plans') updatePlanUI();
+  if (name === 'plans') { showPaywall(state.userProfile?.full_name); return; }
   if (name === 'history') renderHistory();
   if (name === 'trends') loadTrends();
   if (name === 'profile') loadProfileForm();
@@ -2909,7 +2940,8 @@ async function saveClient() {
   // Check client limit
   const currentClients = getClients();
   const plan = getUserPlan();
-  const maxClients = { basic: 2, pro: 10, agency: 30 }[plan] || 2;
+  const cfg = PLAN_CONFIG[plan] || PLAN_CONFIG.trial;
+  const maxClients = cfg.maxClients;
   if (currentClients.length >= maxClients) {
     toast('הגעת למגבלת ' + maxClients + ' לקוחות בחבילה שלך — שדרג!', 'err');
     showScreen('plans');
@@ -3230,12 +3262,12 @@ function isSuperAdmin() {
 }
 
 function getUserPlan() {
-  if (isSuperAdmin()) return 'pro'; // Super admin always has PRO
+  if (isSuperAdmin()) return 'max';
+  const status = state.userProfile?.status;
+  if (status === 'trialing') return 'trial';
+  if (status === 'read_only' || status === 'pending_payment') return 'free';
+  // Active user — get plan from profile or subscription
   const p = state.userProfile?.plan || 'free';
-  if (state.userProfile?.plan_expires_at) {
-    const exp = new Date(state.userProfile.plan_expires_at);
-    if (exp < new Date()) return 'free';
-  }
   return p;
 }
 
@@ -3255,9 +3287,10 @@ function updatePlanUI() {
       badge.textContent = 'ADMIN';
       badge.style.background = '#d33';
     } else {
-      const labels = { free: 'FREE', basic: 'BASIC', pro: 'PRO' };
+      const labels = { free: 'FREE', trial: 'TRIAL', basic: 'BASIC', pro: 'PRO', max: 'MAX' };
+      const colors = { free: 'var(--text-muted)', trial: 'var(--green)', basic: 'var(--caramel)', pro: '#8B6343', max: 'var(--brown-dark)' };
       badge.textContent = labels[plan] || 'FREE';
-      badge.style.background = plan === 'pro' ? '#8B6343' : plan === 'basic' ? 'var(--caramel)' : 'var(--text-muted)';
+      badge.style.background = colors[plan] || 'var(--text-muted)';
     }
   }
   if (upgradeBtn) {
@@ -3300,7 +3333,8 @@ async function checkSearchLimit() {
   }
 
   const plan = getUserPlan();
-  const baseLimit = { basic: 2, pro: 50, agency: 50 }[plan] || 2;
+  const cfg = PLAN_CONFIG[plan] || PLAN_CONFIG.trial;
+  const baseLimit = cfg.maxSearches;
   const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
   const totalLimit = baseLimit + (hasBonus ? 1 : 0);
 
@@ -3342,7 +3376,8 @@ function updateQuotaBar(used, total, hasBonus) {
 async function loadQuotaBar() {
   const plan = getUserPlan();
   if (!state.user) return;
-  const baseLimit = { basic: 2, pro: 50, agency: 50 }[plan] || 2;
+  const cfg = PLAN_CONFIG[plan] || PLAN_CONFIG.trial;
+  const baseLimit = cfg.maxSearches;
   const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
   const totalLimit = baseLimit + (hasBonus ? 1 : 0);
   try {
@@ -4287,37 +4322,84 @@ async function adminChangePlan(userId, newPlan) {
 // ========== PAYWALL + CARDCOM INTEGRATION ==========
 let cardcomLowProfileCode = null;
 let cardcomPollInterval = null;
+let selectedBillingCycle = 'monthly';
+let selectedPlan = 'pro';
 
 function showPaywall(firstName) {
   const trialEnd = new Date();
-  trialEnd.setDate(trialEnd.getDate() + 7);
+  trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
   const dateStr = trialEnd.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
 
   document.getElementById('paywall-name').textContent = firstName || state.userProfile?.full_name || '';
   document.getElementById('paywall-trial-date').textContent = dateStr;
   document.getElementById('paywall-trust-date').textContent = dateStr;
 
-  // Reset state
-  document.getElementById('paywall-card-section').style.display = 'block';
+  // Reset cardcom
   document.getElementById('cardcom-container').style.display = 'none';
   document.getElementById('cardcom-loading').style.display = 'flex';
-  const btn = document.getElementById('paywall-btn');
-  btn.disabled = false;
-  btn.textContent = '🔓 התחל 7 ימי ניסיון חינם ←';
+
+  // Reset toggle to monthly
+  selectedBillingCycle = 'monthly';
+  updatePricingDisplay();
 
   showScreen('paywall');
 }
 
-async function openCardcomPayment() {
-  const btn = document.getElementById('paywall-btn');
-  btn.disabled = true;
-  btn.textContent = '🔄 טוען דף תשלום מאובטח...';
+function toggleBillingCycle() {
+  selectedBillingCycle = selectedBillingCycle === 'monthly' ? 'yearly' : 'monthly';
+  const dot = document.getElementById('billing-toggle-dot');
+  const lblM = document.getElementById('toggle-label-monthly');
+  const lblY = document.getElementById('toggle-label-yearly');
+  if (selectedBillingCycle === 'yearly') {
+    dot.style.right = 'auto'; dot.style.left = '3px';
+    lblY.style.fontWeight = '700'; lblY.style.color = 'var(--brown)';
+    lblM.style.fontWeight = '600'; lblM.style.color = 'var(--text-muted)';
+  } else {
+    dot.style.left = 'auto'; dot.style.right = '3px';
+    lblM.style.fontWeight = '700'; lblM.style.color = 'var(--brown)';
+    lblY.style.fontWeight = '600'; lblY.style.color = 'var(--text-muted)';
+  }
+  updatePricingDisplay();
+}
 
+function updatePricingDisplay() {
+  const isYearly = selectedBillingCycle === 'yearly';
+  ['basic','pro','max'].forEach(plan => {
+    const p = PLAN_PRICES[plan];
+    const priceEl = document.getElementById('pw-' + plan + '-price');
+    const origEl = document.getElementById('pw-' + plan + '-original');
+    if (priceEl && p) {
+      if (isYearly) {
+        const perMonth = Math.round(p.yearly / 12);
+        priceEl.innerHTML = '₪' + perMonth + ' <span>/ חודש</span>';
+        origEl.textContent = '₪' + Math.round(p.originalYearly / 12);
+      } else {
+        priceEl.innerHTML = '₪' + p.monthly + ' <span>/ חודש</span>';
+        origEl.textContent = '₪' + p.originalMonthly;
+      }
+    }
+  });
+}
+
+function selectPaywallPlan(plan) {
+  selectedPlan = plan;
+  const p = PLAN_PRICES[plan];
+  const isYearly = selectedBillingCycle === 'yearly';
+  const price = isYearly ? p.yearly : p.monthly;
+  const label = { basic: 'Basic', pro: 'PRO', max: 'MAX' }[plan];
+
+  document.getElementById('selected-plan-label').textContent = 'מסלול ' + label;
+  document.getElementById('selected-plan-price').textContent = '₪' + price + '/' + (isYearly ? 'שנה' : 'חודש');
+
+  openCardcomPayment();
+}
+
+async function openCardcomPayment() {
   try {
     const res = await fetch('/api/cardcom/create-token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
-      body: JSON.stringify({ plan: 'pro' }),
+      body: JSON.stringify({ plan: selectedPlan, cycle: selectedBillingCycle }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -4325,18 +4407,18 @@ async function openCardcomPayment() {
     cardcomLowProfileCode = data.low_profile_code;
 
     // Show iframe
-    document.getElementById('paywall-card-section').style.display = 'none';
     document.getElementById('cardcom-container').style.display = 'block';
     document.getElementById('cardcom-loading').style.display = 'flex';
     document.getElementById('cardcom-iframe').src = data.url;
+
+    // Scroll to iframe
+    document.getElementById('cardcom-container').scrollIntoView({ behavior: 'smooth', block: 'center' });
 
     // Poll for redirect back
     startCardcomResultPolling();
   } catch(e) {
     console.error('Cardcom error:', e);
     toast('שגיאה: ' + e.message, 'err');
-    btn.disabled = false;
-    btn.textContent = '🔓 התחל 7 ימי ניסיון חינם ←';
   }
 }
 
@@ -4369,7 +4451,7 @@ async function handleCardcomSuccess() {
     const res = await fetch('/api/auth/start-trial', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
-      body: JSON.stringify({ low_profile_code: cardcomLowProfileCode, plan: 'pro' }),
+      body: JSON.stringify({ low_profile_code: cardcomLowProfileCode, plan: selectedPlan, cycle: selectedBillingCycle }),
     });
     const data = await res.json();
     if (data.error) { toast('שגיאה: ' + data.error, 'err'); showPaywall(state.userProfile?.full_name); return; }
@@ -4378,7 +4460,7 @@ async function handleCardcomSuccess() {
     state.userProfile.trial_ends_at = data.trial_end;
     state.userProfile.cardcom_last_four = data.last_four;
 
-    toast('🎉 7 ימי PRO הופעלו!', 'ok');
+    toast('🎉 5 ימי ניסיון הופעלו!', 'ok');
     setTimeout(() => { updatePlanUI(); showScreen('home'); }, 1000);
   } catch(e) {
     console.error('Start trial error:', e);
@@ -4395,8 +4477,23 @@ function handleCardcomFailure() {
   showPaywall(state.userProfile?.full_name);
 }
 
-function skipPaywall() {
-  toast('אתה במצב מוגבל — שדרג בכל רגע', 'ok');
+async function skipPaywall() {
+  // Start free trial (5 days, no card)
+  try {
+    if (state.user && state.userProfile?.status === 'pending_payment') {
+      await fetch(SUPA_URL + '/rest/v1/user_profiles?id=eq.' + state.user.id, {
+        method: 'PATCH',
+        headers: { ...supaHeaders(true), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'trialing',
+          trial_ends_at: new Date(Date.now() + TRIAL_DAYS * 24*60*60*1000).toISOString(),
+        })
+      });
+      state.userProfile.status = 'trialing';
+      state.userProfile.trial_ends_at = new Date(Date.now() + TRIAL_DAYS * 24*60*60*1000).toISOString();
+    }
+  } catch(e) { console.log('Skip trial update:', e); }
+  toast('🎁 ' + TRIAL_DAYS + ' ימי ניסיון הופעלו!', 'ok');
   updatePlanUI();
   showScreen('home');
 }
