@@ -3119,12 +3119,22 @@ function switchAuthTab(tab) {
   document.getElementById('auth-register-form').style.display = tab === 'register' ? '' : 'none';
 }
 
+// Clear all user-specific state (called on login/register/logout)
+function clearUserState() {
+  _clientsCache = null;
+  state.videos = []; state.selected = []; state.scripts = [];
+  state.calendar = []; state.trendVideos = []; state.bizName = '';
+  state.industry = null; state.lastQuote = null;
+}
+
 async function userRegister() {
   const name = document.getElementById('auth-reg-name').value.trim();
   const email = document.getElementById('auth-reg-email').value.trim();
   const pass = document.getElementById('auth-reg-pass').value;
   if (!name || !email || !pass) { toast('נא למלא את כל השדות', 'err'); return; }
   if (pass.length < 6) { toast('סיסמה חייבת להכיל לפחות 6 תווים', 'err'); return; }
+
+  clearUserState(); // ← Clean old user data
 
   try {
     // Call server-side register (creates Supabase user + profile)
@@ -3155,15 +3165,18 @@ async function userLogin() {
   const pass = document.getElementById('auth-login-pass').value;
   if (!email || !pass) { toast('נא למלא מייל וסיסמה', 'err'); return; }
 
+  clearUserState(); // ← Clean old user data
+
   try {
     const user = await supa.login(email, pass);
     state.user = user;
     localStorage.setItem('vm_user', JSON.stringify(user));
     await loadUserProfile();
     toast('התחברת בהצלחה!', 'ok');
-    // Super admin → straight to admin dashboard
     if (isSuperAdmin()) {
       showScreen('admin');
+    } else if (state.userProfile?.status === 'pending_payment') {
+      showPaywall(state.userProfile.full_name);
     } else {
       updatePlanUI();
       showScreen('home');
@@ -3177,7 +3190,21 @@ async function userLogout() {
   supa.logout();
   state.user = null;
   state.userProfile = null;
+  clearUserState();
+  
+  // Clear ALL localStorage
   localStorage.removeItem('vm_user');
+  localStorage.removeItem('vm_supa_token');
+  localStorage.removeItem('vm_history');
+  localStorage.removeItem('vm_profile');
+  localStorage.removeItem('vm_quotes');
+  localStorage.removeItem('vm_trends');
+  localStorage.removeItem('vm_favs');
+  localStorage.removeItem('vm_clients');
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('vm_seen_')) localStorage.removeItem(key);
+  });
+  
   toast('התנתקת', 'ok');
   showScreen('auth');
 }
@@ -3473,7 +3500,9 @@ async function adminLogout() {
   state.adminUser = null;
   state.user = null;
   state.userProfile = null;
+  clearUserState();
   localStorage.removeItem('vm_user');
+  localStorage.removeItem('vm_supa_token');
   showScreen('auth');
   toast('התנתקת', 'ok');
 }
