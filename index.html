@@ -3163,6 +3163,9 @@ function switchAuthTab(tab) {
   document.getElementById('auth-tab-register').classList.toggle('active', tab === 'register');
   document.getElementById('auth-login-form').style.display = tab === 'login' ? '' : 'none';
   document.getElementById('auth-register-form').style.display = tab === 'register' ? '' : 'none';
+  // Hide email confirmation message if visible
+  const confirmEl = document.getElementById('email-confirm-msg');
+  if (confirmEl) confirmEl.style.display = 'none';
 }
 
 // Clear all user-specific state (called on login/register/logout)
@@ -3180,10 +3183,9 @@ async function userRegister() {
   if (!name || !email || !pass) { toast('נא למלא את כל השדות', 'err'); return; }
   if (pass.length < 6) { toast('סיסמה חייבת להכיל לפחות 6 תווים', 'err'); return; }
 
-  clearUserState(); // ← Clean old user data
+  clearUserState();
 
   try {
-    // Call server-side register (creates Supabase user + profile)
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3192,7 +3194,13 @@ async function userRegister() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    // Save session
+    // Email confirmation required?
+    if (data.needs_confirmation) {
+      showEmailConfirmation(email);
+      return;
+    }
+
+    // No confirmation needed — log in directly
     supaToken = data.access_token;
     localStorage.setItem('vm_supa_token', supaToken);
     state.user = data.user;
@@ -3206,12 +3214,58 @@ async function userRegister() {
   }
 }
 
+function showEmailConfirmation(email) {
+  // Replace the auth card content with confirmation message
+  document.getElementById('auth-login-form').style.display = 'none';
+  document.getElementById('auth-register-form').style.display = 'none';
+
+  const card = document.querySelector('.auth-card');
+  if (!card) return;
+
+  // Insert confirmation message
+  let confirmEl = document.getElementById('email-confirm-msg');
+  if (!confirmEl) {
+    confirmEl = document.createElement('div');
+    confirmEl.id = 'email-confirm-msg';
+    card.appendChild(confirmEl);
+  }
+
+  confirmEl.innerHTML = `
+    <div style="text-align:center;padding:20px 0">
+      <div style="font-size:56px;margin-bottom:16px">📧</div>
+      <div style="font-size:20px;font-weight:800;color:var(--brown-dark);margin-bottom:12px">נרשמת בהצלחה!</div>
+      <div style="font-size:14px;color:var(--text-secondary);line-height:1.8;margin-bottom:8px">
+        שלחנו קישור אימות לכתובת:<br>
+        <strong style="color:var(--brown)">${esc(email)}</strong>
+      </div>
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">
+        לחץ על הקישור במייל כדי לאמת את החשבון<br>ואז חזור לכאן להתחבר
+      </div>
+      <div style="background:var(--cream);border:1px solid var(--sand);border-radius:12px;padding:16px;margin-bottom:20px">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">💡 לא קיבלת?</div>
+        <div style="font-size:12px;color:var(--text-muted)">בדוק בתיקיית הספאם או נסה להירשם שוב</div>
+      </div>
+      <button class="btn-primary full" onclick="backToLogin()">← חזור להתחברות</button>
+    </div>
+  `;
+  confirmEl.style.display = 'block';
+}
+
+function backToLogin() {
+  // Remove confirmation message and show login form
+  const confirmEl = document.getElementById('email-confirm-msg');
+  if (confirmEl) confirmEl.style.display = 'none';
+  document.getElementById('auth-login-form').style.display = '';
+  document.getElementById('auth-register-form').style.display = 'none';
+  switchAuthTab('login');
+}
+
 async function userLogin() {
   const email = document.getElementById('auth-login-email').value.trim();
   const pass = document.getElementById('auth-login-pass').value;
   if (!email || !pass) { toast('נא למלא מייל וסיסמה', 'err'); return; }
 
-  clearUserState(); // ← Clean old user data
+  clearUserState();
 
   try {
     const user = await supa.login(email, pass);
@@ -3228,7 +3282,14 @@ async function userLogin() {
       showScreen('home');
     }
   } catch(e) {
-    toast('שגיאה: ' + e.message, 'err');
+    const msg = (e.message || '').toLowerCase();
+    if (msg.includes('email not confirmed') || msg.includes('not confirmed') || msg.includes('confirm')) {
+      toast('יש לאמת את כתובת האימייל לפני ההתחברות. בדוק את תיבת הדואר שלך', 'err');
+    } else if (msg.includes('invalid login') || msg.includes('invalid password') || msg.includes('credentials')) {
+      toast('אימייל או סיסמה שגויים', 'err');
+    } else {
+      toast('שגיאה: ' + e.message, 'err');
+    }
   }
 }
 
