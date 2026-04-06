@@ -491,6 +491,11 @@
   .paywall-trust { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--text-muted); margin-top: 16px; text-align: center; line-height: 1.6; }
   .paywall-skip { display: block; text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-muted); cursor: pointer; background: none; border: none; font-family: inherit; transition: color 0.2s; }
   .paywall-skip:hover { color: var(--brown); }
+
+  /* ========== OTP DIGITS ========== */
+  .otp-digit { width: 48px; height: 56px; border: 1.5px solid var(--sand); border-radius: 12px; background: var(--cream); font: 700 24px Rubik; color: var(--brown-dark); text-align: center; outline: none; transition: border-color 0.2s, box-shadow 0.2s; caret-color: var(--caramel); }
+  .otp-digit:focus { border-color: var(--caramel); box-shadow: 0 0 0 3px rgba(196,133,59,0.12); }
+  @media (max-width: 400px) { .otp-digit { width: 40px; height: 48px; font-size: 20px; } }
   .cardcom-frame-wrap { width: 100%; border: 1px solid var(--sand); border-radius: 14px; overflow: hidden; background: #fff; min-height: 280px; position: relative; margin-bottom: 8px; }
   .cardcom-frame-wrap iframe { width: 100%; height: 280px; border: none; }
   .cardcom-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--cream); font-size: 14px; color: var(--text-muted); gap: 8px; }
@@ -3214,15 +3219,20 @@ async function userRegister() {
   }
 }
 
+let pendingVerifyEmail = null; // Store email for OTP verification
+
 function showEmailConfirmation(email) {
-  // Replace the auth card content with confirmation message
+  pendingVerifyEmail = email;
   document.getElementById('auth-login-form').style.display = 'none';
   document.getElementById('auth-register-form').style.display = 'none';
 
   const card = document.querySelector('.auth-card');
   if (!card) return;
 
-  // Insert confirmation message
+  // Hide auth toggle
+  const toggle = card.querySelector('.auth-toggle');
+  if (toggle) toggle.style.display = 'none';
+
   let confirmEl = document.getElementById('email-confirm-msg');
   if (!confirmEl) {
     confirmEl = document.createElement('div');
@@ -3231,30 +3241,175 @@ function showEmailConfirmation(email) {
   }
 
   confirmEl.innerHTML = `
-    <div style="text-align:center;padding:20px 0">
-      <div style="font-size:56px;margin-bottom:16px">📧</div>
-      <div style="font-size:20px;font-weight:800;color:var(--brown-dark);margin-bottom:12px">נרשמת בהצלחה!</div>
-      <div style="font-size:14px;color:var(--text-secondary);line-height:1.8;margin-bottom:8px">
-        שלחנו קישור אימות לכתובת:<br>
-        <strong style="color:var(--brown)">${esc(email)}</strong>
+    <div style="text-align:center;padding:16px 0">
+      <div style="font-size:48px;margin-bottom:14px">📧</div>
+      <div style="font-size:20px;font-weight:800;color:var(--brown-dark);margin-bottom:8px">נרשמת בהצלחה!</div>
+      <div style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:6px">
+        שלחנו קוד אימות בן 6 ספרות לכתובת:
       </div>
-      <div style="font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">
-        לחץ על הקישור במייל כדי לאמת את החשבון<br>ואז חזור לכאן להתחבר
+      <div style="font-size:15px;font-weight:700;color:var(--brown);margin-bottom:20px;direction:ltr">${esc(email)}</div>
+
+      <div style="display:flex;justify-content:center;gap:8px;direction:ltr;margin-bottom:16px" id="otp-inputs">
+        <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code" onfocus="this.select()" oninput="otpInput(this,0)">
+        <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" onfocus="this.select()" oninput="otpInput(this,1)">
+        <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" onfocus="this.select()" oninput="otpInput(this,2)">
+        <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" onfocus="this.select()" oninput="otpInput(this,3)">
+        <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" onfocus="this.select()" oninput="otpInput(this,4)">
+        <input class="otp-digit" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" onfocus="this.select()" oninput="otpInput(this,5)">
       </div>
-      <div style="background:var(--cream);border:1px solid var(--sand);border-radius:12px;padding:16px;margin-bottom:20px">
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">💡 לא קיבלת?</div>
-        <div style="font-size:12px;color:var(--text-muted)">בדוק בתיקיית הספאם או נסה להירשם שוב</div>
+
+      <div id="otp-error" style="color:var(--red);font-size:13px;min-height:20px;margin-bottom:12px"></div>
+
+      <button class="btn-primary full" id="otp-verify-btn" onclick="verifyOTP()" style="margin-bottom:12px">אמת חשבון ←</button>
+
+      <div style="background:var(--cream);border:1px solid var(--sand);border-radius:12px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">לא קיבלת קוד?</div>
+        <button style="background:none;border:none;color:var(--caramel);font:600 13px Heebo;cursor:pointer;text-decoration:underline" id="resend-otp-btn" onclick="resendOTP()">שלח קוד חדש</button>
       </div>
-      <button class="btn-primary full" onclick="backToLogin()">← חזור להתחברות</button>
+
+      <button style="background:none;border:none;color:var(--text-muted);font:500 13px Heebo;cursor:pointer" onclick="backToLogin()">← חזור למסך התחברות</button>
     </div>
   `;
   confirmEl.style.display = 'block';
+
+  // Focus first input
+  setTimeout(() => {
+    const first = document.querySelector('.otp-digit');
+    if (first) first.focus();
+  }, 200);
+}
+
+// Handle OTP digit input — auto-advance to next field
+function otpInput(el, idx) {
+  const val = el.value.replace(/[^0-9]/g, '');
+  el.value = val;
+  const inputs = document.querySelectorAll('.otp-digit');
+  if (val && idx < 5) {
+    inputs[idx + 1].focus();
+  }
+  // Auto-submit when all 6 digits entered
+  const full = Array.from(inputs).map(i => i.value).join('');
+  if (full.length === 6) {
+    verifyOTP();
+  }
+}
+
+// Handle paste of full OTP code
+document.addEventListener('paste', function(e) {
+  const inputs = document.querySelectorAll('.otp-digit');
+  if (!inputs.length || !document.activeElement.classList.contains('otp-digit')) return;
+  const text = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+  if (text.length === 6) {
+    e.preventDefault();
+    for (let i = 0; i < 6; i++) inputs[i].value = text[i];
+    verifyOTP();
+  }
+});
+
+async function verifyOTP() {
+  const inputs = document.querySelectorAll('.otp-digit');
+  const code = Array.from(inputs).map(i => i.value).join('');
+  const errorEl = document.getElementById('otp-error');
+  const btn = document.getElementById('otp-verify-btn');
+
+  if (code.length !== 6) {
+    errorEl.textContent = 'נא להזין קוד בן 6 ספרות';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '🔄 מאמת...';
+  errorEl.textContent = '';
+
+  try {
+    const res = await fetch('/api/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: pendingVerifyEmail, token: code }),
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      errorEl.textContent = data.error;
+      btn.disabled = false;
+      btn.textContent = 'אמת חשבון ←';
+      // Clear inputs
+      inputs.forEach(i => { i.value = ''; });
+      inputs[0].focus();
+      return;
+    }
+
+    // Success! Save session
+    const accessToken = data.access_token || data.session?.access_token;
+    const user = data.user || data.session?.user;
+
+    if (accessToken && user) {
+      supaToken = accessToken;
+      localStorage.setItem('vm_supa_token', supaToken);
+      state.user = user;
+      localStorage.setItem('vm_user', JSON.stringify(user));
+      await loadUserProfile();
+
+      toast('חשבון אומת בהצלחה! 🎉', 'ok');
+
+      // Route to paywall or home
+      setTimeout(() => {
+        if (state.userProfile?.status === 'pending_payment') {
+          showPaywall(state.userProfile.full_name || user.email);
+        } else {
+          updatePlanUI();
+          showScreen('home');
+        }
+      }, 500);
+    } else {
+      // Verified but no session returned — redirect to login
+      toast('חשבון אומת! התחבר עכשיו', 'ok');
+      backToLogin();
+    }
+
+  } catch(e) {
+    console.error('Verify error:', e);
+    errorEl.textContent = 'שגיאה — נסה שוב';
+    btn.disabled = false;
+    btn.textContent = 'אמת חשבון ←';
+  }
+}
+
+async function resendOTP() {
+  if (!pendingVerifyEmail) return;
+  const btn = document.getElementById('resend-otp-btn');
+  btn.textContent = 'שולח...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(SUPA_URL + '/auth/v1/resend', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'signup', email: pendingVerifyEmail }),
+    });
+    if (res.ok) {
+      toast('קוד חדש נשלח! בדוק את המייל 📧', 'ok');
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast(err.error_description || err.msg || 'שגיאה בשליחה — נסה שוב', 'err');
+    }
+  } catch(e) {
+    toast('שגיאה בשליחת קוד חדש', 'err');
+  }
+
+  setTimeout(() => {
+    btn.textContent = 'שלח קוד חדש';
+    btn.disabled = false;
+  }, 30000); // Cooldown: 30 seconds before allowing resend
+  btn.textContent = 'נשלח! (המתן 30 שניות)';
 }
 
 function backToLogin() {
-  // Remove confirmation message and show login form
   const confirmEl = document.getElementById('email-confirm-msg');
   if (confirmEl) confirmEl.style.display = 'none';
+  // Show auth toggle again
+  const toggle = document.querySelector('.auth-toggle');
+  if (toggle) toggle.style.display = '';
   document.getElementById('auth-login-form').style.display = '';
   document.getElementById('auth-register-form').style.display = 'none';
   switchAuthTab('login');
