@@ -30,15 +30,22 @@ module.exports = async function handler(req, res) {
     });
     const signupData = await signupRes.json();
 
-    if (!signupData.access_token) {
-      const errMsg = signupData.error?.message || signupData.msg || 'Registration failed';
+    // Check for errors
+    if (signupData.error) {
+      const errMsg = signupData.error.message || signupData.error || 'Registration failed';
       console.error('Signup error:', errMsg);
       return res.status(400).json({ error: errMsg });
     }
 
-    const userId = signupData.user.id;
+    // With "Confirm Email" ON: user exists but no access_token
+    const userId = signupData.user?.id;
+    if (!userId) {
+      return res.status(400).json({ error: 'שגיאה ביצירת חשבון — נסה שוב' });
+    }
 
-    // 2. Create user_profiles row
+    const needsConfirmation = !signupData.access_token;
+
+    // 2. Create user_profiles row (using service_role to bypass RLS)
     const profileRes = await fetch(SUPA_URL + '/rest/v1/user_profiles', {
       method: 'POST',
       headers: {
@@ -59,15 +66,23 @@ module.exports = async function handler(req, res) {
     if (!profileRes.ok) {
       const profileErr = await profileRes.json().catch(() => ({}));
       console.log('Profile insert note:', profileErr.message || profileRes.status);
-      // Don't fail registration if profile insert fails (might already exist)
     }
 
-    // 3. Return session
+    // 3. Return — different response for confirmed vs unconfirmed
+    if (needsConfirmation) {
+      return res.status(200).json({
+        needs_confirmation: true,
+        email: email,
+        message: 'נרשמת בהצלחה! שלחנו קישור אימות למייל שלך.',
+      });
+    }
+
     return res.status(200).json({
       user: signupData.user,
       access_token: signupData.access_token,
       refresh_token: signupData.refresh_token,
       status: 'pending_payment',
+      needs_confirmation: false,
     });
 
   } catch (error) {
