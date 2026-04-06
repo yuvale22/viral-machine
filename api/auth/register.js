@@ -28,10 +28,20 @@ module.exports = async function handler(req, res) {
       headers: { 'apikey': SERVICE_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, options: { data: { full_name } } }),
     });
+    // Check HTTP status first
+    if (signupRes.status === 429) {
+      return res.status(429).json({ error: 'יותר מדי ניסיונות הרשמה — נסה שוב בעוד כמה דקות' });
+    }
+
     const signupData = await signupRes.json();
 
     // Log full response for debugging
     console.log('Supabase signup response:', JSON.stringify(signupData).slice(0, 500));
+
+    // Check for rate limiting in response body
+    if (signupData.code === 429 || signupData.error_code === 'over_request_rate_limit') {
+      return res.status(429).json({ error: 'יותר מדי ניסיונות — נסה שוב בעוד כמה דקות' });
+    }
 
     // Check for explicit errors
     if (signupData.error) {
@@ -40,7 +50,15 @@ module.exports = async function handler(req, res) {
       if (errMsg.includes('already registered') || errMsg.includes('already been registered')) {
         return res.status(400).json({ error: 'כתובת האימייל כבר רשומה במערכת. נסה להתחבר.' });
       }
+      if (errMsg.includes('security purposes') || errMsg.includes('rate') || errMsg.includes('too many')) {
+        return res.status(429).json({ error: 'יותר מדי ניסיונות — נסה שוב בעוד כמה דקות' });
+      }
       return res.status(400).json({ error: errMsg });
+    }
+
+    // Check for rate limit returned as msg (another Supabase format)
+    if (signupData.msg && (signupData.msg.includes('security') || signupData.msg.includes('rate'))) {
+      return res.status(429).json({ error: 'יותר מדי ניסיונות — נסה שוב בעוד כמה דקות' });
     }
 
     // Extract user ID from various possible response formats
