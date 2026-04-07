@@ -3874,33 +3874,79 @@ function switchAdminTab(tab) {
 }
 
 async function renderAdminDashboard() {
-  // Fetch creators
-  let creators = [];
-  try { creators = await supa.select('creators', 'order=created_at.desc'); } catch(e) {}
+  let users = [], creators = [], payments = [], subscriptions = [];
 
-  // Fetch users
-  let users = [];
-  try { users = await supa.select('user_profiles', 'order=email.asc'); } catch(e) { console.log('Users fetch error:', e); }
+  // Try the admin API first (uses service_role to bypass RLS)
+  try {
+    const apiRes = await fetch('/api/admin/stats', {
+      headers: { 'Authorization': 'Bearer ' + supaToken },
+    });
+    if (apiRes.ok) {
+      const data = await apiRes.json();
+      users = data.users || [];
+      creators = data.creators || [];
+      payments = data.payments || [];
+      subscriptions = data.subscriptions || [];
+    } else {
+      const errData = await apiRes.json().catch(() => ({}));
+      console.error('Admin API error:', apiRes.status, errData);
+      toast('שגיאת API: ' + (errData.error || apiRes.status), 'err');
+      // Fallback to direct queries (may be limited by RLS)
+      try { creators = await supa.select('creators', 'order=created_at.desc'); } catch(e) {}
+      try { users = await supa.select('user_profiles', 'order=email.asc'); } catch(e) {}
+    }
+  } catch(e) {
+    console.error('Admin API fetch error:', e);
+    // Fallback
+    try { creators = await supa.select('creators', 'order=created_at.desc'); } catch(e) {}
+    try { users = await supa.select('user_profiles', 'order=email.asc'); } catch(e) {}
+  }
+
   adminUsersCache = users || [];
 
-  // Fetch payments
-  let payments = [];
-  try { payments = await supa.select('payments', 'order=created_at.desc'); } catch(e) {}
-
   const now = new Date();
-  const freeUsers = (users||[]).filter(u => !u.plan || u.plan === 'free' || (u.plan !== 'free' && u.plan_expires_at && new Date(u.plan_expires_at) < now)).length;
-  const basicUsers = (users||[]).filter(u => u.plan === 'basic' && (!u.plan_expires_at || new Date(u.plan_expires_at) >= now)).length;
-  const proUsers = (users||[]).filter(u => u.plan === 'pro' && (!u.plan_expires_at || new Date(u.plan_expires_at) >= now)).length;
-  const paidUsers = basicUsers + proUsers;
-  const mrr = basicUsers * 99 + proUsers * 199;
-  const totalRevenue = (payments||[]).filter(p => p.status === 'completed').reduce((s,p) => s + (p.amount||0), 0);
+  // Build a map of subscriptions by user_id (most recent active first)
+  const subByUser = {};
+  (subscriptions || []).forEach(s => {
+    if (!subByUser[s.user_id] || new Date(s.created_at) > new Date(subByUser[s.user_id].created_at)) {
+      subByUser[s.user_id] = s;
+    }
+  });
+
+  // Determine plan: prefer active subscription, fallback to user_profiles.plan
+  function getUserActivePlan(u) {
+    const sub = subByUser[u.id];
+    if (sub && (sub.status === 'active' || sub.status === 'trialing')) return sub.plan;
+    if (u.plan && u.plan !== 'free') return u.plan;
+    return 'free';
+  }
+
+  const usersByPlan = { free: 0, trial: 0, basic: 0, pro: 0, max: 0 };
+  (users || []).forEach(u => {
+    const status = u.status || 'free';
+    if (status === 'trialing') {
+      usersByPlan.trial++;
+    } else {
+      const plan = getUserActivePlan(u);
+      usersByPlan[plan] = (usersByPlan[plan] || 0) + 1;
+    }
+  });
+
+  const freeUsers = usersByPlan.free;
+  const trialUsers = usersByPlan.trial;
+  const basicUsers = usersByPlan.basic;
+  const proUsers = usersByPlan.pro;
+  const maxUsers = usersByPlan.max;
+  const paidUsers = basicUsers + proUsers + maxUsers;
+  const mrr = basicUsers * 99 + proUsers * 139 + maxUsers * 259;
+  const totalRevenue = (payments || []).reduce((s, p) => s + ((p.amount_ils || 0) / 100), 0);
 
   // Top stats
   document.getElementById('admin-stats').innerHTML = `
     <div class="admin-stat"><div class="summary-num">${(users||[]).length}</div><div class="summary-label">סה"כ משתמשים</div></div>
     <div class="admin-stat"><div class="summary-num">${paidUsers}</div><div class="summary-label">משלמים פעילים</div></div>
     <div class="admin-stat"><div class="summary-num">₪${mrr}</div><div class="summary-label">MRR חודשי</div></div>
-    <div class="admin-stat"><div class="summary-num">₪${totalRevenue}</div><div class="summary-label">סה"כ הכנסות</div></div>
+    <div class="admin-stat"><div class="summary-num">₪${Math.round(totalRevenue)}</div><div class="summary-label">סה"כ הכנסות</div></div>
     <div class="admin-stat"><div class="summary-num">${(creators||[]).length}</div><div class="summary-label">יוצרים במאגר</div></div>
   `;
 
@@ -3908,8 +3954,8 @@ async function renderAdminDashboard() {
   const total = (users||[]).length || 1;
   const convRate = total > 0 ? Math.round((paidUsers / total) * 100) : 0;
   document.getElementById('admin-plan-breakdown').innerHTML = `
-    <div style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span style="font-size:13px;color:var(--text-secondary)">🆓 Free</span>
         <span style="font-size:14px;font-weight:700;color:var(--text)">${freeUsers}</span>
       </div>
@@ -3917,22 +3963,40 @@ async function renderAdminDashboard() {
         <div style="height:100%;width:${Math.round(freeUsers/total*100)}%;background:#999;border-radius:4px"></div>
       </div>
     </div>
-    <div style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:13px;color:var(--text-secondary)">🚀 Basic — ₪99</span>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;color:var(--text-secondary)">🎁 Trial (5 ימים)</span>
+        <span style="font-size:14px;font-weight:700;color:var(--green)">${trialUsers}</span>
+      </div>
+      <div style="height:8px;background:var(--sand);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${Math.round(trialUsers/total*100)}%;background:var(--green);border-radius:4px"></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;color:var(--text-secondary)">⚡ Basic — ₪99</span>
         <span style="font-size:14px;font-weight:700;color:var(--caramel)">${basicUsers}</span>
       </div>
       <div style="height:8px;background:var(--sand);border-radius:4px;overflow:hidden">
         <div style="height:100%;width:${Math.round(basicUsers/total*100)}%;background:var(--caramel);border-radius:4px"></div>
       </div>
     </div>
-    <div style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:13px;color:var(--text-secondary)">💎 Pro — ₪199</span>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;color:var(--text-secondary)">🚀 PRO — ₪139</span>
         <span style="font-size:14px;font-weight:700;color:var(--brown)">${proUsers}</span>
       </div>
       <div style="height:8px;background:var(--sand);border-radius:4px;overflow:hidden">
         <div style="height:100%;width:${Math.round(proUsers/total*100)}%;background:var(--brown);border-radius:4px"></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;color:var(--text-secondary)">👑 MAX — ₪259</span>
+        <span style="font-size:14px;font-weight:700;color:var(--brown-dark)">${maxUsers}</span>
+      </div>
+      <div style="height:8px;background:var(--sand);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${Math.round(maxUsers/total*100)}%;background:var(--brown-dark);border-radius:4px"></div>
       </div>
     </div>
     <div style="padding:16px;background:var(--cream);border-radius:12px;text-align:center;margin-top:16px">
