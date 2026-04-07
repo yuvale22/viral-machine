@@ -1546,6 +1546,7 @@ function saveToHistory(entry) {
 window.onload = async () => {
   buildGrid();
   updateHistoryCount();
+  checkOTPErrorInURL();
 
   const urlParams = new URLSearchParams(window.location.search);
 
@@ -3321,57 +3322,98 @@ async function verifyOTP() {
   btn.textContent = '🔄 מאמת...';
   errorEl.textContent = '';
 
+  // Helper: show error and reset state
+  function showError(msg) {
+    errorEl.textContent = msg;
+    btn.disabled = false;
+    btn.textContent = 'אמת חשבון ←';
+    inputs.forEach(i => { i.value = ''; });
+    inputs[0]?.focus();
+  }
+
   try {
     const res = await fetch('/api/auth/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: pendingVerifyEmail, token: code }),
     });
-    const data = await res.json();
 
-    if (data.error) {
-      errorEl.textContent = data.error;
-      btn.disabled = false;
-      btn.textContent = 'אמת חשבון ←';
-      // Clear inputs
-      inputs.forEach(i => { i.value = ''; });
-      inputs[0].focus();
+    // STRICT: parse JSON, but don't trust it yet
+    let data = {};
+    try { data = await res.json(); } catch(e) { data = {}; }
+
+    // 1. HTTP status check — if not OK, this is a failure
+    if (!res.ok) {
+      const msg = data.error || data.error_description || data.msg || 'קוד שגוי או שפג תוקף';
+      console.error('Verify failed [' + res.status + ']:', data);
+      showError(msg);
       return;
     }
 
-    // Success! Save session
+    // 2. Explicit error in body
+    if (data.error || data.error_code || data.error_description) {
+      const msg = data.error || data.error_description || 'קוד שגוי או שפג תוקף';
+      console.error('Verify error in body:', data);
+      showError(msg);
+      return;
+    }
+
+    // 3. Extract token + user from any of the possible response shapes
     const accessToken = data.access_token || data.session?.access_token;
     const user = data.user || data.session?.user;
 
-    if (accessToken && user) {
-      supaToken = accessToken;
-      localStorage.setItem('vm_supa_token', supaToken);
-      state.user = user;
-      localStorage.setItem('vm_user', JSON.stringify(user));
-      await loadUserProfile();
-
-      toast('חשבון אומת בהצלחה! 🎉', 'ok');
-
-      // Route to paywall or home
-      setTimeout(() => {
-        if (state.userProfile?.status === 'pending_payment') {
-          showPaywall(state.userProfile.full_name || user.email);
-        } else {
-          updatePlanUI();
-          showScreen('home');
-        }
-      }, 500);
-    } else {
-      // Verified but no session returned — redirect to login
-      toast('חשבון אומת! התחבר עכשיו', 'ok');
-      backToLogin();
+    // 4. ONLY treat as success if we have BOTH token and user
+    if (!accessToken || !user) {
+      console.error('Verify response missing token/user:', data);
+      showError('האימות נכשל — נסה שוב או בקש קוד חדש');
+      return;
     }
 
+    // ✅ Real success — save session
+    supaToken = accessToken;
+    localStorage.setItem('vm_supa_token', supaToken);
+    state.user = user;
+    localStorage.setItem('vm_user', JSON.stringify(user));
+
+    // Clean URL of any error params
+    if (window.location.search.includes('error') || window.location.hash.includes('error')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    await loadUserProfile();
+    toast('חשבון אומת בהצלחה! 🎉', 'ok');
+
+    // Route to paywall or home
+    setTimeout(() => {
+      if (state.userProfile?.status === 'pending_payment') {
+        showPaywall(state.userProfile.full_name || user.email);
+      } else {
+        updatePlanUI();
+        showScreen('home');
+      }
+    }, 500);
+
   } catch(e) {
-    console.error('Verify error:', e);
-    errorEl.textContent = 'שגיאה — נסה שוב';
-    btn.disabled = false;
-    btn.textContent = 'אמת חשבון ←';
+    console.error('Verify network error:', e);
+    showError('שגיאת רשת — נסה שוב');
+  }
+}
+
+// Check URL for OTP error params on load (e.g. otp_expired from email link)
+function checkOTPErrorInURL() {
+  const params = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const errorCode = params.get('error_code') || hash.get('error_code') || params.get('error') || hash.get('error');
+  if (errorCode) {
+    const msgMap = {
+      otp_expired: 'הקוד פג תוקף — בקש קוד חדש',
+      access_denied: 'הקוד שגוי או פג תוקף',
+      invalid_request: 'בקשה לא תקינה',
+    };
+    const msg = msgMap[errorCode] || 'הקוד שגוי או פג תוקף';
+    setTimeout(() => toast(msg, 'err'), 300);
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
   }
 }
 
