@@ -5,10 +5,10 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function getFreshVideoUrl(videoId) {
-  console.log(`📡 פונה ל-RapidAPI עבור סרטון: ${videoId}`);
+  console.log(`📡 פונה ל-RapidAPI (Root Endpoint) עבור: ${videoId}`);
   
-  // שיניתי כאן מ-video/info ל-post/info - זה ה-Endpoint הנכון ב-scraper7
-  const url = `https://tiktok-scraper7.p.rapidapi.com/post/info?video_id=${videoId}`;
+  // ב-Scraper 7 ה-Endpoint הוא שורש ה-API והפרמטר הוא url
+  const url = `https://tiktok-scraper7.p.rapidapi.com/?url=${videoId}`;
   
   try {
     const response = await fetch(url, {
@@ -19,13 +19,14 @@ async function getFreshVideoUrl(videoId) {
     });
     const data = await response.json();
     
-    console.log(`📝 תשובה מרפיד:`, JSON.stringify(data).substring(0, 300)); 
+    // זה הלוג הקריטי - אם זה מצליח, נראה כאן את כל פרטי הסרטון
+    console.log(`📝 תשובה מרפיד:`, JSON.stringify(data).substring(0, 500)); 
 
-    // שליפת ה-play url מהמבנה של scraper7
+    // שליפת הלינק מהמבנה של TikWM (נמצא בתוך data.play)
     const playUrl = data.data?.play || data.data?.wmplay || null;
     
     if (!playUrl) {
-        console.log(`⚠️ לא נמצא URL. שגיאה מה-API: ${data.msg || 'אין פירוט'}`);
+        console.log(`⚠️ לא נמצא לינק ב-JSON. הודעה: ${data.msg || 'אין'}`);
     }
     return playUrl;
   } catch (e) {
@@ -35,12 +36,12 @@ async function getFreshVideoUrl(videoId) {
 }
 
 async function indexVideos() {
-  console.log("🚀 תחילת סבב אינדוקס...");
+  console.log("🚀 תחילת סבב אינדוקס סופי...");
 
   const { data: videos, error } = await supabase
     .from('cached_videos') 
     .select('video_id')
-    .limit(2); 
+    .limit(3); 
 
   if (error) {
     console.error("❌ שגיאה בסופאבייס:", error.message);
@@ -51,32 +52,29 @@ async function indexVideos() {
 
   for (const video of videos) {
     const id = video.video_id;
-    console.log(`--- בודק: ${id} ---`);
+    console.log(`--- מעבד סרטון: ${id} ---`);
 
     const freshUrl = await getFreshVideoUrl(id);
     if (!freshUrl) continue;
 
     try {
-      console.log(`🎙️ מתמלל עכשיו ב-OpenAI...`);
+      console.log(`🎙️ שולח ל-Whisper...`);
       const transcription = await openai.audio.transcriptions.create({
         file: await fetch(freshUrl),
         model: "whisper-1",
         language: "he"
       });
 
-      const { error: insertError } = await supabase.from('video_analysis').insert({
+      console.log(`✅ תמלול מוכן! שומר לסופאבייס...`);
+      await supabase.from('video_analysis').insert({
         aweme_id: id,
         transcript: transcription.text,
         source_url: freshUrl
       });
-
-      if (insertError) {
-          console.error("❌ שגיאה בשמירה לסופאבייס:", insertError.message);
-      } else {
-          console.log(`🎯 הצלחה עבור סרטון ${id}!`);
-      }
+      
+      console.log(`🎯 הצלחה מלאה עבור ${id}!`);
     } catch (err) {
-      console.error(`❌ שגיאה בתמלול:`, err.message);
+      console.error(`❌ שגיאה בתמלול ${id}:`, err.message);
     }
   }
 }
