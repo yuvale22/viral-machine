@@ -1,32 +1,76 @@
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+const { createClient } = require('@supabase/supabase-js');
+const OpenAI = require('openai');
 
-  const RAPID_KEY = process.env.RAPIDAPI_KEY;
-  if (!RAPID_KEY) return res.status(500).json({ error: 'RapidAPI key not configured' });
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  const { endpoint, params } = req.body;
-  const allowedEndpoints = ['feed/search', 'user/posts', 'user/search'];
-  if (!allowedEndpoints.includes(endpoint)) {
-    return res.status(400).json({ error: 'Invalid endpoint' });
-  }
-
+async function getFreshVideoUrl(videoId) {
+  const url = `https://tiktok-scraper7.p.rapidapi.com/video/info?video_id=${videoId}`;
   try {
-    const query = new URLSearchParams(params).toString();
-    const url = `https://tiktok-scraper7.p.rapidapi.com/${endpoint}?${query}`;
     const response = await fetch(url, {
       headers: {
-        'X-RapidAPI-Key': RAPID_KEY,
+        'X-RapidAPI-Key': process.env.RAPID_API_KEY,
         'X-RapidAPI-Host': 'tiktok-scraper7.p.rapidapi.com'
       }
     });
-    if (!response.ok) return res.status(response.status).json({ error: 'TikTok API error: ' + response.status });
     const data = await response.json();
-    return res.status(200).json(data);
+    return data.data?.play || data.data?.wmplay || null;
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    console.error(`❌ שגיאה בשליפת לינק עבור ${videoId}:`, e.message);
+    return null;
   }
 }
+
+async function indexVideos() {
+  console.log("🚀 מתחיל אינדוקס חכם (לינקים טריים מרפיד)...");
+
+  const { data: videos, error } = await supabase
+    .from('cached_videos') 
+    .select('video_id')
+    .limit(5); // בוא נתחיל ב-5 כדי לראות שזה עובד חלק
+
+  if (error) {
+    console.error("❌ שגיאה בשליפת סרטונים מסופאבייס:", error.message);
+    return;
+  }
+
+  for (const video of videos) {
+    const id = video.video_id;
+
+    // בודק אם כבר קיים תמלול
+    const { data: existing } = await supabase
+      .from('video_analysis')
+      .select('aweme_id')
+      .eq('aweme_id', id)
+      .single();
+
+    if (existing) {
+      console.log(`⏭️ סרטון ${id} כבר תומלל, מדלג...`);
+      continue;
+    }
+
+    const freshUrl = await getFreshVideoUrl(id);
+    if (!freshUrl) continue;
+
+    try {
+      console.log(`🎙️ מתמלל סרטון ${id}...`);
+      const transcription = await openai.audio.transcriptions.create({
+        file: await fetch(freshUrl),
+        model: "whisper-1",
+        language: "he"
+      });
+
+      await supabase.from('video_analysis').insert({
+        aweme_id: id,
+        transcript: transcription.text,
+        source_url: freshUrl
+      });
+
+      console.log(`✅ הצלחה! תמלול נשמר עבור ${id}`);
+    } catch (err) {
+      console.error(`❌ שגיאה בעיבוד ${id}:`, err.message);
+    }
+  }
+}
+
+indexVideos();
