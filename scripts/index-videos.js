@@ -47,7 +47,7 @@ async function getOnScreenText(coverUrl) {
 }
 
 async function indexVideos() {
-  console.log("🚀 Starting YUMi Full-System Indexer...");
+  console.log("🚀 Starting YUMi Script Mirroring Machine...");
 
   const { data: videos, error } = await supabase.from("cached_videos").select("video_id").limit(3);
   if (error) {
@@ -57,13 +57,10 @@ async function indexVideos() {
 
   for (const video of videos) {
     const id = video.video_id;
-    console.log("Processing Video: " + id);
+    console.log("Analyzing: " + id);
 
     const { data: existing } = await supabase.from("video_analysis").select("aweme_id").eq("aweme_id", id).maybeSingle();
-    if (existing) {
-      console.log("Skipping, already exists.");
-      continue;
-    }
+    if (existing) continue;
 
     const videoData = await getVideoData(id);
     if (!videoData?.playUrl) continue;
@@ -83,11 +80,11 @@ async function indexVideos() {
       });
       transcript = result.text;
     } catch (e) {
-      console.log("Audio failed, relying on Vision.");
+      console.log("Audio failed, using Vision.");
     }
 
     try {
-      console.log("🧠 Generating Analysis and Script with Tags...");
+      console.log("🧠 Creating Script Mirror...");
       
       const finalResponse = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -95,23 +92,25 @@ async function indexVideos() {
           {
             role: "system",
             content: `אתה מומחה שיווק וסושיאל מדיה עבור אפליקציית YUMi.
-            עליך לייצר פלט במבנה הבא בדיוק (חובה למלא את כל 3 הסעיפים):
-
+            תפקידך לייצר "תסריט מראה" (Script Mirror) שמשכפל את ההצלחה של הסרטון המקורי בצורה מדויקת.
+            
+            חוקי הברזל ליצירת התסריט:
+            1. פלואו זהה: עקוב במדויק אחרי סדר הפעולות של הסרטון המקורי (הוק, מעברים, והנעה לפעולה).
+            2. סגנון המלל: שמור על אותה שפה (סלנג, שפה מקצועית, הומור) שהופיעה במקור.
+            3. שימוש בתגיות: השתמש בתגית {{BUSINESS_NAME}} פעם אחת בלבד לאורך כל התסריט.
+            4. מינימליזם: אל תוסיף משפטי שיווק גנריים. אם המקור היה ספונטני, התסריט החדש חייב להיות ספונטני.
+            
+            מבנה התשובה:
             ### 1. איפיון שיווקי
-            (ניתוח ה-Hook, הפסיכולוגיה של הוויראליות וההצעה השיווקית בסרטון המקורי).
+            (ניתוח ה-Hook ולמה זה עבד).
 
             ### 2. המלצות הפקה
-            (הוראות צילום, סוג סאונד וקצב מומלץ לעריכה).
+            (צילום וסאונד זהים למקור).
 
-            ### 3. תסריט יישומי ללקוח
-            תכתוב תסריט מלא לצילום המבוסס על המבנה המנצח של הסרטון המקורי.
-            חובה להשתמש בתגיות הבאות למילוי אוטומטי של שם העסק והמוצר:
-            - לשם העסק: {{BUSINESS_NAME}}
-            - לשם המוצר/המנה: {{PRODUCT_NAME}}
+            ### 3. תסריט ה-Vibe המקורי
+            תכתוב את התסריט החדש שמחקה את המקור אחד-לאחד, עם תגית {{BUSINESS_NAME}} ותגית {{PRODUCT_NAME}}.
 
-            דוגמה לשימוש בתגיות: "בואו לגלות את הדיל החדש של {{BUSINESS_NAME}} על ה-{{PRODUCT_NAME}} שלנו!"
-
-            חוקים: תקן 'תקרעו את התיאום' ל-'תקראו את התיאור'. אם יש רק ג'יבריש מוזיקלי, התעלם ממנו והסתמך על הטקסט מהמסך (Vision).`
+            תיקון: תקן 'תקרעו את התיאום' ל-'תקראו את התיאור'. אם יש רק מוזיקה, התמקד בטקסט מהמסך.`
           },
           {
             role: "user",
@@ -128,11 +127,11 @@ async function indexVideos() {
         source_url: videoData.playUrl
       });
       
-      console.log("🎯 Successfully indexed and scripted: " + id);
+      console.log("🎯 Successfully mirrored script: " + id);
     } catch (err) {
-      console.error("AI Generation error:", err.message);
+      console.error("AI Error:", err.message);
     }
   }
 }
 
-indexVideos().then(() => console.log("🏁 All jobs done."));
+indexVideos().then(() => console.log("🏁 Done."));
