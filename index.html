@@ -1971,112 +1971,50 @@ async function generateScripts() {
   const name = document.getElementById('biz-name').value.trim();
   if (!name) { toast('נא להכניס שם עסק','err'); return; }
   state.bizName = name;
-  const chosen = state.videos.filter(v => state.selected.includes(v.video_id));
 
-  // Build rich video summaries with all available data
-  const richSummaries = chosen.map((v,i) => {
-    let s = `סרטון ${i+1}:`;
-    if (v.heTitle) s += `\n   כותרת: "${v.heTitle}"`;
-    if (v.heSubtitle) s += `\n   תיאור: "${v.heSubtitle}"`;
-    s += `\n   כותרת מקורית: "${(v.title||v.desc||'').slice(0,120)}"`;
-    s += `\n   צפיות: ${fmt(v.play_count)} | לייקים: ${fmt(v.digg_count)} | מעורבות: ${v.eng}%`;
-    if (v.duration) s += ` | אורך: ${v.duration} שניות`;
-    if (v.desc && v.desc !== v.title) s += `\n   תיאור מקורי: "${v.desc.slice(0,200)}"`;
-    if (v.author?.unique_id) s += `\n   חשבון: @${v.author.unique_id}`;
-    const tags = (v.text_extra||[]).filter(t=>t.hashtag_name).map(t=>'#'+t.hashtag_name).join(' ');
-    if (tags) s += `\n   האשטאגים: ${tags.slice(0,150)}`;
-    return s;
-  }).join('\n\n');
-
-  // Show overlay
   const overlay = document.getElementById('gen-overlay');
   overlay.classList.add('active');
-  document.getElementById('gen-overlay-title').textContent = `מייצר תסריטים ל${name}...`;
+  document.getElementById('gen-overlay-title').textContent = 'מנתח את הסרטונים עבור ' + name + '...';
   setGenStep(1);
 
   const btn = document.getElementById('gen-btn');
   btn.disabled = true;
 
   try {
-    // Collect cover image URLs from selected videos
-    const coverUrls = chosen.map(v => v.cover || v.origin_cover || v.dynamic_cover || '').filter(u => u);
-    console.log('Video covers:', coverUrls.length, 'images');
+    // state.selected is an array of video_id strings
+    const res = await fetch('/api/generate-scripts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
+      body: JSON.stringify({
+        aweme_ids: state.selected,
+        business_name: name,
+        product_name: '',
+      }),
+    });
 
-    // ===== STEP 1: ANALYZE VIDEOS WITH IMAGES =====
-    const analyzePrompt = `אתה מומחה לניתוח סרטוני טיקטוק ויראליים.
-
-${coverUrls.length > 0 ? `מצורפות ${coverUrls.length} תמונות מתוך הסרטונים. תסתכל על כל תמונה ותנתח מה קורה בסרטון — מי מופיע, מה הסיטואציה, איפה זה מתרחש, מה ההבעות והאווירה.` : ''}
-
-להלן ${chosen.length} סרטונים ויראליים שנבחרו כהשראה:
-
-${richSummaries}
-
-נתח כל סרטון (בהתבסס על התמונה והנתונים):
-1. מה קורה בסרטון? תאר את הסיטואציה, הדמויות, המיקום והאווירה
-2. מה הפורמט? (POV, סקיט, סוגי לקוחות, יום בחיים, מאחורי הקלעים, תגובה, אחר)
-3. מה עושה את זה מצחיק/ויראלי? (מצב אבסורדי, טוויסט בסוף, מצב מוכר, הגזמה)
-4. מה ה-HOOK ב-2 שניות הראשונות?
-5. איך הסרטון בנוי? (פתיחה → בניה → פאנצ'ליין)
-
-סיכום: מה הדפוס המשותף לסרטונים האלה? מה הנוסחה שעובדת?
-
-ענה בעברית.`;
-
-    const analysis = await callClaude(analyzePrompt, 4000, coverUrls.length > 0 ? coverUrls : undefined);
-    state.videoAnalysis = analysis;
-
-    // ===== STEP 2: GENERATE SCRIPTS BASED ON ANALYSIS =====
     setGenStep(2);
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Server error');
 
-    const generatePrompt = `You are a viral TikTok scriptwriter for Israeli small businesses.
+    // Map API response (marketing/production/script) to existing UI format
+    const ready = (data.scripts || []).filter(s => s.status === 'ready');
+    if (ready.length === 0) {
+      overlay.classList.remove('active');
+      toast(data.message || 'הסרטונים עדיין בעיבוד — נסה שוב בעוד דקה', 'err');
+      return;
+    }
 
-BUSINESS:
-- Name: ${name}
-- Type: ${state.industry?.label}
+    state.scripts = ready.map((s, i) => ({
+      title: 'תסריט ' + (i+1) + (s.quality === 'lite' ? ' (ניתוח מהיר)' : ''),
+      format: 'ניתוח שיווקי + תסריט',
+      inspired: 'סרטון ' + (i+1),
+      hook: (s.marketing || '').slice(0, 120),
+      script: (s.production ? '📋 המלצות הפקה:\n' + s.production + '\n\n' : '') + '🎬 תסריט מוכן:\n' + (s.script || ''),
+      caption: '#' + name.replace(/\s+/g,'') + ' #ויראלי #טיקטוק',
+    }));
 
-VIRAL VIDEO ANALYSIS (from real TikTok videos the client chose as reference):
-${analysis}
-
-ORIGINAL VIDEO DATA:
-${richSummaries}
-
-Based on the SPECIFIC patterns, formats, humor styles, and structures identified in the analysis above, create 8 short Hebrew comedy scripts (15-25 seconds each).
-
-CRITICAL RULES:
-- Each script MUST mimic the EXACT style of the analyzed videos — same structure, same type of humor, same pacing
-- Use the same viral formats found in the analysis (POV, Types, etc.)
-- Match the hook style — whatever works in the first 2 seconds of those videos, replicate it
-- Match the punchline placement — if videos end with a twist, so should scripts
-- The business name "${name}" should appear naturally, not forced
-- All dialogue in Hebrew, casual and authentic
-- Each script should be a DIFFERENT variation inspired by the patterns
-
-Use EXACTLY this format for each:
----SCRIPT---
-TITLE: [כותרת קליטה]
-FORMAT: [הפורמט הויראלי שזוהה]
-INSPIRED_BY: [איזה סרטון מקורי השפיע על התסריט הזה]
-HOOK: [מה קורה ב-2 שניות הראשונות]
-SCRIPT:
-[דיאלוג מלא בעברית עם הנחיות במשחק]
-CAPTION: [כיתוב + האשטאגים]
----END---`;
-
-    const text = await callClaude(generatePrompt);
-    state.scripts = text.split('---SCRIPT---').slice(1).map(r => {
-      const c = r.slice(0, r.indexOf('---END---') > -1 ? r.indexOf('---END---') : undefined);
-      const get = k => { const m = c.match(new RegExp(k+':\\s*([\\s\\S]*?)(?=\\n[A-Z_]+:|---END|$)')); return m ? m[1].trim() : ''; };
-      return {
-        title: get('TITLE'), format: get('FORMAT'), inspired: get('INSPIRED_BY'),
-        hook: get('HOOK'), script: get('SCRIPT'), caption: get('CAPTION')
-      };
-    }).filter(s => s.script);
-
-    if (state.scripts.length === 0) { overlay.classList.remove('active'); toast('לא נוצרו תסריטים','err'); return; }
-
-    // ===== STEP 3: SAVE =====
     setGenStep(3);
-    await sleep(600);
+    await sleep(400);
 
     saveToHistory({
       id: Date.now(),
@@ -2088,17 +2026,21 @@ CAPTION: [כיתוב + האשטאגים]
     });
 
     overlay.classList.remove('active');
-    toast(`${state.scripts.length} תסריטים נוצרו בסגנון הסרטונים שבחרת!`,'ok');
+    const msg = data.pending > 0
+      ? state.scripts.length + ' תסריטים מוכנים! (' + data.pending + ' עדיין בעיבוד)'
+      : state.scripts.length + ' תסריטים נוצרו בהתבסס על הסרטונים שבחרת!';
+    toast(msg, 'ok');
     state.calendar = [];
     renderScripts(name);
     showScreen('scripts');
   } catch(e) {
     overlay.classList.remove('active');
-    toast('שגיאה: '+e.message,'err');
+    toast('שגיאה: ' + e.message, 'err');
   } finally {
     btn.disabled = false; btn.textContent = '✨ צור תסריטים';
   }
 }
+
 
 function setGenStep(n) {
   for (let i = 1; i <= 3; i++) {
