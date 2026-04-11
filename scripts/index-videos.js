@@ -130,4 +130,9 @@ async function indexVideos() {
       
       console.log("🎯 Successfully indexed and scripted: " + id);
     } catch (err) {
-      console.error("AI Generation error:", err
+      console.error("AI Generation error:", err.message);
+    }
+  }
+}
+
+indexVideos().then(() => console.log("🏁 All jobs done."));
