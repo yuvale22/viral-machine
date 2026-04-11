@@ -5,59 +5,61 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function indexVideos() {
-  console.log("🚀 מתחיל סריקת סרטונים לתמלול...");
+  console.log("🚀 מתחיל סריקת סרטונים מ-cached_videos...");
 
-  // 1. שליפת סרטונים שעדיין לא תומללו
-  // שים לב: אני מניח ששם הטבלת המקור שלך הוא 'cached_videos' או 'discovered_accounts'
-  // אם השם שונה, נצטרך לעדכן כאן.
+  // 1. שליפת סרטונים מהטבלה הנכונה
   const { data: videos, error } = await supabase
-    .from('discovered_accounts') 
-    .select('aweme_id, video_url, music_url')
-    .limit(10); // נתחיל ב-10 סרטונים בכל ריצה כדי לא להעמיס
+    .from('cached_videos') 
+    .select('video_id, video_url') // וודא שבסופאבייס העמודה נקראת video_url
+    .limit(10); 
 
   if (error) {
-    console.error("❌ שגיאה בשליפת סרטונים:", error);
+    console.error("❌ שגיאה בשליפת סרטונים:", error.message);
     return;
   }
 
-  console.log(`🔎 נמצאו ${videos.length} סרטונים לעיבוד.`);
+  console.log(`🔎 נמצאו ${videos.length} סרטונים לבדיקה.`);
 
   for (const video of videos) {
-    // בדיקה אם כבר קיים תמלול
+    // בדיקה אם כבר תמללנו את הסרטון הזה בעבר
     const { data: existing } = await supabase
       .from('video_analysis')
       .select('aweme_id')
-      .eq('aweme_id', video.aweme_id)
+      .eq('aweme_id', video.video_id)
       .single();
 
     if (existing) {
-      console.log(`⏭️ סרטון ${video.aweme_id} כבר תומלל, מדלג...`);
+      console.log(`⏭️ סרטון ${video.video_id} כבר קיים במאגר, מדלג...`);
+      continue;
+    }
+
+    if (!video.video_url) {
+      console.log(`⚠️ לסרטון ${video.video_id} אין לינק (video_url), מדלג...`);
       continue;
     }
 
     try {
-      console.log(`🎙️ מתמלל סרטון ${video.aweme_id}...`);
+      console.log(`🎙️ מתמלל סרטון ${video.video_id}...`);
       
-      // שליחת הלינק של האודיו ל-Whisper
       const transcription = await openai.audio.transcriptions.create({
-        file: await fetch(video.music_url || video.video_url),
+        file: await fetch(video.video_url),
         model: "whisper-1",
         language: "he"
       });
 
-      // שמירה לסופאבייס
+      // שמירה לטבלת הניתוח
       await supabase.from('video_analysis').insert({
-        aweme_id: video.aweme_id,
+        aweme_id: video.video_id,
         transcript: transcription.text,
         source_url: video.video_url
       });
 
-      console.log(`✅ סרטון ${video.aweme_id} נשמר בהצלחה.`);
+      console.log(`✅ סרטון ${video.video_id} תומלל ונשמר!`);
     } catch (err) {
-      console.error(`❌ שגיאה בעיבוד סרטון ${video.aweme_id}:`, err.message);
+      console.error(`❌ שגיאה בתימלול ${video.video_id}:`, err.message);
     }
   }
-  console.log("🏁 הסתיים סבב התמלול.");
+  console.log("🏁 הסתיים סבב עיבוד.");
 }
 
 indexVideos();
