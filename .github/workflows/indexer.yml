@@ -7,15 +7,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
-      - run: npm install @supabase/supabase-js openai node-fetch@2
+
+      - name: Install dependencies
+        run: npm install @supabase/supabase-js openai node-fetch@2 dotenv
+
       - name: Run Indexer
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RAPID_API_KEY: ${{ secrets.RAPID_API_KEY }} # השם המדויק מהצילום מסך שלך
+          RAPID_API_KEY: ${{ secrets.RAPID_API_KEY }} 
         run: node scripts/index-videos.js
