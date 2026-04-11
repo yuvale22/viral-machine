@@ -47,23 +47,25 @@ async function getOnScreenText(coverUrl) {
 }
 
 async function indexVideos() {
-  console.log("🚀 Starting YUMi Smart Machine (Anti-Gibberish Mode)...");
+  console.log("🚀 YUMi Industrial Mode: Processing 100 Videos...");
 
-  // כאן אתה משנה את ה-limit כדי להגדיל כמות
-  const { data: videos, error } = await supabase.from("cached_videos").select("video_id").limit(10);
+  // הלימיט הוגדר ל-100 לעיבוד מאסיבי
+  const { data: videos, error } = await supabase.from("cached_videos").select("video_id").limit(100);
   if (error) {
     console.error("Supabase error:", error.message);
     return;
   }
 
-  console.log("Found " + videos.length + " videos to process.");
+  console.log("Found " + videos.length + " new videos to analyze.");
 
   for (const video of videos) {
     const id = video.video_id;
-    console.log("Analyzing: " + id);
-
+    
+    // בדיקה אם כבר עובד (מונע כפילויות וביזבוז כסף)
     const { data: existing } = await supabase.from("video_analysis").select("aweme_id").eq("aweme_id", id).maybeSingle();
     if (existing) continue;
+
+    console.log("--- Analyzing: " + id + " ---");
 
     const videoData = await getVideoData(id);
     if (!videoData?.playUrl) continue;
@@ -83,36 +85,33 @@ async function indexVideos() {
       });
       transcript = result.text;
     } catch (e) {
-      console.log("Audio failed, using Vision.");
+      console.log("Audio process skipped for: " + id);
     }
 
     try {
-      console.log("🧠 Generating High-Quality Content...");
-      
       const finalResponse = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
             content: `אתה מומחה שיווק וסושיאל מדיה עבור אפליקציית YUMi.
-            תפקידך לייצר תסריט מראה (Script Mirror) איכותי.
+            תפקידך לייצר תסריט מראה (Script Mirror) שמשכפל את ההצלחה של הסרטון המקורי.
             
             חוק קריטי - זיהוי ג'יבריש:
-            אם תמלול האודיו נראה כמו הברות חוזרות, מילים חסרות משמעות (כמו 'און גר', 'תה תה', 'דעמי') או ג'יבריש של מוזיקה - התעלם ממנו לחלוטין!
-            במקרה כזה, בנה תסריט חדש, קולע ואותנטי שמבוסס אך ורק על הטקסט שראית על המסך (Vision) ועל כותרת הסרטון.
+            אם התמלול נראה כמו הברות חוזרות או ג'יבריש מוזיקלי (און גר, דעמי, תה תה), התעלם ממנו לחלוטין ובנה תסריט על בסיס ה-Vision וכותרת הסרטון בלבד.
             
             חוקי התסריט:
-            1. פלואו: שמור על קצב של טיקטוק (Hook חזק, מעבר מהיר, הנעה לפעולה).
-            2. שימוש בתגיות: השתמש ב-{{BUSINESS_NAME}} פעם אחת בלבד לאורך כל התסריט.
-            3. שפה: עברית טבעית, שיווקית וקולחת. אל תשתמש במילים מהתמלול אם הן נשמעות כמו טעות.
+            1. פלואו זהה: עקוב אחרי סדר הפעולות של המקור (Hook -> Value -> CTA).
+            2. שימוש בתגיות: השתמש ב-{{BUSINESS_NAME}} פעם אחת בלבד.
+            3. אותנטיות: שמור על שפה טבעית וטיקטוקית.
             
             מבנה התשובה:
             ### 1. איפיון שיווקי
-            (למה הסרטון הזה עובד ומה ה-Hook).
+            (ניתוח ה-Hook ולמה זה עבד).
             ### 2. המלצות הפקה
             (איך לצלם ואיזה סאונד לשים).
             ### 3. תסריט ה-Vibe המקורי
-            תכתוב את התסריט הסופי ללקוח עם התגיות {{BUSINESS_NAME}} ו-{{PRODUCT_NAME}}.
+            (תסריט מלא ללקוח עם תגיות {{BUSINESS_NAME}} ו-{{PRODUCT_NAME}}).
             
             תיקון: תקן 'תקרעו את התיאום' ל-'תקראו את התיאור'.`
           },
@@ -131,11 +130,11 @@ async function indexVideos() {
         source_url: videoData.playUrl
       });
       
-      console.log("🎯 Successfully indexed: " + id);
+      console.log("✅ Done: " + id);
     } catch (err) {
-      console.error("AI Error:", err.message);
+      console.error("AI Error for " + id + ":", err.message);
     }
   }
 }
 
-indexVideos().then(() => console.log("🏁 Done."));
+indexVideos().then(() => console.log("🏁 100-Video Batch Completed."));
