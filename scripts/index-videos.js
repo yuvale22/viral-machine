@@ -47,13 +47,16 @@ async function getOnScreenText(coverUrl) {
 }
 
 async function indexVideos() {
-  console.log("🚀 Starting YUMi Script Mirroring Machine...");
+  console.log("🚀 Starting YUMi Smart Machine (Anti-Gibberish Mode)...");
 
-  const { data: videos, error } = await supabase.from("cached_videos").select("video_id").limit(3);
+  // כאן אתה משנה את ה-limit כדי להגדיל כמות
+  const { data: videos, error } = await supabase.from("cached_videos").select("video_id").limit(10);
   if (error) {
     console.error("Supabase error:", error.message);
     return;
   }
+
+  console.log("Found " + videos.length + " videos to process.");
 
   for (const video of videos) {
     const id = video.video_id;
@@ -84,7 +87,7 @@ async function indexVideos() {
     }
 
     try {
-      console.log("🧠 Creating Script Mirror...");
+      console.log("🧠 Generating High-Quality Content...");
       
       const finalResponse = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -92,25 +95,26 @@ async function indexVideos() {
           {
             role: "system",
             content: `אתה מומחה שיווק וסושיאל מדיה עבור אפליקציית YUMi.
-            תפקידך לייצר "תסריט מראה" (Script Mirror) שמשכפל את ההצלחה של הסרטון המקורי בצורה מדויקת.
+            תפקידך לייצר תסריט מראה (Script Mirror) איכותי.
             
-            חוקי הברזל ליצירת התסריט:
-            1. פלואו זהה: עקוב במדויק אחרי סדר הפעולות של הסרטון המקורי (הוק, מעברים, והנעה לפעולה).
-            2. סגנון המלל: שמור על אותה שפה (סלנג, שפה מקצועית, הומור) שהופיעה במקור.
-            3. שימוש בתגיות: השתמש בתגית {{BUSINESS_NAME}} פעם אחת בלבד לאורך כל התסריט.
-            4. מינימליזם: אל תוסיף משפטי שיווק גנריים. אם המקור היה ספונטני, התסריט החדש חייב להיות ספונטני.
+            חוק קריטי - זיהוי ג'יבריש:
+            אם תמלול האודיו נראה כמו הברות חוזרות, מילים חסרות משמעות (כמו 'און גר', 'תה תה', 'דעמי') או ג'יבריש של מוזיקה - התעלם ממנו לחלוטין!
+            במקרה כזה, בנה תסריט חדש, קולע ואותנטי שמבוסס אך ורק על הטקסט שראית על המסך (Vision) ועל כותרת הסרטון.
+            
+            חוקי התסריט:
+            1. פלואו: שמור על קצב של טיקטוק (Hook חזק, מעבר מהיר, הנעה לפעולה).
+            2. שימוש בתגיות: השתמש ב-{{BUSINESS_NAME}} פעם אחת בלבד לאורך כל התסריט.
+            3. שפה: עברית טבעית, שיווקית וקולחת. אל תשתמש במילים מהתמלול אם הן נשמעות כמו טעות.
             
             מבנה התשובה:
             ### 1. איפיון שיווקי
-            (ניתוח ה-Hook ולמה זה עבד).
-
+            (למה הסרטון הזה עובד ומה ה-Hook).
             ### 2. המלצות הפקה
-            (צילום וסאונד זהים למקור).
-
+            (איך לצלם ואיזה סאונד לשים).
             ### 3. תסריט ה-Vibe המקורי
-            תכתוב את התסריט החדש שמחקה את המקור אחד-לאחד, עם תגית {{BUSINESS_NAME}} ותגית {{PRODUCT_NAME}}.
-
-            תיקון: תקן 'תקרעו את התיאום' ל-'תקראו את התיאור'. אם יש רק מוזיקה, התמקד בטקסט מהמסך.`
+            תכתוב את התסריט הסופי ללקוח עם התגיות {{BUSINESS_NAME}} ו-{{PRODUCT_NAME}}.
+            
+            תיקון: תקן 'תקרעו את התיאום' ל-'תקראו את התיאור'.`
           },
           {
             role: "user",
@@ -127,7 +131,7 @@ async function indexVideos() {
         source_url: videoData.playUrl
       });
       
-      console.log("🎯 Successfully mirrored script: " + id);
+      console.log("🎯 Successfully indexed: " + id);
     } catch (err) {
       console.error("AI Error:", err.message);
     }
