@@ -5,6 +5,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function getFreshVideoUrl(videoId) {
+  console.log(`📡 פונה ל-RapidAPI עבור סרטון: ${videoId}`);
   const url = `https://tiktok-scraper7.p.rapidapi.com/video/info?video_id=${videoId}`;
   try {
     const response = await fetch(url, {
@@ -14,23 +15,25 @@ async function getFreshVideoUrl(videoId) {
       }
     });
     const data = await response.json();
-    return data.data?.play || data.data?.wmplay || null;
+    const playUrl = data.data?.play || data.data?.wmplay || null;
+    if (!playUrl) console.log(`⚠️ לא נמצא URL בתוך התשובה של RapidAPI`);
+    return playUrl;
   } catch (e) {
-    console.error(`❌ שגיאה בשליפת לינק עבור ${videoId}:`, e.message);
+    console.error(`❌ שגיאה ב-RapidAPI עבור ${videoId}:`, e.message);
     return null;
   }
 }
 
 async function indexVideos() {
-  console.log("🚀 מתחיל אינדוקס חכם (לינקים טריים מרפיד)...");
+  console.log("🚀 מתחיל אינדוקס חכם (גרסת דיבאג)...");
 
   const { data: videos, error } = await supabase
     .from('cached_videos') 
     .select('video_id')
-    .limit(5); 
+    .limit(3); // נתחיל ב-3 כדי להיות בטוחים
 
   if (error) {
-    console.error("❌ שגיאה בשליפת סרטונים:", error.message);
+    console.error("❌ שגיאה בשליפת סרטונים מסופאבייס:", error.message);
     return;
   }
 
@@ -38,9 +41,18 @@ async function indexVideos() {
 
   for (const video of videos) {
     const id = video.video_id;
-    const { data: existing } = await supabase.from('video_analysis').select('aweme_id').eq('aweme_id', id).single();
+    console.log(`------------------------------`);
+    console.log(`🔍 בודק סרטון: ${id}`);
+
+    // בדיקה אם קיים
+    const { data: existing, error: checkError } = await supabase
+      .from('video_analysis')
+      .select('aweme_id')
+      .eq('aweme_id', id)
+      .maybeSingle();
+
     if (existing) {
-      console.log(`⏭️ סרטון ${id} כבר תומלל, מדלג...`);
+      console.log(`⏭️ סרטון ${id} כבר תומלל בעבר, מדלג.`);
       continue;
     }
 
@@ -48,23 +60,43 @@ async function indexVideos() {
     if (!freshUrl) continue;
 
     try {
-      console.log(`🎙️ מתמלל סרטון ${id}...`);
+      console.log(`🎙️ שולח ל-OpenAI (Whisper) תמלול...`);
+      
+      // הורדת הקובץ לזיכרון לפני השליחה
+      const videoRes = await fetch(freshUrl);
+      const blob = await videoRes.blob();
+      const file = new File([blob], "video.mp4", { type: "video/mp4" });
+
       const transcription = await openai.audio.transcriptions.create({
-        file: await fetch(freshUrl),
+        file: file,
         model: "whisper-1",
         language: "he"
       });
 
-      await supabase.from('video_analysis').insert({
+      console.log(`✅ תמלול התקבל! שומר לסופאבייס...`);
+
+      const { error: insertError } = await supabase.from('video_analysis').insert({
         aweme_id: id,
         transcript: transcription.text,
         source_url: freshUrl
       });
-      console.log(`✅ הצלחה! תמלול נשמר עבור ${id}`);
+
+      if (insertError) {
+        console.error(`❌ שגיאה בשמירה לסופאבייס:`, insertError.message);
+      } else {
+        console.log(`🎯 הצלחה מלאה עבור סרטון ${id}!`);
+      }
     } catch (err) {
-      console.error(`❌ שגיאה בעיבוד ${id}:`, err.message);
+      console.error(`❌ שגיאה בתהליך התמלול של ${id}:`, err.message);
     }
   }
+  console.log("🏁 הסתיים סבב עיבוד.");
 }
 
-indexVideos();
+// הפעלה בטוחה שמחכה לסיום
+indexVideos().then(() => {
+  console.log("✨ ה-Script סיים את עבודתו בהצלחה.");
+}).catch(err => {
+  console.error("💥 קריסה בלתי צפויה:", err);
+  process.exit(1);
+});
