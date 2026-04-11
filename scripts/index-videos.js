@@ -47,7 +47,7 @@ async function getOnScreenText(coverUrl) {
 }
 
 async function indexVideos() {
-  console.log("Starting index process...");
+  console.log("🚀 Starting YUMi Full-System Indexer...");
 
   const { data: videos, error } = await supabase.from("cached_videos").select("video_id").limit(3);
   if (error) {
@@ -55,15 +55,13 @@ async function indexVideos() {
     return;
   }
 
-  console.log("Found " + videos.length + " videos to process.");
-
   for (const video of videos) {
     const id = video.video_id;
-    console.log("Processing: " + id);
+    console.log("Processing Video: " + id);
 
     const { data: existing } = await supabase.from("video_analysis").select("aweme_id").eq("aweme_id", id).maybeSingle();
     if (existing) {
-      console.log("Video already exists, skipping...");
+      console.log("Skipping, already exists.");
       continue;
     }
 
@@ -85,37 +83,51 @@ async function indexVideos() {
       });
       transcript = result.text;
     } catch (e) {
-      console.log("Audio transcript failed, using vision only.");
+      console.log("Audio failed, relying on Vision.");
     }
 
     try {
-      const cleaningResponse = await openai.chat.completions.create({
+      console.log("🧠 Generating Analysis and Script with Tags...");
+      
+      const finalResponse = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: "אתה מומחה סושיאל מדיה ישראלי. תפקידך לקבל תמלול גולמי וטקסט מהמסך ולייצר תובנה שיווקית נקייה. תקן טעויות כמו תקרעו את התיאום לתקראו את התיאור. אם יש רק ג'יבריש מוזיקלי, תתעלם ממנו."
+            content: `אתה מומחה שיווק וסושיאל מדיה עבור אפליקציית YUMi.
+            עליך לייצר פלט במבנה הבא בדיוק (חובה למלא את כל 3 הסעיפים):
+
+            ### 1. איפיון שיווקי
+            (ניתוח ה-Hook, הפסיכולוגיה של הוויראליות וההצעה השיווקית בסרטון המקורי).
+
+            ### 2. המלצות הפקה
+            (הוראות צילום, סוג סאונד וקצב מומלץ לעריכה).
+
+            ### 3. תסריט יישומי ללקוח
+            תכתוב תסריט מלא לצילום המבוסס על המבנה המנצח של הסרטון המקורי.
+            חובה להשתמש בתגיות הבאות למילוי אוטומטי של שם העסק והמוצר:
+            - לשם העסק: {{BUSINESS_NAME}}
+            - לשם המוצר/המנה: {{PRODUCT_NAME}}
+
+            דוגמה לשימוש בתגיות: "בואו לגלות את הדיל החדש של {{BUSINESS_NAME}} על ה-{{PRODUCT_NAME}} שלנו!"
+
+            חוקים: תקן 'תקרעו את התיאום' ל-'תקראו את התיאור'. אם יש רק ג'יבריש מוזיקלי, התעלם ממנו והסתמך על הטקסט מהמסך (Vision).`
           },
           {
             role: "user",
-            content: "תמלול אודיו: " + transcript + "\nטקסט מהמסך: " + onScreenText + "\nכותרת: " + videoData.title
+            content: "תמלול אודיו: " + transcript + "\nטקסט מהמסך: " + onScreenText + "\nכותרת מקורית: " + videoData.title
           }
         ]
       });
 
-      const finalResult = cleaningResponse.choices[0].message.content;
+      const finalOutput = finalResponse.choices[0].message.content;
 
       await supabase.from("video_analysis").insert({
         aweme_id: id,
-        transcript: finalResult,
+        transcript: finalOutput,
         source_url: videoData.playUrl
       });
       
-      console.log("Successfully processed: " + id);
+      console.log("🎯 Successfully indexed and scripted: " + id);
     } catch (err) {
-      console.error("Processing error:", err.message);
-    }
-  }
-}
-
-indexVideos().then(() => console.log("Done."));
+      console.error("AI Generation error:", err
