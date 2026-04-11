@@ -21,5 +21,5 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RAPID_API_KEY: ${{ secrets.RAPID_API_KEY }} 
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }} # תיקנתי כאן - בלי קו תחתון באמצע
         run: node scripts/index-videos.js
