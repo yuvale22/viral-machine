@@ -15,25 +15,33 @@ async function getFreshVideoUrl(videoId) {
       }
     });
     const data = await response.json();
-    const playUrl = data.data?.play || data.data?.wmplay || null;
-    if (!playUrl) console.log(`⚠️ לא נמצא URL בתוך התשובה של RapidAPI`);
+    
+    // הדפסה של כל מה שחזר מרפיד כדי שנוכל לראות את המבנה
+    console.log(`📝 תשובה מלאה מרפיד:`, JSON.stringify(data).substring(0, 500)); 
+
+    // ניסיון לחלץ את הלינק מכמה מקומות אפשריים
+    const playUrl = data.data?.play || data.data?.play_url || data.play_url || data.play || null;
+    
+    if (!playUrl) {
+        console.log(`⚠️ אזהרה: לא נמצא שדה URL מוכר. הודעת ה-API: ${data.msg || 'אין הודעה'}`);
+    }
     return playUrl;
   } catch (e) {
-    console.error(`❌ שגיאה ב-RapidAPI עבור ${videoId}:`, e.message);
+    console.error(`❌ שגיאה טכנית בפנייה לרפיד:`, e.message);
     return null;
   }
 }
 
 async function indexVideos() {
-  console.log("🚀 מתחיל אינדוקס חכם (גרסת דיבאג)...");
+  console.log("🚀 תחילת סבב אינדוקס...");
 
   const { data: videos, error } = await supabase
     .from('cached_videos') 
     .select('video_id')
-    .limit(3); // נתחיל ב-3 כדי להיות בטוחים
+    .limit(2); // רק 2 סרטונים לבדיקה מהירה
 
   if (error) {
-    console.error("❌ שגיאה בשליפת סרטונים מסופאבייס:", error.message);
+    console.error("❌ שגיאה בסופאבייס:", error.message);
     return;
   }
 
@@ -41,62 +49,29 @@ async function indexVideos() {
 
   for (const video of videos) {
     const id = video.video_id;
-    console.log(`------------------------------`);
-    console.log(`🔍 בודק סרטון: ${id}`);
-
-    // בדיקה אם קיים
-    const { data: existing, error: checkError } = await supabase
-      .from('video_analysis')
-      .select('aweme_id')
-      .eq('aweme_id', id)
-      .maybeSingle();
-
-    if (existing) {
-      console.log(`⏭️ סרטון ${id} כבר תומלל בעבר, מדלג.`);
-      continue;
-    }
+    console.log(`--- בודק: ${id} ---`);
 
     const freshUrl = await getFreshVideoUrl(id);
     if (!freshUrl) continue;
 
     try {
-      console.log(`🎙️ שולח ל-OpenAI (Whisper) תמלול...`);
-      
-      // הורדת הקובץ לזיכרון לפני השליחה
-      const videoRes = await fetch(freshUrl);
-      const blob = await videoRes.blob();
-      const file = new File([blob], "video.mp4", { type: "video/mp4" });
-
+      console.log(`🎙️ מתמלל עכשיו...`);
       const transcription = await openai.audio.transcriptions.create({
-        file: file,
+        file: await fetch(freshUrl),
         model: "whisper-1",
         language: "he"
       });
 
-      console.log(`✅ תמלול התקבל! שומר לסופאבייס...`);
-
-      const { error: insertError } = await supabase.from('video_analysis').insert({
+      await supabase.from('video_analysis').insert({
         aweme_id: id,
         transcript: transcription.text,
         source_url: freshUrl
       });
-
-      if (insertError) {
-        console.error(`❌ שגיאה בשמירה לסופאבייס:`, insertError.message);
-      } else {
-        console.log(`🎯 הצלחה מלאה עבור סרטון ${id}!`);
-      }
+      console.log(`🎯 הצלחה עבור סרטון ${id}!`);
     } catch (err) {
-      console.error(`❌ שגיאה בתהליך התמלול של ${id}:`, err.message);
+      console.error(`❌ שגיאה בתמלול:`, err.message);
     }
   }
-  console.log("🏁 הסתיים סבב עיבוד.");
 }
 
-// הפעלה בטוחה שמחכה לסיום
-indexVideos().then(() => {
-  console.log("✨ ה-Script סיים את עבודתו בהצלחה.");
-}).catch(err => {
-  console.error("💥 קריסה בלתי צפויה:", err);
-  process.exit(1);
-});
+indexVideos().then(() => console.log("🏁 הסתיים."));
