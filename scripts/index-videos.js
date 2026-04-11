@@ -4,10 +4,8 @@ const OpenAI = require('openai');
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-async function getFreshVideoUrl(videoId) {
-  console.log(`📡 פונה ל-RapidAPI עבור: ${videoId}`);
+async function getVideoData(videoId) {
   const url = `https://tiktok-scraper7.p.rapidapi.com/?url=${videoId}`;
-  
   try {
     const response = await fetch(url, {
       headers: {
@@ -16,75 +14,86 @@ async function getFreshVideoUrl(videoId) {
       }
     });
     const data = await response.json();
-    const playUrl = data.data?.play || data.data?.wmplay || null;
-    return playUrl;
+    return {
+      playUrl: data.data?.play || data.data?.wmplay || null,
+      coverUrl: data.data?.cover || null,
+      title: data.data?.title || ""
+    };
   } catch (e) {
-    console.error(`❌ שגיאה ב-RapidAPI:`, e.message);
+    return null;
+  }
+}
+
+async function getOnScreenText(coverUrl) {
+  if (!coverUrl) return null;
+  try {
+    console.log(`👁️ מנסה לקרוא טקסט מהמסך (Vision)...`);
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "מהו הטקסט השיווקי שכתוב על המסך בתמונה הזו? תענה רק בטקסט עצמו. אם אין טקסט, תענה 'ללא'." },
+            { type: "image_url", image_url: { url: coverUrl } },
+          ],
+        },
+      ],
+    });
+    const text = response.choices[0].message.content;
+    return text === 'ללא' ? null : text;
+  } catch (e) {
+    console.error("❌ שגיאה בקריאת תמונה:", e.message);
     return null;
   }
 }
 
 async function indexVideos() {
-  console.log("🚀 תחילת סבב אינדוקס ממוקד דיבור...");
+  console.log("🚀 תחילת אינדוקס משולב (שמיעה + ראייה)...");
 
-  const { data: videos, error } = await supabase
-    .from('cached_videos') 
-    .select('video_id')
-    .limit(3); 
-
-  if (error) {
-    console.error("❌ שגיאה בסופאבייס:", error.message);
-    return;
-  }
-
-  console.log(`🔎 נמצאו ${videos.length} סרטונים לעיבוד.`);
+  const { data: videos, error } = await supabase.from('cached_videos').select('video_id').limit(3);
+  if (error) return;
 
   for (const video of videos) {
     const id = video.video_id;
     console.log(`--- מעבד: ${id} ---`);
 
-    // בדיקה אם הסרטון כבר קיים בתמלולים (כדי לא לשלם פעמיים)
-    const { data: existing } = await supabase
-      .from('video_analysis')
-      .select('aweme_id')
-      .eq('aweme_id', id)
-      .maybeSingle();
+    const videoData = await getVideoData(id);
+    if (!videoData?.playUrl) continue;
 
-    if (existing) {
-      console.log(`⏭️ סרטון ${id} כבר תומלל, מדלג.`);
-      continue;
-    }
-
-    const freshUrl = await getFreshVideoUrl(id);
-    if (!freshUrl) continue;
-
+    // 1. ניסיון קריאת טקסט מהמסך
+    const onScreenText = await getOnScreenText(videoData.coverUrl);
+    
+    // 2. תמלול אודיו (Whisper)
+    let transcript = "";
     try {
-      console.log(`🎙️ שולח ל-Whisper עם הנחיית פוקוס...`);
-      
-      const response = await fetch(freshUrl);
-      const buffer = Buffer.from(await response.arrayBuffer());
+      const audioRes = await fetch(videoData.playUrl);
+      const buffer = Buffer.from(await audioRes.arrayBuffer());
       const file = await OpenAI.toFile(buffer, 'video.mp4');
-
-      const transcription = await openai.audio.transcriptions.create({
+      const result = await openai.audio.transcriptions.create({
         file: file,
         model: "whisper-1",
         language: "he",
-        // הפרומפט הקריטי שמתעלם מהמוזיקה:
-        prompt: "זהו סרטון שיווקי בעברית. נא לתמלל רק את הדיבור של האדם בסרטון בצורה מדויקת, ולהתעלם ממוזיקת רקע, שירים או רעשים של סביבה."
+        prompt: "סרטון שיווקי. אם יש רק מוזיקה, אל תתמלל כלום."
       });
-
-      console.log(`✅ תמלול התקבל! שומר לסופאבייס...`);
-      await supabase.from('video_analysis').insert({
-        aweme_id: id,
-        transcript: transcription.text,
-        source_url: freshUrl
-      });
-      
-      console.log(`🎯 הצלחה עבור ${id}!`);
-    } catch (err) {
-      console.error(`❌ שגיאה בתמלול ${id}:`, err.message);
+      transcript = result.text;
+    } catch (e) {
+      console.log("⚠️ שגיאה בתמלול אודיו, נסתמך על טקסט מהמסך.");
     }
+
+    // לוגיקה חכמה: אם התמלול נראה כמו ג'יבריש (קצר מדי או חוזר על עצמו), נשתמש בטקסט מהמסך
+    const finalResult = (transcript.length < 10 || transcript.includes("תתת")) ? 
+                        `[טקסט מהמסך]: ${onScreenText || ''}` : 
+                        `${transcript}${onScreenText ? ` | [על המסך]: ${onScreenText}` : ''}`;
+
+    await supabase.from('video_analysis').insert({
+      aweme_id: id,
+      transcript: finalResult,
+      source_url: videoData.playUrl
+    });
+    
+    console.log(`🎯 הצלחה עבור ${id}`);
   }
 }
 
-indexVideos().then(() => console.log("🏁 הסתיים."));
+indexVideos();
