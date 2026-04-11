@@ -6,7 +6,10 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function getFreshVideoUrl(videoId) {
   console.log(`📡 פונה ל-RapidAPI עבור סרטון: ${videoId}`);
-  const url = `https://tiktok-scraper7.p.rapidapi.com/video/info?video_id=${videoId}`;
+  
+  // שיניתי כאן מ-video/info ל-post/info - זה ה-Endpoint הנכון ב-scraper7
+  const url = `https://tiktok-scraper7.p.rapidapi.com/post/info?video_id=${videoId}`;
+  
   try {
     const response = await fetch(url, {
       headers: {
@@ -16,18 +19,17 @@ async function getFreshVideoUrl(videoId) {
     });
     const data = await response.json();
     
-    // הדפסה של כל מה שחזר מרפיד כדי שנוכל לראות את המבנה
-    console.log(`📝 תשובה מלאה מרפיד:`, JSON.stringify(data).substring(0, 500)); 
+    console.log(`📝 תשובה מרפיד:`, JSON.stringify(data).substring(0, 300)); 
 
-    // ניסיון לחלץ את הלינק מכמה מקומות אפשריים
-    const playUrl = data.data?.play || data.data?.play_url || data.play_url || data.play || null;
+    // שליפת ה-play url מהמבנה של scraper7
+    const playUrl = data.data?.play || data.data?.wmplay || null;
     
     if (!playUrl) {
-        console.log(`⚠️ אזהרה: לא נמצא שדה URL מוכר. הודעת ה-API: ${data.msg || 'אין הודעה'}`);
+        console.log(`⚠️ לא נמצא URL. שגיאה מה-API: ${data.msg || 'אין פירוט'}`);
     }
     return playUrl;
   } catch (e) {
-    console.error(`❌ שגיאה טכנית בפנייה לרפיד:`, e.message);
+    console.error(`❌ שגיאה טכנית:`, e.message);
     return null;
   }
 }
@@ -38,7 +40,7 @@ async function indexVideos() {
   const { data: videos, error } = await supabase
     .from('cached_videos') 
     .select('video_id')
-    .limit(2); // רק 2 סרטונים לבדיקה מהירה
+    .limit(2); 
 
   if (error) {
     console.error("❌ שגיאה בסופאבייס:", error.message);
@@ -55,19 +57,24 @@ async function indexVideos() {
     if (!freshUrl) continue;
 
     try {
-      console.log(`🎙️ מתמלל עכשיו...`);
+      console.log(`🎙️ מתמלל עכשיו ב-OpenAI...`);
       const transcription = await openai.audio.transcriptions.create({
         file: await fetch(freshUrl),
         model: "whisper-1",
         language: "he"
       });
 
-      await supabase.from('video_analysis').insert({
+      const { error: insertError } = await supabase.from('video_analysis').insert({
         aweme_id: id,
         transcript: transcription.text,
         source_url: freshUrl
       });
-      console.log(`🎯 הצלחה עבור סרטון ${id}!`);
+
+      if (insertError) {
+          console.error("❌ שגיאה בשמירה לסופאבייס:", insertError.message);
+      } else {
+          console.log(`🎯 הצלחה עבור סרטון ${id}!`);
+      }
     } catch (err) {
       console.error(`❌ שגיאה בתמלול:`, err.message);
     }
