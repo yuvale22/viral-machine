@@ -1,6 +1,6 @@
 name: Run Video Indexer
 on:
-  workflow_dispatch: # מאפשר הפעלה ידנית בכפתור
+  workflow_dispatch:
 
 jobs:
   build:
@@ -17,4 +17,5 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          RAPID_API_KEY: ${{ secrets.RAPID_API_KEY }} # השם המדויק מהצילום מסך שלך
         run: node scripts/index-videos.js
