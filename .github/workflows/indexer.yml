@@ -10,7 +10,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
       - run: npm install @supabase/supabase-js openai node-fetch@2
       - name: Run Indexer
         env:
