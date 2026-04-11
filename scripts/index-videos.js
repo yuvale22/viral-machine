@@ -38,23 +38,14 @@ async function indexVideos() {
 
   for (const video of videos) {
     const id = video.video_id;
-
-    const { data: existing } = await supabase
-      .from('video_analysis')
-      .select('aweme_id')
-      .eq('aweme_id', id)
-      .single();
-
+    const { data: existing } = await supabase.from('video_analysis').select('aweme_id').eq('aweme_id', id).single();
     if (existing) {
       console.log(`⏭️ סרטון ${id} כבר תומלל, מדלג...`);
       continue;
     }
 
     const freshUrl = await getFreshVideoUrl(id);
-    if (!freshUrl) {
-      console.log(`⚠️ לא נמצא לינק עבור ${id}`);
-      continue;
-    }
+    if (!freshUrl) continue;
 
     try {
       console.log(`🎙️ מתמלל סרטון ${id}...`);
@@ -69,7 +60,6 @@ async function indexVideos() {
         transcript: transcription.text,
         source_url: freshUrl
       });
-
       console.log(`✅ הצלחה! תמלול נשמר עבור ${id}`);
     } catch (err) {
       console.error(`❌ שגיאה בעיבוד ${id}:`, err.message);
