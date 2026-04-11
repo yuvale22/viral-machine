@@ -25,7 +25,7 @@ async function getFreshVideoUrl(videoId) {
 }
 
 async function indexVideos() {
-  console.log("🚀 תחילת סבב אינדוקס (גרסה יציבה)...");
+  console.log("🚀 תחילת סבב אינדוקס ממוקד דיבור...");
 
   const { data: videos, error } = await supabase
     .from('cached_videos') 
@@ -43,26 +43,37 @@ async function indexVideos() {
     const id = video.video_id;
     console.log(`--- מעבד: ${id} ---`);
 
+    // בדיקה אם הסרטון כבר קיים בתמלולים (כדי לא לשלם פעמיים)
+    const { data: existing } = await supabase
+      .from('video_analysis')
+      .select('aweme_id')
+      .eq('aweme_id', id)
+      .maybeSingle();
+
+    if (existing) {
+      console.log(`⏭️ סרטון ${id} כבר תומלל, מדלג.`);
+      continue;
+    }
+
     const freshUrl = await getFreshVideoUrl(id);
     if (!freshUrl) continue;
 
     try {
-      console.log(`🎙️ מוריד ושולח ל-Whisper...`);
+      console.log(`🎙️ שולח ל-Whisper עם הנחיית פוקוס...`);
       
-      // שיטה בטוחה להעלאת קובץ ב-Node.js
       const response = await fetch(freshUrl);
       const buffer = Buffer.from(await response.arrayBuffer());
-      
-      // יצירת אובייקט קובץ ש-OpenAI מבינה
       const file = await OpenAI.toFile(buffer, 'video.mp4');
 
       const transcription = await openai.audio.transcriptions.create({
         file: file,
         model: "whisper-1",
-        language: "he"
+        language: "he",
+        // הפרומפט הקריטי שמתעלם מהמוזיקה:
+        prompt: "זהו סרטון שיווקי בעברית. נא לתמלל רק את הדיבור של האדם בסרטון בצורה מדויקת, ולהתעלם ממוזיקת רקע, שירים או רעשים של סביבה."
       });
 
-      console.log(`✅ תמלול התקבל! שומר...`);
+      console.log(`✅ תמלול התקבל! שומר לסופאבייס...`);
       await supabase.from('video_analysis').insert({
         aweme_id: id,
         transcript: transcription.text,
