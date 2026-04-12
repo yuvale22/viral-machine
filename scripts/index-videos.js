@@ -1,4 +1,4 @@
-// scripts/index-videos.js — YUMi Full Indexer v2.1 (Optimized)
+// scripts/index-videos.js — YUMi Full Indexer v2.2 (Resilient & Turbo)
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
@@ -6,12 +6,15 @@ const { createClient } = require('@supabase/supabase-js');
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SK = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const OK = process.env.OPENAI_API_KEY;
-const RK = process.env.RAPIDAPI_KEY; // Matches GitHub YAML mapping
-const BATCH = 10;
+
+// תיקון: גמישות בשם המפתח כדי למנוע את שגיאת ה-Metadata
+const RK = process.env.RAPIDAPI_KEY || process.env.RAPID_API_KEY; 
+
+const BATCH = 25; // Turbo Mode: 25 videos per run
 const MAX_SIZE = 25 * 1024 * 1024; // 25MB Whisper limit
 
 if (!SK || !OK || !RK) {
-    console.error('❌ Missing env vars: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY, or RAPIDAPI_KEY');
+    console.error('❌ Missing env vars: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY, or RAPID_API_KEY');
     process.exit(1);
 }
 
@@ -60,10 +63,16 @@ async function getFreshMetadata(id) {
         const r = await fetch(`https://tiktok-scraper7.p.rapidapi.com/?url=https://www.tiktok.com/@x/video/${id}&hd=1`, {
             headers: { 'X-RapidAPI-Key': RK, 'X-RapidAPI-Host': 'tiktok-scraper7.p.rapidapi.com' }
         });
-        if (!r.ok) return null;
+        if (!r.ok) {
+            console.log(`⚠️ RapidAPI responded with ${r.status} for video ${id}`);
+            return null;
+        }
         const j = await r.json();
         return j.data || null;
-    } catch (e) { return null; }
+    } catch (e) { 
+        console.log(`❌ RapidAPI Fetch Error: ${e.message}`);
+        return null; 
+    }
 }
 
 async function analyze(text, v) {
@@ -106,7 +115,7 @@ async function analyze(text, v) {
 }
 
 (async () => {
-    console.log('🚀 YUMi Indexer v2.1 — Viral Upgrade Active\n');
+    console.log('🚀 YUMi Indexer v2.2 — Turbo Mode & Viral Upgrade Active\n');
     const vids = await pick();
     if (!vids.length) { console.log('✅ Nothing to process'); return; }
 
@@ -117,11 +126,13 @@ async function analyze(text, v) {
         console.log(`\n[${i + 1}/${vids.length}] Processing ID: ${id}`);
 
         try {
-            // 1. Get Audio URL
+            // 1. Get Metadata & Audio URL
             const meta = await getFreshMetadata(id);
-            if (!meta) throw new Error('Could not fetch metadata');
+            if (!meta) throw new Error('Could not fetch metadata (Check RapidAPI Key)');
             const audioUrl = meta.music_info?.play_url || meta.play || meta.hdplay;
             
+            if (!audioUrl) throw new Error('No audio/video URL found in metadata');
+
             // 2. Download
             const res = await fetch(audioUrl);
             const buf = Buffer.from(await res.arrayBuffer());
@@ -130,42 +141,4 @@ async function analyze(text, v) {
             // 3. Whisper Transcription
             const formData = new FormData();
             formData.append('file', new Blob([buf]), 'audio.mp3');
-            formData.append('model', 'whisper-1');
-            
-            const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${OK}` },
-                body: formData
-            });
-            const tData = await whisperRes.json();
-            const transcriptText = tData.text;
-
-            // 4. GPT Analysis
-            console.log('🧠 Generating Viral Analysis...');
-            const analysis = await analyze(transcriptText, v);
-            
-            if (!analysis.includes('### 4.')) throw new Error('Bad GPT Format');
-
-            // 5. Save (Correct Column Names)
-            const { error: saveErr } = await supabase
-                .from('video_analysis')
-                .upsert({
-                    video_id: id,
-                    transcript: transcriptText,       // The raw Whisper text
-                    analysis_text: analysis,          // The GPT 4-part analysis
-                    analysis_quality: 'full',
-                    language: tData.language || 'iw',
-                    last_updated: new Date()
-                });
-
-            if (saveErr) throw saveErr;
-            console.log('✅ Success!');
-            ok++;
-
-        } catch (e) {
-            console.log(`❌ Failed: ${e.message}`);
-            fail++;
-        }
-    }
-    console.log(`\n${'='.repeat(30)}\n✅ OK: ${ok}  ❌ Fail: ${fail}\n${'='.repeat(30)}`);
-})();
+            formData.append('model', 'whisper-
