@@ -1,4 +1,4 @@
-// scripts/index-videos.js — YUMi Full Indexer v2.2 (Resilient & Turbo)
+// scripts/index-videos.js — YUMi Full Indexer v2.2 (Clean Version)
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
@@ -6,45 +6,29 @@ const { createClient } = require('@supabase/supabase-js');
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SK = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const OK = process.env.OPENAI_API_KEY;
-
-// תיקון: גמישות בשם המפתח כדי למנוע את שגיאת ה-Metadata
 const RK = process.env.RAPIDAPI_KEY || process.env.RAPID_API_KEY; 
 
-const BATCH = 25; // Turbo Mode: 25 videos per run
-const MAX_SIZE = 25 * 1024 * 1024; // 25MB Whisper limit
+const BATCH = 25; 
+const MAX_SIZE = 25 * 1024 * 1024; 
 
 if (!SK || !OK || !RK) {
-    console.error('❌ Missing env vars: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY, or RAPID_API_KEY');
+    console.error('❌ Missing env vars: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY, or RAPIDAPI_KEY');
     process.exit(1);
 }
 
-// Initialize Supabase
 const supabase = createClient(SUPA_URL, SK);
 
 async function pick() {
     console.log('📋 Building kill-list of already-analyzed videos...');
-    
-    // Fetch all analyzed IDs to avoid duplicates
-    const { data: analyzed, error: aErr } = await supabase
-        .from('video_analysis')
-        .select('video_id');
-    
+    const { data: analyzed } = await supabase.from('video_analysis').select('video_id');
     const done = new Set((analyzed || []).map(r => r.video_id));
     console.log(`🎯 ${done.size} videos already analyzed (will be skipped)`);
 
-    // Pull viral videos from cache that are NOT in the kill-list
     const fresh = [];
     let offset = 0, page = 200;
-    
     while (fresh.length < BATCH && offset < 2000) {
-        const { data: rows, error: cErr } = await supabase
-            .from('cached_videos')
-            .select('*')
-            .order('play_count', { ascending: false })
-            .range(offset, offset + page - 1);
-
-        if (cErr || !rows || !rows.length) break;
-
+        const { data: rows } = await supabase.from('cached_videos').select('*').order('play_count', { ascending: false }).range(offset, offset + page - 1);
+        if (!rows || !rows.length) break;
         for (const v of rows) {
             if (v.video_id && !done.has(v.video_id)) {
                 fresh.push(v);
@@ -53,7 +37,6 @@ async function pick() {
         }
         offset += page;
     }
-    
     console.log(`✨ ${fresh.length} fresh viral videos selected\n`);
     return fresh;
 }
@@ -63,16 +46,10 @@ async function getFreshMetadata(id) {
         const r = await fetch(`https://tiktok-scraper7.p.rapidapi.com/?url=https://www.tiktok.com/@x/video/${id}&hd=1`, {
             headers: { 'X-RapidAPI-Key': RK, 'X-RapidAPI-Host': 'tiktok-scraper7.p.rapidapi.com' }
         });
-        if (!r.ok) {
-            console.log(`⚠️ RapidAPI responded with ${r.status} for video ${id}`);
-            return null;
-        }
+        if (!r.ok) return null;
         const j = await r.json();
         return j.data || null;
-    } catch (e) { 
-        console.log(`❌ RapidAPI Fetch Error: ${e.message}`);
-        return null; 
-    }
+    } catch (e) { return null; }
 }
 
 async function analyze(text, v) {
@@ -92,53 +69,4 @@ async function analyze(text, v) {
 - סאונד: [מוזיקה/דיבור/אפקטים]
 - עריכה: [קצב וחיתוכים]
 
-### 3. תסריט ה-Vibe המקורי
-(תסריט מלא לביצוע, השתמש ב-{{BUSINESS_NAME}} ו-{{PRODUCT_NAME}} במקום שמות ספציפיים).
-
-### 4. שדרוג ויראלי של YUMi
-(כאן תהיה המאמן של בעל העסק. איך להפוך את זה ליצירת מופת ויראלית ב-200%? הצע זוויות צילום מפתיעות, טקסטים דינמיים עם הוק חזק יותר, ופאנץ' סוף שגורם לשיתוף. דבר בטון מעשי: "תנסה ככה במקום...", "הוסף בשנייה ה-3...").`;
-
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OK}` },
-        body: JSON.stringify({
-            model: 'gpt-4o',
-            max_tokens: 1800,
-            temperature: 0.7,
-            messages: [{ role: 'user', content: prompt }]
-        })
-    });
-    
-    if (!r.ok) throw new Error('GPT Error: ' + (await r.text()).slice(0, 100));
-    const d = await r.json();
-    return d.choices?.[0]?.message?.content || '';
-}
-
-(async () => {
-    console.log('🚀 YUMi Indexer v2.2 — Turbo Mode & Viral Upgrade Active\n');
-    const vids = await pick();
-    if (!vids.length) { console.log('✅ Nothing to process'); return; }
-
-    let ok = 0, fail = 0;
-    for (let i = 0; i < vids.length; i++) {
-        const v = vids[i];
-        const id = v.video_id;
-        console.log(`\n[${i + 1}/${vids.length}] Processing ID: ${id}`);
-
-        try {
-            // 1. Get Metadata & Audio URL
-            const meta = await getFreshMetadata(id);
-            if (!meta) throw new Error('Could not fetch metadata (Check RapidAPI Key)');
-            const audioUrl = meta.music_info?.play_url || meta.play || meta.hdplay;
-            
-            if (!audioUrl) throw new Error('No audio/video URL found in metadata');
-
-            // 2. Download
-            const res = await fetch(audioUrl);
-            const buf = Buffer.from(await res.arrayBuffer());
-            if (buf.length > MAX_SIZE) throw new Error('File too large for Whisper');
-
-            // 3. Whisper Transcription
-            const formData = new FormData();
-            formData.append('file', new Blob([buf]), 'audio.mp3');
-            formData.append('model', 'whisper-
+###
