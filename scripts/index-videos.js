@@ -36,15 +36,17 @@ async function pick(){
 async function getFresh(v){
   // Build proper TikTok URL with real username — using @x placeholder breaks the scraper
   const uname=(v.account_username||'').replace('@','').trim();
-  if(!uname||!v.video_id)return null;
+  if(!uname){console.log('   [debug] no username in row');return null;}
+  if(!v.video_id){console.log('   [debug] no video_id in row');return null;}
   const tiktokUrl=`https://www.tiktok.com/@${uname}/video/${v.video_id}`;
   const apiUrl=`https://tiktok-scraper7.p.rapidapi.com/?url=${encodeURIComponent(tiktokUrl)}&hd=1`;
   try{
     const r=await fetch(apiUrl,{headers:{'X-RapidAPI-Key':RK,'X-RapidAPI-Host':'tiktok-scraper7.p.rapidapi.com'}});
-    if(!r.ok)return null;
+    if(!r.ok){console.log(`   [debug] HTTP ${r.status} for @${uname}/${v.video_id}`);return null;}
     const j=await r.json();
-    return j.data||null;
-  }catch(e){return null;}
+    if(!j.data){console.log(`   [debug] empty data, response: ${JSON.stringify(j).slice(0,200)}`);return null;}
+    return j.data;
+  }catch(e){console.log(`   [debug] fetch threw: ${e.message}`);return null;}
 }
 
 async function dl(url){
