@@ -1,4 +1,4 @@
-// scripts/index-videos.js — YUMi Full Indexer v2.2 (Clean Version)
+// scripts/index-videos.js — YUMi Full Indexer v2.2 (Complete Version)
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
@@ -69,4 +69,64 @@ async function analyze(text, v) {
 - סאונד: [מוזיקה/דיבור/אפקטים]
 - עריכה: [קצב וחיתוכים]
 
-###
+### 3. תסריט ה-Vibe המקורי
+(תסריט מלא לביצוע, השתמש ב-{{BUSINESS_NAME}} ו-{{PRODUCT_NAME}} בתגיות אלה בלבד).
+
+### 4. שדרוג ויראלי של YUMi
+(כאן תהיה המאמן של בעל העסק. איך להפוך את זה ליצירת מופת ויראלית ב-200%? הצע זוויות צילום מפתיעות, טקסטים דינמיים עם הוק חזק יותר, ופאנץ' סוף שגורם לשיתוף. דבר בטון מעשי: "תנסה ככה במקום...", "הוסף בשנייה ה-3...").`;
+
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OK}` },
+        body: JSON.stringify({ model: 'gpt-4o', max_tokens: 1800, temperature: 0.7, messages: [{ role: 'user', content: prompt }] })
+    });
+    const d = await r.json();
+    return d.choices?.[0]?.message?.content || '';
+}
+
+(async () => {
+    console.log('🚀 YUMi Indexer v2.2\n');
+    const vids = await pick();
+    if (!vids.length) return;
+
+    for (const v of vids) {
+        const id = v.video_id;
+        console.log(`\n🎬 Processing ID: ${id}`);
+        try {
+            const meta = await getFreshMetadata(id);
+            if (!meta) throw new Error('Metadata failed');
+            const audioUrl = meta.music_info?.play_url || meta.play || meta.hdplay;
+
+            const res = await fetch(audioUrl);
+            const buf = Buffer.from(await res.arrayBuffer());
+
+            const formData = new FormData();
+            formData.append('file', new Blob([buf]), 'audio.mp3');
+            formData.append('model', 'whisper-1');
+
+            const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${OK}` },
+                body: formData
+            });
+            const tData = await whisperRes.json();
+            const transcriptText = tData.text;
+
+            console.log('🧠 Analyzing...');
+            const analysis = await analyze(transcriptText, v);
+
+            await supabase.from('video_analysis').upsert({
+                video_id: id,
+                transcript: transcriptText,
+                analysis_text: analysis,
+                analysis_quality: 'full',
+                language: tData.language || 'iw',
+                last_updated: new Date()
+            });
+            console.log('✅ Success!');
+        } catch (e) {
+            console.log(`❌ Failed: ${e.message}`);
+        }
+    }
+})();
+// סוף הקובץ - וודא שהשורה שמעל (סגירת סוגריים) מופיעה אצלך!
