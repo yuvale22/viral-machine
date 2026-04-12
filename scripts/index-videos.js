@@ -56,25 +56,30 @@ async function whisper(buf,ext){
 }
 
 async function analyze(text,v){
-  const prompt=`אתה מומחה ויראליות בטיקטוק. תמלול מדויק של סרטון ויראלי + נתונים.
+  const prompt=`אתה מומחה ויראליות בטיקטוק וקופירייטר עבור YUMi — פלטפורמה שעוזרת לבעלי עסקים קטנים בישראל ליצור תוכן ויראלי.
+
+לפניך תמלול של סרטון אמיתי מבעל עסק ישראלי, בצירוף נתוני ביצועים:
 
 תמלול: """${text}"""
 כותרת: ${v.title||v.he_title||''}
 צפיות: ${v.play_count||0} | לייקים: ${v.digg_count||0} | משך: ${v.duration||0}s
 
-כתוב בדיוק בפורמט הזה (חובה 3 חלקים עם ### כמו למטה, בלי ** או markdown נוסף):
+המשימה שלך: לייצר ניתוח מבני שיעזור לבעל עסק אחר ללמוד מהסרטון הזה ולשדרג אותו. כתוב בדיוק בפורמט של 4 החלקים הבאים (חובה לשמור על ה-### בדיוק כפי שמופיע, בלי ** או * או כל markdown אחר):
 
 ### 1. איפיון שיווקי
-[2-3 משפטים: Hook פסיכולוגי, למה זה עבד]
+[2-3 משפטים: מה ה-Hook הפסיכולוגי שמשך את הצופים? איזה עיקרון ויראלי זיהית — פער סקרנות, הפתעה, זיהוי, רגש, פתרון בעיה? למה זה עבד דווקא לקהל הזה?]
 
 ### 2. המלצות הפקה
-- צילום: [המלצה]
-- סאונד: [המלצה]
-- עריכה: [המלצה]
+- צילום: [המלצה מעשית מבוססת על מה שזוהה בסרטון]
+- סאונד: [המלצה — מוזיקה, דיבור, אפקטים]
+- עריכה: [המלצה — קצב, חיתוכים, מעברים]
 
 ### 3. תסריט ה-Vibe המקורי
-[תסריט מלא בעברית 15-25 שניות, עם [הוראות צילום]. השתמש ב-{{BUSINESS_NAME}} ו-{{PRODUCT_NAME}} בתגיות אלו בלבד, אל תמציא שם עסק.]`;
-  const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+OK},body:JSON.stringify({model:'gpt-4o',max_tokens:1200,temperature:0.7,messages:[{role:'user',content:prompt}]})});
+[תסריט מלא בעברית, 15-25 שניות, עם [הוראות צילום בסוגריים מרובעים]. השתמש ב-{{BUSINESS_NAME}} ו-{{PRODUCT_NAME}} בתגיות אלה בלבד — אל תמציא שמות עסק או מוצר ספציפיים. שמור על אותו מבנה, קצב ועוצמה של הסרטון המקורי.]
+
+### 4. שדרוג ויראלי של YUMi
+[הסעיף הכי חשוב — כאן אתה לוקח את הרעיון השיווקי של הסרטון המקורי ומציע איך להפוך אותו ליצירת מופת ויראלית. תן 3-5 המלצות קונקרטיות ומעשיות שמשדרגות את רמת ההפקה: זוויות צילום מפתיעות, אפקטים ויזואליים, טקסטים על המסך עם הוק חזק יותר, פתיח שעוצר את הגלילה ב-2 שניות, פאנץ' סוף שגורם לשיתוף, מוזיקה טרנדית מתאימה. כתוב בטון של מאמן יוצר תוכן — "תנסה ככה במקום…" / "הוסף בשנייה ה-3…" / "במקום X תעשה Y". המטרה: שבעל עסק עם טלפון וסבלנות יוכל לקחת את ההמלצות האלה ולבצע אותן מחר בבוקר.]`;
+  const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+OK},body:JSON.stringify({model:'gpt-4o',max_tokens:1800,temperature:0.7,messages:[{role:'user',content:prompt}]})});
   if(!r.ok)throw new Error('GPT:'+(await r.text()).slice(0,100));
   const d=await r.json();
   return d.choices?.[0]?.message?.content||'';
@@ -111,7 +116,7 @@ async function save(row){
       console.log(`✓ ${txt.length}c ${t.language}`);
       process.stdout.write('   🧠 GPT-4o... ');
       const st=await analyze(txt,v);
-      if(!st.includes('### 1.')||!st.includes('### 3.')){console.log('✗ bad format');fail++;continue;}
+      if(!st.includes('### 1.')||!st.includes('### 3.')||!st.includes('### 4.')){console.log('✗ bad format');fail++;continue;}
       console.log('✓');
       process.stdout.write('   💾 Save... ');
       await save({aweme_id:id,transcript:st,language:t.language||'unknown',duration_seconds:Math.round(t.duration||v.duration||0),audio_source:useMusic?'music_original':'video_extracted',source_url:url,analysis_quality:'full'});
