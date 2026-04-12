@@ -2,7 +2,7 @@
 require('dotenv').config();
 const SUPA_URL='https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SK=process.env.SUPABASE_SERVICE_ROLE_KEY, OK=process.env.OPENAI_API_KEY, RK=process.env.RAPIDAPI_KEY;
-const BATCH=25, MAX=25*1024*1024;
+const BATCH=8, MAX=25*1024*1024;
 if(!SK||!OK||!RK){console.error('Missing env: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY, RAPIDAPI_KEY');process.exit(1);}
 const H={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'};
 
@@ -102,8 +102,8 @@ async function save(row){
 }
 
 async function checkDailyLimit(){
-  // Hard cap on videos analyzed per UTC day — protects against runaway costs from cron loops
-  const DAILY_LIMIT=200;
+  // Hard cap on videos analyzed per UTC day — protects RapidAPI free quota (300/month)
+  const DAILY_LIMIT=12;
   const today=new Date().toISOString().slice(0,10);
   const r=await fetch(`${SUPA_URL}/rest/v1/video_analysis?select=aweme_id&created_at=gte.${today}T00:00:00&limit=10000`,{headers:H});
   const rows=r.ok?await r.json():[];
@@ -144,7 +144,7 @@ async function checkDailyLimit(){
       process.stdout.write('   💾 Save... ');
       await save({aweme_id:id,transcript:st,language:t.language||'unknown',duration_seconds:Math.round(t.duration||v.duration||0),audio_source:useMusic?'music_original':'video_extracted',source_url:url,analysis_quality:'full'});
       console.log('✓');ok++;
-      await new Promise(r=>setTimeout(r,1000));
+      await new Promise(r=>setTimeout(r,2500));
     }catch(e){console.log(`   ✗ ${e.message}`);fail++;}
   }
   console.log(`\n${'='.repeat(50)}\n✅ OK: ${ok}   ❌ Fail: ${fail}\n${'='.repeat(50)}`);
