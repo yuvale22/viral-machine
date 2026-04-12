@@ -1,128 +1,171 @@
-// scripts/index-videos.js — YUMi Full Indexer v2
+// scripts/index-videos.js — YUMi Full Indexer v2.1 (Optimized)
 require('dotenv').config();
-const SUPA_URL='https://tkzmtunzmdlfiapwzkop.supabase.co';
-const SK=process.env.SUPABASE_SERVICE_ROLE_KEY, OK=process.env.OPENAI_API_KEY, RK=process.env.RAPIDAPI_KEY;
-const BATCH=10, MAX=25*1024*1024;
-if(!SK||!OK||!RK){console.error('Missing env: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY, RAPIDAPI_KEY');process.exit(1);}
-const H={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'};
+const { createClient } = require('@supabase/supabase-js');
 
-async function pick(){
-  // KILL-LIST MODE: fetch ALL existing aweme_ids from video_analysis (any quality),
-  // then pull top viral cached_videos that are NOT in that set.
-  console.log('   📋 Building kill-list of already-analyzed videos...');
-  const er=await fetch(`${SUPA_URL}/rest/v1/video_analysis?select=aweme_id&limit=50000`,{headers:H});
-  const done=new Set((er.ok?await er.json():[]).map(r=>r.aweme_id));
-  console.log(`   🎯 ${done.size} videos already analyzed (will be skipped)`);
+// Config & Env
+const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
+const SK = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const OK = process.env.OPENAI_API_KEY;
+const RK = process.env.RAPIDAPI_KEY; // Matches GitHub YAML mapping
+const BATCH = 10;
+const MAX_SIZE = 25 * 1024 * 1024; // 25MB Whisper limit
 
-  // Pull top-viral cached videos in pages until we collect BATCH unseen ones
-  const fresh=[];
-  let offset=0,page=200;
-  while(fresh.length<BATCH&&offset<2000){
-    const cr=await fetch(`${SUPA_URL}/rest/v1/cached_videos?select=*&order=play_count.desc&limit=${page}&offset=${offset}`,{headers:H});
-    const rows=cr.ok?await cr.json():[];
-    if(!rows.length)break;
-    for(const v of rows){
-      if(v.video_id&&!done.has(v.video_id)){
-        fresh.push(v);
-        if(fresh.length>=BATCH)break;
-      }
+if (!SK || !OK || !RK) {
+    console.error('❌ Missing env vars: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY, or RAPIDAPI_KEY');
+    process.exit(1);
+}
+
+// Initialize Supabase
+const supabase = createClient(SUPA_URL, SK);
+
+async function pick() {
+    console.log('📋 Building kill-list of already-analyzed videos...');
+    
+    // Fetch all analyzed IDs to avoid duplicates
+    const { data: analyzed, error: aErr } = await supabase
+        .from('video_analysis')
+        .select('video_id');
+    
+    const done = new Set((analyzed || []).map(r => r.video_id));
+    console.log(`🎯 ${done.size} videos already analyzed (will be skipped)`);
+
+    // Pull viral videos from cache that are NOT in the kill-list
+    const fresh = [];
+    let offset = 0, page = 200;
+    
+    while (fresh.length < BATCH && offset < 2000) {
+        const { data: rows, error: cErr } = await supabase
+            .from('cached_videos')
+            .select('*')
+            .order('play_count', { ascending: false })
+            .range(offset, offset + page - 1);
+
+        if (cErr || !rows || !rows.length) break;
+
+        for (const v of rows) {
+            if (v.video_id && !done.has(v.video_id)) {
+                fresh.push(v);
+                if (fresh.length >= BATCH) break;
+            }
+        }
+        offset += page;
     }
-    offset+=page;
-  }
-  console.log(`   ✨ ${fresh.length} fresh viral videos selected\n`);
-  return fresh;
+    
+    console.log(`✨ ${fresh.length} fresh viral videos selected\n`);
+    return fresh;
 }
 
-async function getFresh(id){
-  try{const r=await fetch(`https://tiktok-scraper7.p.rapidapi.com/?url=https://www.tiktok.com/@x/video/${id}&hd=1`,{headers:{'X-RapidAPI-Key':RK,'X-RapidAPI-Host':'tiktok-scraper7.p.rapidapi.com'}});
-  if(!r.ok)return null;const j=await r.json();return j.data||null;}catch(e){return null;}
+async function getFreshMetadata(id) {
+    try {
+        const r = await fetch(`https://tiktok-scraper7.p.rapidapi.com/?url=https://www.tiktok.com/@x/video/${id}&hd=1`, {
+            headers: { 'X-RapidAPI-Key': RK, 'X-RapidAPI-Host': 'tiktok-scraper7.p.rapidapi.com' }
+        });
+        if (!r.ok) return null;
+        const j = await r.json();
+        return j.data || null;
+    } catch (e) { return null; }
 }
 
-async function dl(url){
-  const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0','Referer':'https://www.tiktok.com/'}});
-  if(!r.ok)throw new Error('HTTP '+r.status);
-  const b=Buffer.from(await r.arrayBuffer());
-  if(b.length>MAX)throw new Error('>25MB');
-  return b;
-}
+async function analyze(text, v) {
+    const prompt = `אתה מומחה ויראליות בטיקטוק וקופירייטר עבור YUMi — פלטפורמה שעוזרת לבעלי עסקים קטנים בישראל ליצור תוכן ויראלי.
 
-async function whisper(buf,ext){
-  const f=new FormData();
-  f.append('file',new Blob([buf]),`v.${ext}`);
-  f.append('model','whisper-1');f.append('response_format','verbose_json');
-  const r=await fetch('https://api.openai.com/v1/audio/transcriptions',{method:'POST',headers:{'Authorization':'Bearer '+OK},body:f});
-  if(!r.ok)throw new Error('Whisper:'+(await r.text()).slice(0,100));
-  return r.json();
-}
-
-async function analyze(text,v){
-  const prompt=`אתה מומחה ויראליות בטיקטוק וקופירייטר עבור YUMi — פלטפורמה שעוזרת לבעלי עסקים קטנים בישראל ליצור תוכן ויראלי.
-
-לפניך תמלול של סרטון אמיתי מבעל עסק ישראלי, בצירוף נתוני ביצועים:
+נתח את התמלול של הסרטון וייצר ניתוח מבני בפורמט של 4 החלקים הבאים (חובה להשתמש ב-### בדיוק):
 
 תמלול: """${text}"""
-כותרת: ${v.title||v.he_title||''}
-צפיות: ${v.play_count||0} | לייקים: ${v.digg_count||0} | משך: ${v.duration||0}s
-
-המשימה שלך: לייצר ניתוח מבני שיעזור לבעל עסק אחר ללמוד מהסרטון הזה ולשדרג אותו. כתוב בדיוק בפורמט של 4 החלקים הבאים (חובה לשמור על ה-### בדיוק כפי שמופיע, בלי ** או * או כל markdown אחר):
+כותרת: ${v.title || v.he_title || ''}
+צפיות: ${v.play_count || 0}
 
 ### 1. איפיון שיווקי
-[2-3 משפטים: מה ה-Hook הפסיכולוגי שמשך את הצופים? איזה עיקרון ויראלי זיהית — פער סקרנות, הפתעה, זיהוי, רגש, פתרון בעיה? למה זה עבד דווקא לקהל הזה?]
+(מה ה-Hook? איזה עיקרון ויראלי עבד כאן ולמה זה מעניין את הקהל הישראלי?)
 
 ### 2. המלצות הפקה
-- צילום: [המלצה מעשית מבוססת על מה שזוהה בסרטון]
-- סאונד: [המלצה — מוזיקה, דיבור, אפקטים]
-- עריכה: [המלצה — קצב, חיתוכים, מעברים]
+- צילום: [טיפ מעשי]
+- סאונד: [מוזיקה/דיבור/אפקטים]
+- עריכה: [קצב וחיתוכים]
 
 ### 3. תסריט ה-Vibe המקורי
-[תסריט מלא בעברית, 15-25 שניות, עם [הוראות צילום בסוגריים מרובעים]. השתמש ב-{{BUSINESS_NAME}} ו-{{PRODUCT_NAME}} בתגיות אלה בלבד — אל תמציא שמות עסק או מוצר ספציפיים. שמור על אותו מבנה, קצב ועוצמה של הסרטון המקורי.]
+(תסריט מלא לביצוע, השתמש ב-{{BUSINESS_NAME}} ו-{{PRODUCT_NAME}} במקום שמות ספציפיים).
 
 ### 4. שדרוג ויראלי של YUMi
-[הסעיף הכי חשוב — כאן אתה לוקח את הרעיון השיווקי של הסרטון המקורי ומציע איך להפוך אותו ליצירת מופת ויראלית. תן 3-5 המלצות קונקרטיות ומעשיות שמשדרגות את רמת ההפקה: זוויות צילום מפתיעות, אפקטים ויזואליים, טקסטים על המסך עם הוק חזק יותר, פתיח שעוצר את הגלילה ב-2 שניות, פאנץ' סוף שגורם לשיתוף, מוזיקה טרנדית מתאימה. כתוב בטון של מאמן יוצר תוכן — "תנסה ככה במקום…" / "הוסף בשנייה ה-3…" / "במקום X תעשה Y". המטרה: שבעל עסק עם טלפון וסבלנות יוכל לקחת את ההמלצות האלה ולבצע אותן מחר בבוקר.]`;
-  const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+OK},body:JSON.stringify({model:'gpt-4o',max_tokens:1800,temperature:0.7,messages:[{role:'user',content:prompt}]})});
-  if(!r.ok)throw new Error('GPT:'+(await r.text()).slice(0,100));
-  const d=await r.json();
-  return d.choices?.[0]?.message?.content||'';
+(כאן תהיה המאמן של בעל העסק. איך להפוך את זה ליצירת מופת ויראלית ב-200%? הצע זוויות צילום מפתיעות, טקסטים דינמיים עם הוק חזק יותר, ופאנץ' סוף שגורם לשיתוף. דבר בטון מעשי: "תנסה ככה במקום...", "הוסף בשנייה ה-3...").`;
+
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OK}` },
+        body: JSON.stringify({
+            model: 'gpt-4o',
+            max_tokens: 1800,
+            temperature: 0.7,
+            messages: [{ role: 'user', content: prompt }]
+        })
+    });
+    
+    if (!r.ok) throw new Error('GPT Error: ' + (await r.text()).slice(0, 100));
+    const d = await r.json();
+    return d.choices?.[0]?.message?.content || '';
 }
 
-async function save(row){
-  const r=await fetch(SUPA_URL+'/rest/v1/video_analysis',{method:'POST',headers:{...H,'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(row)});
-  if(!r.ok)throw new Error('Save:'+(await r.text()).slice(0,100));
-}
+(async () => {
+    console.log('🚀 YUMi Indexer v2.1 — Viral Upgrade Active\n');
+    const vids = await pick();
+    if (!vids.length) { console.log('✅ Nothing to process'); return; }
 
-(async()=>{
-  console.log('🚀 YUMi Indexer v2\n');
-  const vids=await pick();
-  if(!vids.length){console.log('✅ Nothing to process');return;}
-  console.log(`\n🎬 Processing ${vids.length}:\n`);
-  let ok=0,fail=0;
-  for(let i=0;i<vids.length;i++){
-    const v=vids[i],id=v.video_id;
-    console.log(`\n[${i+1}/${vids.length}] ${id} — ${(v.title||v.he_title||'').slice(0,50)}`);
-    try{
-      process.stdout.write('   🔗 Fresh URL... ');
-      const f=await getFresh(id);
-      if(!f){console.log('SKIP');fail++;continue;}
-      const useMusic=f.music_info?.original===true&&f.music;
-      const url=useMusic?f.music:(f.play||f.hdplay);
-      if(!url){console.log('SKIP no url');fail++;continue;}
-      console.log('✓');
-      process.stdout.write('   ⬇️  Download... ');
-      const buf=await dl(url);console.log(`✓ ${Math.round(buf.length/1024)}KB`);
-      process.stdout.write('   🎤 Whisper... ');
-      const t=await whisper(buf,useMusic?'mp3':'mp4');
-      const txt=(t.text||'').trim();
-      if(txt.length<10){console.log('SKIP empty');fail++;continue;}
-      console.log(`✓ ${txt.length}c ${t.language}`);
-      process.stdout.write('   🧠 GPT-4o... ');
-      const st=await analyze(txt,v);
-      if(!st.includes('### 1.')||!st.includes('### 3.')||!st.includes('### 4.')){console.log('✗ bad format');fail++;continue;}
-      console.log('✓');
-      process.stdout.write('   💾 Save... ');
-      await save({aweme_id:id,transcript:st,language:t.language||'unknown',duration_seconds:Math.round(t.duration||v.duration||0),audio_source:useMusic?'music_original':'video_extracted',source_url:url,analysis_quality:'full'});
-      console.log('✓');ok++;
-      await new Promise(r=>setTimeout(r,1000));
-    }catch(e){console.log(`   ✗ ${e.message}`);fail++;}
-  }
-  console.log(`\n${'='.repeat(50)}\n✅ OK: ${ok}   ❌ Fail: ${fail}\n${'='.repeat(50)}`);
+    let ok = 0, fail = 0;
+    for (let i = 0; i < vids.length; i++) {
+        const v = vids[i];
+        const id = v.video_id;
+        console.log(`\n[${i + 1}/${vids.length}] Processing ID: ${id}`);
+
+        try {
+            // 1. Get Audio URL
+            const meta = await getFreshMetadata(id);
+            if (!meta) throw new Error('Could not fetch metadata');
+            const audioUrl = meta.music_info?.play_url || meta.play || meta.hdplay;
+            
+            // 2. Download
+            const res = await fetch(audioUrl);
+            const buf = Buffer.from(await res.arrayBuffer());
+            if (buf.length > MAX_SIZE) throw new Error('File too large for Whisper');
+
+            // 3. Whisper Transcription
+            const formData = new FormData();
+            formData.append('file', new Blob([buf]), 'audio.mp3');
+            formData.append('model', 'whisper-1');
+            
+            const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${OK}` },
+                body: formData
+            });
+            const tData = await whisperRes.json();
+            const transcriptText = tData.text;
+
+            // 4. GPT Analysis
+            console.log('🧠 Generating Viral Analysis...');
+            const analysis = await analyze(transcriptText, v);
+            
+            if (!analysis.includes('### 4.')) throw new Error('Bad GPT Format');
+
+            // 5. Save (Correct Column Names)
+            const { error: saveErr } = await supabase
+                .from('video_analysis')
+                .upsert({
+                    video_id: id,
+                    transcript: transcriptText,       // The raw Whisper text
+                    analysis_text: analysis,          // The GPT 4-part analysis
+                    analysis_quality: 'full',
+                    language: tData.language || 'iw',
+                    last_updated: new Date()
+                });
+
+            if (saveErr) throw saveErr;
+            console.log('✅ Success!');
+            ok++;
+
+        } catch (e) {
+            console.log(`❌ Failed: ${e.message}`);
+            fail++;
+        }
+    }
+    console.log(`\n${'='.repeat(30)}\n✅ OK: ${ok}  ❌ Fail: ${fail}\n${'='.repeat(30)}`);
 })();
