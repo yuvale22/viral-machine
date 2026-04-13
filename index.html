@@ -1674,261 +1674,69 @@ async function startSearch(industryId) {
   const progBar = document.getElementById('search-progress-bar');
   loadEl.style.display = 'flex';
   progBar.style.width = '0%';
+
   try {
-    // ===== Predefined search queries per industry =====
-    const INDUSTRY_SEARCHES = {
-      restaurant: ['מחניודה','OCD מסעדה','קלארו','מסעדת ברברי','HaSalon','north abraxas','פורטו מסעדה','קפה ביאליק','מסעדת יפו תל אביב','שף ישראלי טיקטוק'],
-      salon: ['סלון ז׳קלין','רוני זריהן','מספרת ניסים','סלון דניאל','אורלי ביוטי','מספרת שגב','barber shop israel','סלון רונית','תספורת ישראל','מספרה ישראלית'],
-      gym: ['holmes place israel','profit gym israel','גו אקטיב go active','רב חן ספורט','טופ לבל ספורט','אקסלנט ספורט','crossfit תל אביב','studio c fitness','planet fitness israel','מכון כושר ישראל'],
-      beauty: ['ביוטי סטודיו ישראל','nails art israel','קוסמטיקאית טיקטוק','לש בר','מניקור ישראל','makeup artist israel','עיצוב גבות ישראל','ציפורניים ישראל','סטודיו יופי תל אביב','beauty salon israel'],
-      bakery: ['מאפיית לחמנו','רולדין','בייקרי תל אביב','קונדיטוריית עילית','לחם ארטיזן','מאפיית הכרמל','ביסקוטי מאפייה','עוגות מעוצבות ישראל','מאפיית יפעת','bakery israel'],
-      realestate: ['נדלן ישראל טיקטוק','מתווך תל אביב','נדלן בפוקוס','סוכן נדלן','דירות למכירה טיקטוק','real estate israel','מתווך ירושלים','נדלן חיפה','נדלן להשקעה','מתווך ישראלי'],
-      law: ['עורך דין טיקטוק','עוד נועם קוריס','עורך דין פלילי','עורך דין משפחה','עורך דין נדלן','lawyer israel','משרד עורכי דין','עורך דין תל אביב','עורך דין חיפה','עורך דין ירושלים'],
-    };
-
-    const indLabel = state.industry.label;
-    const searches = INDUSTRY_SEARCHES[industryId] || [indLabel, indLabel + ' ישראל', indLabel + ' תיקטוק'];
-
-    // ===== STEP 1: Check cache first =====
-    textEl.textContent = '📦 בודק מאגר...';
+    // ===== Pull videos from cached_videos only — zero RapidAPI calls =====
+    textEl.textContent = '📦 טוען מהמאגר...';
     iconEl.textContent = '📦';
-    progBar.style.width = '5%';
-
-    // Check if admin has curated creators for this industry
-    let hasCuratedCreators = false;
-    try {
-      const creatorsCheck = await supa.select('creators', `industry_id=eq.${industryId}`);
-      hasCuratedCreators = creatorsCheck && creatorsCheck.length > 0;
-    } catch(e) {}
+    progBar.style.width = '30%';
 
     let cachedVideos = [];
-    if (!hasCuratedCreators) {
-      try {
-        cachedVideos = await supa.select('cached_videos', `industry_id=eq.${industryId}&order=play_count.desc&limit=30`);
-      } catch(e) {}
-    }
+    try {
+      cachedVideos = await supa.select('cached_videos', `industry_id=eq.${industryId}&order=play_count.desc&limit=200`);
+    } catch(e) { console.log('Cache load error:', e); }
 
-    if (!hasCuratedCreators && cachedVideos && cachedVideos.length >= 5) {
-      console.log(`Cache hit: ${cachedVideos.length} videos`);
-      let allCached = cachedVideos.map(v => ({
-        video_id: v.video_id, title: v.title || '', desc: v.description || '',
-        play_count: v.play_count || 0, digg_count: v.digg_count || 0, duration: v.duration || 0,
-        author: { unique_id: v.account_username }, eng: v.engagement || 0,
-        heTitle: v.he_title || '', heSubtitle: v.he_subtitle || '', _ownerAccount: true, _cached: true,
-      }));
-      // Filter out already seen
-      const seenKey = `vm_seen_${state.user?.id || 'anon'}_${industryId}`;
-      let seenIds = [];
-      try { seenIds = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch(e) {}
-      const unseen = allCached.filter(v => !seenIds.includes(v.video_id));
-      state.videos = unseen.length >= 3 ? unseen.slice(0, 25) : allCached.slice(0, 25);
-      const newSeen = [...seenIds, ...state.videos.map(v => v.video_id)];
-      try { localStorage.setItem(seenKey, JSON.stringify(newSeen.slice(-200))); } catch(e) {}
-      
-      progBar.style.width = '100%';
-      await sleep(300);
+    if (!cachedVideos || cachedVideos.length === 0) {
       loadEl.style.display = 'none';
-      document.getElementById('search-content').style.display = 'block';
-      document.getElementById('videos-count').textContent = `🏪 ${state.videos.length} סרטונים מבעלי עסקים — בחר עד 5`;
-      renderVideos();
+      toast('אין עדיין סרטונים בתחום הזה — נסה תחום אחר','err');
       return;
     }
 
-    // ===== STEP 2: Find business accounts =====
-    textEl.textContent = '🔍 מחפש בעלי עסקים...';
-    iconEl.textContent = '🔍';
-    progBar.style.width = '10%';
+    progBar.style.width = '60%';
+    textEl.textContent = '🎬 מכין את הסרטונים...';
 
-    // Check for curated creators from admin FIRST
-    let creators = [];
-    try { creators = await supa.select('creators', `industry_id=eq.${industryId}`); } catch(e) {}
-    
-    let topAccounts = [];
+    // Map DB rows to the shape renderVideos expects
+    const allCached = cachedVideos.map(v => ({
+      video_id: v.video_id,
+      title: v.title || '',
+      desc: v.description || '',
+      play_count: v.play_count || 0,
+      digg_count: v.digg_count || 0,
+      duration: v.duration || 0,
+      author: { unique_id: v.account_username },
+      eng: v.engagement || 0,
+      heTitle: v.he_title || '',
+      heSubtitle: v.he_subtitle || '',
+      cover: v.cover || '',
+      _ownerAccount: true,
+      _cached: true,
+    }));
 
-    if (creators.length > 0) {
-      // ===== USE CURATED CREATORS ONLY =====
-      console.log(`Found ${creators.length} curated creators for ${industryId}`);
-      textEl.textContent = `🎯 ${creators.length} בעלי עסקים במאגר...`;
-      // Shuffle and pick up to 5 to save API calls
-      const shuffled = creators.sort(() => Math.random() - 0.5).slice(0, 5);
-      topAccounts = shuffled.map(c => ({
-        uid: c.username.replace('@',''),
-        nickname: c.notes || c.username,
-        followers: 0,
-        relevance: 100,
-      }));
-      progBar.style.width = '40%';
-    } else {
-      // ===== NO CURATED CREATORS — SEARCH TIKTOK =====
-      const accountsSeen = new Set();
-      const discoveredAccounts = [];
-
-      const userQueries = searches.slice(0, 5);
-      for (let i = 0; i < userQueries.length; i++) {
-        progBar.style.width = (10 + Math.round((i / userQueries.length) * 25)) + '%';
-        textEl.textContent = `👤 ${userQueries[i]}...`;
-        try {
-          const users = await searchUsers(userQueries[i]);
-          users.forEach(u => {
-            const uid = u.user?.uniqueId || u.user_info?.unique_id || u.unique_id || '';
-            if (uid && !accountsSeen.has(uid)) {
-              accountsSeen.add(uid);
-              discoveredAccounts.push({
-                uid,
-                nickname: u.user?.nickname || u.user_info?.nickname || u.nickname || uid,
-                bio: u.user?.signature || u.user_info?.signature || '',
-                followers: u.user?.follower_count || u.user_info?.follower_count || u.follower_count || 0,
-              });
-            }
-          });
-        } catch(e) {}
-        if (i < userQueries.length - 1) await sleep(2000);
-      }
-
-      const videoQueries = searches.slice(5, 8);
-      for (let i = 0; i < videoQueries.length; i++) {
-        progBar.style.width = (35 + Math.round((i / videoQueries.length) * 10)) + '%';
-        textEl.textContent = `🔍 ${videoQueries[i]}...`;
-        try {
-          const vids = await searchTikTok(videoQueries[i], 'IL');
-          vids.forEach(v => {
-            const uid = v.author?.unique_id || '';
-            if (uid && !accountsSeen.has(uid)) {
-              accountsSeen.add(uid);
-              discoveredAccounts.push({ uid, nickname: v.author?.nickname || uid, followers: v.author?.follower_count || 0 });
-            }
-          });
-        } catch(e) {}
-        if (i < videoQueries.length - 1) await sleep(2000);
-      }
-
-      // Score by relevance
-      const INDUSTRY_KEYWORDS = {
-        restaurant: ['מסעדה','מסעדת','קפה','שף','chef','restaurant','cafe','bistro','kitchen','food','מטבח','בר','bar','פיצה','pizza','בורגר','burger','סושי','sushi','גריל','grill'],
-        salon: ['מספרה','סלון','ספר','hair','salon','barber','תספורת','stylist','ביוטי','beauty','שיער'],
-        gym: ['כושר','gym','fitness','פיטנס','סטודיו','studio','מאמן','trainer','אימון','crossfit','פילאטיס','sport','ספורט','holme','profit','active','אקטיב','muscle','שריר','מכון','club','קלאב'],
-        beauty: ['ביוטי','beauty','nails','ציפורניים','מניקור','לש','lash','קוסמטיקה','טיפוח','makeup','איפור','גבות'],
-        bakery: ['מאפי','bakery','עוגות','cake','לחם','bread','קונדיטור','בייקרי','מאפה','עוגה'],
-        realestate: ['נדלן','נכסים','תיווך','realty','real estate','דירות','מתווך','property'],
-        law: ['עורך דין','עוד','law','attorney','משפט','legal','עו"ד','lawyer','דין'],
-      };
-      const keywords = INDUSTRY_KEYWORDS[industryId] || [];
-      discoveredAccounts.forEach(a => {
-        const text = (a.uid + ' ' + a.nickname + ' ' + (a.bio || '')).toLowerCase();
-        let relevance = 0;
-        keywords.forEach(kw => { if (text.includes(kw.toLowerCase())) relevance += 10; });
-        if (a.followers >= 1000) relevance += 2;
-        if (a.followers >= 10000) relevance += 3;
-        a.relevance = relevance;
-      });
-      discoveredAccounts.sort((a, b) => b.relevance - a.relevance || b.followers - a.followers);
-      topAccounts = discoveredAccounts.filter(a => a.relevance > 0).slice(0, 8);
-      if (topAccounts.length === 0 && discoveredAccounts.length > 0) {
-        topAccounts = discoveredAccounts.slice(0, 4);
-      }
-    }
-
-    console.log('Top accounts:', topAccounts.map(a => `@${a.uid} (rel:${a.relevance})`));
-
-    if (topAccounts.length === 0) {
-      toast('לא נמצאו בעלי עסקים בתחום — נסה שוב', 'err');
-      loadEl.style.display = 'none';
-      return;
-    }
-
-    // Save to Supabase
-    for (const acc of topAccounts) {
-      try {
-        await supa.insert('discovered_accounts', {
-          username: acc.uid, nickname: acc.nickname,
-          follower_count: acc.followers, industry_id: industryId, relevance_score: acc.relevance || 0
-        });
-      } catch(e) {}
-    }
-
-    // ===== STEP 3: Pull videos from each account =====
-    textEl.textContent = '🎬 מושך סרטונים מבעלי עסקים...';
-    iconEl.textContent = '🎬';
-    const allFoundVideos = [];
-
-    for (let i = 0; i < topAccounts.length; i++) {
-      progBar.style.width = (45 + Math.round((i / topAccounts.length) * 30)) + '%';
-      textEl.textContent = `🎬 @${topAccounts[i].uid} — ${topAccounts[i].nickname}`;
-      try {
-        const vids = await fetchUserPosts(topAccounts[i].uid);
-        vids.forEach(v => { v._ownerAccount = true; });
-        allFoundVideos.push(...vids);
-      } catch(e) {}
-      if (i < topAccounts.length - 1) await sleep(2000);
-    }
-
-    // ===== STEP 5: Filter and rank =====
-    progBar.style.width = '80%';
-    textEl.textContent = '🧹 מסנן ומדרג תוצאות...';
-    await sleep(200);
-
-    const { filtered } = smartFilter(allFoundVideos, 50, industryId);
-    
-    // Filter out videos the user has already seen
+    // Filter out videos this user has already seen — keeps the experience fresh across sessions
     const seenKey = `vm_seen_${state.user?.id || 'anon'}_${industryId}`;
     let seenIds = [];
     try { seenIds = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch(e) {}
-    const unseen = filtered.filter(v => !seenIds.includes(v.video_id));
-    
-    // If all videos were seen, reset and show all
-    state.videos = unseen.length >= 3 ? unseen.slice(0, 25) : filtered.slice(0, 25);
-    
-    // Mark these videos as seen
+    const unseen = allCached.filter(v => !seenIds.includes(v.video_id));
+
+    // Shuffle so every visit feels fresh
+    const pool = unseen.length >= 10 ? unseen : allCached;
+    const shuffled = pool.sort(() => Math.random() - 0.5);
+    state.videos = shuffled.slice(0, 25);
+
+    // Mark these as seen (keep last 200)
     const newSeen = [...seenIds, ...state.videos.map(v => v.video_id)];
-    try { localStorage.setItem(seenKey, JSON.stringify(newSeen.slice(-200))); } catch(e) {} // keep last 200
-
-    if (state.videos.length === 0) { toast('לא נמצאו סרטונים בתחום — נסה שוב או תחום אחר','err'); loadEl.style.display = 'none'; return; }
-
-    // ===== STEP 6: Generate Hebrew titles =====
-    textEl.textContent = '📝 מתרגם כותרות לעברית...';
-    iconEl.textContent = '📝';
-    progBar.style.width = '85%';
-    try {
-      const videoList = state.videos.map((v,i) =>
-        `${i+1}. "${(v.title||v.desc||'').slice(0,120)}"${v.duration ? ` | ${v.duration}s` : ''} | ${fmt(v.play_count)} views`
-      ).join('\n');
-
-      const titlesRaw = await callClaude(`תן כותרת ותיאור בעברית לכל סרטון טיקטוק:
-
-${videoList}
-
-תחזיר JSON בלבד:
-[{"title":"כותרת קצרה","subtitle":"משפט תיאור"}]
-תחזיר בדיוק ${state.videos.length} פריטים.`);
-      const titles = JSON.parse(titlesRaw.replace(/```json|```/g,'').trim());
-      state.videos.forEach((v, i) => {
-        if (titles[i]) { v.heTitle = titles[i].title || ''; v.heSubtitle = titles[i].subtitle || ''; }
-      });
-    } catch(e) { console.log('Title gen failed:', e); }
-
-    // ===== STEP 7: Save to cache =====
-    textEl.textContent = '💾 שומר למאגר...';
-    progBar.style.width = '95%';
-    for (const v of state.videos) {
-      try {
-        await supa.insert('cached_videos', {
-          video_id: v.video_id, account_username: v.author?.unique_id || '',
-          industry_id: industryId, title: v.title || v.desc || '',
-          description: v.desc || '', play_count: v.play_count || 0,
-          digg_count: v.digg_count || 0, duration: v.duration || 0,
-          author_uid: v.author?.unique_id || '', engagement: v.eng || 0,
-          he_title: v.heTitle || '', he_subtitle: v.heSubtitle || ''
-        });
-      } catch(e) {} // ignore duplicates
-    }
+    try { localStorage.setItem(seenKey, JSON.stringify(newSeen.slice(-200))); } catch(e) {}
 
     progBar.style.width = '100%';
-    await sleep(200);
+    await sleep(250);
     loadEl.style.display = 'none';
     document.getElementById('search-content').style.display = 'block';
     document.getElementById('videos-count').textContent = `🏪 ${state.videos.length} סרטונים מבעלי עסקים — בחר עד 5`;
     renderVideos();
-  } catch(e) { loadEl.style.display = 'none'; toast('שגיאה: '+e.message,'err'); }
+  } catch(e) {
+    loadEl.style.display = 'none';
+    toast('שגיאה: ' + e.message, 'err');
+  }
 }
 
 function renderVideos() {
