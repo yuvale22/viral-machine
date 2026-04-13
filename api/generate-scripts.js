@@ -1,12 +1,10 @@
 // api/generate-scripts.js
 // POST { aweme_ids: [...], business_name, product_name }
-// Cache-first; up to 2 misses run Vision fallback synchronously.
-// 3+ misses -> return cached only + queue the rest as background (best-effort).
+// Cache-first; ALL misses run Vision fallback in parallel (bounded by Vercel 10s max).
 
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrem10dW56bWRsZmlhcHd6a29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzcyMTcsImV4cCI6MjA4OTE1MzIxN30.td9gx19iEU4jl8ph6JX33LHm-K-vQtNG5TW9q_kHWRs';
-const MAX_SYNC_MISSES = 2;
-const VISION_TIMEOUT_MS = 7000;
+const VISION_TIMEOUT_MS = 8000;
 
 async function getUserFromToken(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null;
@@ -20,14 +18,27 @@ async function getUserFromToken(authHeader) {
 
 function parseTranscript(raw) {
   if (!raw) return null;
-  // Match "### 1. ... ### 2. ... ### 3. ..."
-  const m = raw.match(/###\s*1\.\s*[^\n]*\n([\s\S]*?)###\s*2\.\s*[^\n]*\n([\s\S]*?)###\s*3\.\s*[^\n]*\n([\s\S]*)/);
-  if (!m) return { marketing: '', production: '', script: raw.trim() };
-  return {
-    marketing: m[1].trim(),
-    production: m[2].trim(),
-    script: m[3].trim(),
-  };
+  // Try to match 4 sections (new format with viral upgrade)
+  const m4 = raw.match(/###\s*1\.\s*[^\n]*\n([\s\S]*?)###\s*2\.\s*[^\n]*\n([\s\S]*?)###\s*3\.\s*[^\n]*\n([\s\S]*?)###\s*4\.\s*[^\n]*\n([\s\S]*)/);
+  if (m4) {
+    return {
+      marketing: m4[1].trim(),
+      production: m4[2].trim(),
+      script: m4[3].trim(),
+      viral_upgrade: m4[4].trim(),
+    };
+  }
+  // Fallback to 3 sections (old format)
+  const m3 = raw.match(/###\s*1\.\s*[^\n]*\n([\s\S]*?)###\s*2\.\s*[^\n]*\n([\s\S]*?)###\s*3\.\s*[^\n]*\n([\s\S]*)/);
+  if (m3) {
+    return {
+      marketing: m3[1].trim(),
+      production: m3[2].trim(),
+      script: m3[3].trim(),
+      viral_upgrade: '',
+    };
+  }
+  return { marketing: '', production: '', script: raw.trim(), viral_upgrade: '' };
 }
 
 function applyReplacements(text, businessName, productName) {
@@ -37,7 +48,7 @@ function applyReplacements(text, businessName, productName) {
 }
 
 async function visionFallback(video) {
-  // video: { aweme_id, cover_url, title }
+  // video: { video_id, cover, title }
   const prompt = `אתה מומחה לתסריטי טיקטוק ויראליים. בהתבסס על תמונת הקאבר והכותרת, כתוב ניתוח שיווקי, המלצות הפקה, ותסריט מוכן לצילום.
 החזר בדיוק בפורמט הזה (חשוב — שמור על ה-### וההפרדות):
 
@@ -70,9 +81,9 @@ async function visionFallback(video) {
         max_tokens: 700,
         messages: [{
           role: 'user',
-          content: video.cover_url ? [
+          content: video.cover ? [
             { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: video.cover_url } },
+            { type: 'image_url', image_url: { url: video.cover } },
           ] : prompt,
         }],
       }),
@@ -111,7 +122,7 @@ module.exports = async function handler(req, res) {
   };
 
   try {
-    // 1. Fetch existing analyses
+    // 1. Fetch existing analyses from video_analysis
     const idsParam = aweme_ids.map(id => `"${id}"`).join(',');
     const cacheRes = await fetch(
       `${SUPA_URL}/rest/v1/video_analysis?aweme_id=in.(${idsParam})&select=aweme_id,transcript,analysis_quality`,
@@ -121,33 +132,30 @@ module.exports = async function handler(req, res) {
     const cacheMap = {};
     cached.forEach(c => { cacheMap[c.aweme_id] = c; });
 
-    // 2. Identify misses
+    // 2. Identify misses — ALL of them, no cap
     const misses = aweme_ids.filter(id => !cacheMap[id]);
-    const tooMany = misses.length > MAX_SYNC_MISSES;
-    const toProcess = tooMany ? [] : misses;
-    const deferred = tooMany ? misses : [];
 
-    // 3. Fetch video metadata for misses we'll process
-    if (toProcess.length > 0) {
-      const missIds = toProcess.map(id => `"${id}"`).join(',');
+    // 3. Fetch video metadata for misses — NOTE: column is video_id, not aweme_id
+    if (misses.length > 0) {
+      const missIds = misses.map(id => `"${id}"`).join(',');
       const metaRes = await fetch(
-        `${SUPA_URL}/rest/v1/cached_videos?aweme_id=in.(${missIds})&select=aweme_id,cover_url,title`,
+        `${SUPA_URL}/rest/v1/cached_videos?video_id=in.(${missIds})&select=video_id,cover,title`,
         { headers: adminH }
       );
       const metas = metaRes.ok ? await metaRes.json() : [];
       const metaMap = {};
-      metas.forEach(m => { metaMap[m.aweme_id] = m; });
+      metas.forEach(m => { metaMap[m.video_id] = m; });
 
-      // 4. Run vision fallback in parallel
+      // 4. Run vision fallback on ALL misses in parallel (single Promise.all = ~5-8s total)
       const results = await Promise.all(
-        toProcess.map(id => visionFallback(metaMap[id] || { aweme_id: id }))
+        misses.map(id => visionFallback(metaMap[id] || { video_id: id }))
       );
 
       // 5. Save successful ones to cache
       const toInsert = [];
       results.forEach((transcript, i) => {
         if (transcript) {
-          const id = toProcess[i];
+          const id = misses[i];
           cacheMap[id] = { aweme_id: id, transcript, analysis_quality: 'lite' };
           toInsert.push({ aweme_id: id, transcript, analysis_quality: 'lite' });
         }
@@ -164,7 +172,9 @@ module.exports = async function handler(req, res) {
     // 6. Build response — parse + replace placeholders
     const scripts = aweme_ids.map(id => {
       const entry = cacheMap[id];
-      if (!entry?.transcript) return { aweme_id: id, status: 'pending' };
+      if (!entry?.transcript) {
+        return { aweme_id: id, status: 'failed', error: 'לא ניתן ליצור תסריט לסרטון זה' };
+      }
       const parsed = parseTranscript(entry.transcript);
       return {
         aweme_id: id,
@@ -173,16 +183,20 @@ module.exports = async function handler(req, res) {
         marketing: applyReplacements(parsed.marketing, business_name, product_name),
         production: applyReplacements(parsed.production, business_name, product_name),
         script: applyReplacements(parsed.script, business_name, product_name),
+        viral_upgrade: applyReplacements(parsed.viral_upgrade, business_name, product_name),
       };
     });
+
+    const readyCount = scripts.filter(s => s.status === 'ready').length;
+    const failedCount = scripts.filter(s => s.status === 'failed').length;
 
     return res.status(200).json({
       scripts,
       total: aweme_ids.length,
-      ready: scripts.filter(s => s.status === 'ready').length,
-      pending: deferred.length,
-      message: deferred.length > 0
-        ? `${deferred.length} סרטונים בעיבוד — רענן בעוד דקה`
+      ready: readyCount,
+      failed: failedCount,
+      message: failedCount > 0
+        ? `${readyCount} תסריטים נוצרו (${failedCount} סרטונים לא הצליחו — נסה סרטונים אחרים)`
         : null,
     });
 
