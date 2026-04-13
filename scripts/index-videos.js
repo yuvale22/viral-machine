@@ -1,24 +1,27 @@
 // scripts/index-videos.js — YUMi Full Indexer v2
 require('dotenv').config();
 const SUPA_URL='https://tkzmtunzmdlfiapwzkop.supabase.co';
-const SK=process.env.SUPABASE_SERVICE_ROLE_KEY, OK=process.env.OPENAI_API_KEY, RK=process.env.RAPIDAPI_KEY;
+const SK=process.env.SUPABASE_SERVICE_ROLE_KEY, OK=process.env.OPENAI_API_KEY;
 const BATCH=8, MAX=25*1024*1024;
-if(!SK||!OK||!RK){console.error('Missing env: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY, RAPIDAPI_KEY');process.exit(1);}
+if(!SK||!OK){console.error('Missing env: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY');process.exit(1);}
 const H={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'};
 
 async function pick(){
-  // KILL-LIST MODE: fetch ALL existing aweme_ids from video_analysis (any quality),
-  // then pull top viral cached_videos that are NOT in that set.
+  // KILL-LIST: skip videos already in video_analysis
   console.log('   📋 Building kill-list of already-analyzed videos...');
   const er=await fetch(`${SUPA_URL}/rest/v1/video_analysis?select=aweme_id&limit=50000`,{headers:H});
   const done=new Set((er.ok?await er.json():[]).map(r=>r.aweme_id));
   console.log(`   🎯 ${done.size} videos already analyzed (will be skipped)`);
 
-  // Pull top-viral cached videos in pages until we collect BATCH unseen ones
+  // Only pull videos added in the last 48 hours — TikTok URLs expire fast
+  const cutoff=new Date(Date.now()-48*60*60*1000).toISOString();
+  console.log(`   ⏰ Only considering videos added after ${cutoff.slice(0,16)}`);
+
   const fresh=[];
   let offset=0,page=200;
   while(fresh.length<BATCH&&offset<2000){
-    const cr=await fetch(`${SUPA_URL}/rest/v1/cached_videos?select=*&order=play_count.desc&limit=${page}&offset=${offset}`,{headers:H});
+    const q=`select=*&audio_url=not.is.null&created_at=gte.${cutoff}&order=play_count.desc&limit=${page}&offset=${offset}`;
+    const cr=await fetch(`${SUPA_URL}/rest/v1/cached_videos?${q}`,{headers:H});
     const rows=cr.ok?await cr.json():[];
     if(!rows.length)break;
     for(const v of rows){
@@ -29,25 +32,12 @@ async function pick(){
     }
     offset+=page;
   }
-  console.log(`   ✨ ${fresh.length} fresh viral videos selected\n`);
+  console.log(`   ✨ ${fresh.length} fresh videos selected (≤48h old, has audio_url)\n`);
   return fresh;
 }
 
-async function getFresh(v){
-  // Build proper TikTok URL with real username — using @x placeholder breaks the scraper
-  const uname=(v.account_username||'').replace('@','').trim();
-  if(!uname){console.log('   [debug] no username in row');return null;}
-  if(!v.video_id){console.log('   [debug] no video_id in row');return null;}
-  const tiktokUrl=`https://www.tiktok.com/@${uname}/video/${v.video_id}`;
-  const apiUrl=`https://tiktok-scraper7.p.rapidapi.com/?url=${encodeURIComponent(tiktokUrl)}&hd=1`;
-  try{
-    const r=await fetch(apiUrl,{headers:{'X-RapidAPI-Key':RK,'X-RapidAPI-Host':'tiktok-scraper7.p.rapidapi.com'}});
-    if(!r.ok){console.log(`   [debug] HTTP ${r.status} for @${uname}/${v.video_id}`);return null;}
-    const j=await r.json();
-    if(!j.data){console.log(`   [debug] empty data, response: ${JSON.stringify(j).slice(0,200)}`);return null;}
-    return j.data;
-  }catch(e){console.log(`   [debug] fetch threw: ${e.message}`);return null;}
-}
+// getFresh() removed — audio_url is now stored in cached_videos by the fetcher.
+// The indexer reads it directly, making zero RapidAPI calls.
 
 async function dl(url){
   const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0','Referer':'https://www.tiktok.com/'}});
@@ -123,13 +113,9 @@ async function checkDailyLimit(){
     const v=vids[i],id=v.video_id;
     console.log(`\n[${i+1}/${vids.length}] ${id} — ${(v.title||v.he_title||'').slice(0,50)}`);
     try{
-      process.stdout.write('   🔗 Fresh URL... ');
-      const f=await getFresh(v);
-      if(!f){console.log('SKIP');fail++;continue;}
-      const useMusic=f.music_info?.original===true&&f.music;
-      const url=useMusic?f.music:(f.play||f.hdplay);
-      if(!url){console.log('SKIP no url');fail++;continue;}
-      console.log('✓');
+      const url=v.audio_url;
+      if(!url){console.log('   SKIP no audio_url in row');fail++;continue;}
+      const useMusic=(v.audio_source==='music_original');
       process.stdout.write('   ⬇️  Download... ');
       const buf=await dl(url);console.log(`✓ ${Math.round(buf.length/1024)}KB`);
       process.stdout.write('   🎤 Whisper... ');
