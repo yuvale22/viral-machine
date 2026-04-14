@@ -1,5 +1,5 @@
 // api/cardcom/create-token.js
-// POST — Creates Cardcom Low Profile page for tokenization
+// POST — Creates Cardcom Low Profile page for tokenization (v11 JSON API)
 
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrem10dW56bWRsZmlhcHd6a29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzcyMTcsImV4cCI6MjA4OTE1MzIxN30.td9gx19iEU4jl8ph6JX33LHm-K-vQtNG5TW9q_kHWRs';
@@ -22,14 +22,15 @@ module.exports = async function handler(req, res) {
   const user = await getUserFromToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const TERMINAL = process.env.CARDCOM_TERMINAL || '170602';
+  const TERMINAL = parseInt(process.env.CARDCOM_TERMINAL || '170602', 10);
   const API_NAME = process.env.CARDCOM_API_NAME || 'nBpN6Pz2AqazwWsiicQM';
+
   const body = req.body || {};
   const plan = body.plan || 'pro';
   const cycle = body.cycle || 'monthly';
-  const immediate = body.immediate === true; // PRO/MAX = charge now
+  const immediate = body.immediate === true;
 
-  // Price calculation
+  // Pricing
   const PRICES = {
     basic: { monthly: 99, yearly: 990 },
     pro:   { monthly: 139, yearly: 1390 },
@@ -38,60 +39,75 @@ module.exports = async function handler(req, res) {
   const planPrices = PRICES[plan] || PRICES.pro;
   const chargeAmount = cycle === 'yearly' ? planPrices.yearly : planPrices.monthly;
 
-  const baseUrl = req.headers.origin || 'https://viral-machine-alpha.vercel.app';
+  // URLs
+  const baseUrl = req.headers.origin || 'https://yumi-app.co.il';
   const successUrl = baseUrl + '?cardcom_success=1&user_id=' + user.id + '&plan=' + plan;
   const failUrl = baseUrl + '?cardcom_fail=1';
   const ipnUrl = baseUrl + '/api/cardcom/ipn';
 
-  // Operation: 2 = token only (trial), 1 = charge (immediate)
-  const operation = immediate ? '1' : '2';
-  const amount = immediate ? String(chargeAmount) : '1';
+  // Operation: ChargeOnly = 1 (immediate charge), CreateTokenOnly = 3 (token only for trial)
+  const operation = immediate ? 'ChargeAndCreateToken' : 'CreateTokenOnly';
+  const amount = immediate ? chargeAmount : 1;
+
   const productLabel = immediate
     ? 'YUMi ' + plan.toUpperCase() + ' — ' + (cycle === 'yearly' ? 'שנתי' : 'חודשי')
     : 'YUMi Basic — 5 ימי ניסיון';
 
-  try {
-    const params = new URLSearchParams({
-      'TerminalNumber': TERMINAL,
-      'ApiName': API_NAME,
-      'ReturnValue': user.id,
-      'Operation': operation,
-      'Amount': amount,
-      'Currency': '1',
-      'Language': 'he',
-      'TokenToReturn': 'true',
-      'SuccessRedirectUrl': successUrl,
-      'ErrorRedirectUrl': failUrl,
-      'IndicatorUrl': ipnUrl,
-      'ProductName': productLabel,
-      'IsIframe': 'true',
-      'HideCardOwnerName': 'false',
-      'ShowCardOwnerEmail': 'true',
-      'CardOwnerEmail': user.email || '',
-      'MaxNumOfPayments': '1',
-      'CustomFields.Field1': user.id,
-      'CustomFields.Field2': plan,
-      'CustomFields.Field3': immediate ? 'immediate' : 'trial',
-    });
+  // Cardcom v11 JSON payload
+  const payload = {
+    TerminalNumber: TERMINAL,
+    ApiName: API_NAME,
+    ReturnValue: user.id,
+    Amount: amount,
+    SuccessRedirectUrl: successUrl,
+    FailedRedirectUrl: failUrl,
+    WebHookUrl: ipnUrl,
+    Operation: operation,
+    Language: 'he',
+    ISOCoinId: 1, // 1 = ILS
+    ProductName: productLabel,
+    UIDefinition: {
+      IsHideCardOwnerName: false,
+      CardOwnerNameValue: '',
+      IsHideCardOwnerPhone: true,
+      IsHideCardOwnerEmail: false,
+      CardOwnerEmailValue: user.email || '',
+    },
+    Document: {
+      To: user.email || '',
+      Email: user.email || '',
+      Name: user.user_metadata?.full_name || user.email || 'YUMi User',
+      Products: [{
+        Description: productLabel,
+        UnitCost: amount,
+        Quantity: 1,
+      }],
+    },
+  };
 
+  try {
     const cardcomRes = await fetch('https://secure.cardcom.solutions/api/v11/LowProfile/Create', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
+
     const cardcomData = await cardcomRes.json();
 
-    if (String(cardcomData.ResponseCode) !== '0') {
+    if (cardcomData.ResponseCode !== 0) {
       console.error('Cardcom error:', cardcomData);
-      return res.status(400).json({ error: 'שגיאה בקארדקום: ' + (cardcomData.Description || 'Unknown') });
+      return res.status(400).json({
+        error: 'שגיאה בקארדקום: ' + (cardcomData.Description || JSON.stringify(cardcomData).slice(0, 200))
+      });
     }
 
     return res.status(200).json({
       url: cardcomData.Url,
-      low_profile_code: cardcomData.LowProfileCode,
+      low_profile_code: cardcomData.LowProfileId || cardcomData.LowProfileCode,
     });
+
   } catch (error) {
     console.error('Cardcom create-token error:', error);
-    return res.status(500).json({ error: 'שגיאה בחיבור לקארדקום' });
+    return res.status(500).json({ error: 'שגיאה בחיבור לקארדקום: ' + error.message });
   }
 };
