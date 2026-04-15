@@ -1,5 +1,5 @@
 // api/cardcom/check-status.js
-// POST { low_profile_code } — Polls Cardcom v11 to check transaction status.
+// POST { low_profile_code } — Polls Cardcom v11 GetLpResult to check transaction status.
 // Returns { status: 'pending' | 'completed' | 'failed' }
 
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
@@ -16,6 +16,33 @@ async function getUserFromToken(authHeader) {
   } catch(e) { return null; }
 }
 
+async function fetchCardcomResult(terminal, apiName, lowProfileId) {
+  // Try GET first (per Cardcom v11 docs)
+  const url = 'https://secure.cardcom.solutions/api/v11/LowProfile/GetLpResult'
+    + '?TerminalNumber=' + encodeURIComponent(terminal)
+    + '&ApiName=' + encodeURIComponent(apiName)
+    + '&LowProfileId=' + encodeURIComponent(lowProfileId);
+
+  const getRes = await fetch(url, { method: 'GET' });
+  const getData = await getRes.json().catch(() => null);
+
+  if (getData && typeof getData.ResponseCode !== 'undefined') {
+    return getData;
+  }
+
+  // Fallback: POST with JSON
+  const postRes = await fetch('https://secure.cardcom.solutions/api/v11/LowProfile/GetLpResult', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      TerminalNumber: parseInt(terminal, 10),
+      ApiName: apiName,
+      LowProfileId: lowProfileId,
+    }),
+  });
+  return await postRes.json().catch(() => ({}));
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -25,29 +52,17 @@ module.exports = async function handler(req, res) {
   const { low_profile_code } = req.body || {};
   if (!low_profile_code) return res.status(400).json({ error: 'Missing low_profile_code' });
 
-  const TERMINAL = parseInt(process.env.CARDCOM_TERMINAL || '170602', 10);
+  const TERMINAL = process.env.CARDCOM_TERMINAL || '170602';
   const API_NAME = process.env.CARDCOM_API_NAME || 'nBpN6Pz2AqazwWsiicQM';
 
   try {
-    const lpRes = await fetch('https://secure.cardcom.solutions/api/v11/LowProfile/GetLowProfileResult', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        TerminalNumber: TERMINAL,
-        ApiName: API_NAME,
-        LowProfileId: low_profile_code,
-      }),
-    });
+    const lpData = await fetchCardcomResult(TERMINAL, API_NAME, low_profile_code);
 
-    const lpData = await lpRes.json();
-
-    // Log the FULL response so we can see what Cardcom actually returns.
-    // After this works in production, we can remove this for cleanliness.
-    console.log('[check-status] Cardcom response for', low_profile_code, ':', JSON.stringify(lpData).slice(0, 800));
+    console.log('[check-status]', low_profile_code, '→', JSON.stringify(lpData).slice(0, 500));
 
     const code = lpData.ResponseCode;
 
-    // CASE 1: Active failures — codes 700+ are explicit failure codes from Cardcom
+    // Active failure
     if (typeof code === 'number' && code >= 700) {
       return res.status(200).json({
         status: 'failed',
@@ -55,33 +70,27 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // CASE 2: Success — ResponseCode 0 means SOMETHING completed.
-    // Cardcom v11 may include any of these fields when transaction is done:
-    // TranzactionInfo, TransactionInfo, TokenInfo, UIValues, DealInfo, OperationResultDescription
-    // We treat ResponseCode 0 as success — even bare — because the user already submitted.
+    // Success — ResponseCode 0 with completion data
     if (code === 0) {
-      const hasAnyTransactionData =
+      const hasCompletionData =
         lpData.TranzactionInfo ||
         lpData.TransactionInfo ||
         lpData.TokenInfo ||
+        lpData.Token ||
         lpData.UIValues ||
-        lpData.DealInfo ||
-        lpData.OperationResultDescription ||
-        lpData.LowProfileId; // even just the ID echoed back means it processed
+        lpData.DealId;
 
-      if (hasAnyTransactionData) {
+      if (hasCompletionData) {
         return res.status(200).json({
           status: 'completed',
-          token: lpData.TokenInfo?.Token || lpData.TranzactionInfo?.Token || null,
+          token: lpData.Token || lpData.TokenInfo?.Token || lpData.TranzactionInfo?.Token || null,
           last_four: lpData.TokenInfo?.Last4Digits || lpData.TranzactionInfo?.Last4CardDigits || null,
         });
       }
 
-      // ResponseCode 0 but no completion data — user hasn't submitted yet
       return res.status(200).json({ status: 'pending' });
     }
 
-    // Other non-zero codes between 1-699 are usually system messages, not failures
     return res.status(200).json({ status: 'pending' });
 
   } catch (error) {
