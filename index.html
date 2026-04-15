@@ -1721,7 +1721,7 @@ async function startSearch(industryId) {
     // Shuffle so every visit feels fresh
     const pool = unseen.length >= 10 ? unseen : allCached;
     const shuffled = pool.sort(() => Math.random() - 0.5);
-    state.videos = shuffled.slice(0, 25);
+    state.videos = shuffled.slice(0, 5);
 
     // Mark these as seen (keep last 200)
     const newSeen = [...seenIds, ...state.videos.map(v => v.video_id)];
@@ -4484,6 +4484,9 @@ function selectPaywallPlan(plan) {
 
 async function openCardcomPayment() {
   try {
+    // Show a brief loading state
+    toast('מעביר לדף תשלום מאובטח...', 'success');
+
     const res = await fetch('/api/cardcom/create-token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
@@ -4492,18 +4495,18 @@ async function openCardcomPayment() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    cardcomLowProfileCode = data.low_profile_code;
+    // Save the plan info so we can recover after redirect-back
+    try {
+      localStorage.setItem('vm_pending_plan', JSON.stringify({
+        plan: selectedPlan,
+        cycle: selectedBillingCycle,
+        low_profile_code: data.low_profile_code,
+        timestamp: Date.now(),
+      }));
+    } catch(e) {}
 
-    // Show iframe
-    document.getElementById('cardcom-container').style.display = 'block';
-    document.getElementById('cardcom-loading').style.display = 'flex';
-    document.getElementById('cardcom-iframe').src = data.url;
-
-    // Scroll to iframe
-    document.getElementById('cardcom-container').scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-    // Poll for redirect back
-    startCardcomResultPolling();
+    // Full-page redirect to Cardcom — much cleaner than iframe
+    window.location.href = data.url;
   } catch(e) {
     console.error('Cardcom error:', e);
     toast('שגיאה: ' + e.message, 'err');
@@ -4530,27 +4533,43 @@ async function handleCardcomSuccess() {
   window.removeEventListener('message', handleCardcomMessage);
   if (cardcomPollInterval) { clearInterval(cardcomPollInterval); cardcomPollInterval = null; }
 
-  const container = document.getElementById('cardcom-container');
-  if (container) {
-    container.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:40px;margin-bottom:12px;animation:pulse 1.5s ease infinite">✨</div><div style="font-size:16px;font-weight:700;color:var(--brown)">מפעיל את החשבון שלך...</div></div>';
-  }
+  // Recover plan info from localStorage (memory wiped after full-page redirect)
+  let pendingPlan = null;
+  try {
+    const stored = localStorage.getItem('vm_pending_plan');
+    if (stored) pendingPlan = JSON.parse(stored);
+  } catch(e) {}
+
+  // Get plan from URL as fallback (we put it in successUrl)
+  const urlParams = new URLSearchParams(window.location.search);
+  const planFromUrl = urlParams.get('plan');
+
+  const finalPlan = pendingPlan?.plan || planFromUrl || selectedPlan || 'basic';
+  const finalCycle = pendingPlan?.cycle || selectedBillingCycle || 'monthly';
+  const finalLowProfileCode = pendingPlan?.low_profile_code || cardcomLowProfileCode;
+  const isImmediate = finalPlan !== 'basic';
+
+  toast('✨ מפעיל את החשבון שלך...', 'ok');
 
   try {
     const res = await fetch('/api/auth/start-trial', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
-      body: JSON.stringify({ low_profile_code: cardcomLowProfileCode, plan: selectedPlan, cycle: selectedBillingCycle, immediate: selectedPlan !== 'basic' }),
+      body: JSON.stringify({ low_profile_code: finalLowProfileCode, plan: finalPlan, cycle: finalCycle, immediate: isImmediate }),
     });
     const data = await res.json();
     if (data.error) { toast('שגיאה: ' + data.error, 'err'); showPaywall(state.userProfile?.full_name); return; }
 
-    state.userProfile.status = data.status || (selectedPlan === 'basic' ? 'trialing' : 'active');
-    state.userProfile.plan = data.plan || selectedPlan;
+    // Clean up localStorage
+    try { localStorage.removeItem('vm_pending_plan'); } catch(e) {}
+
+    state.userProfile.status = data.status || (finalPlan === 'basic' ? 'trialing' : 'active');
+    state.userProfile.plan = data.plan || finalPlan;
     state.userProfile.trial_ends_at = data.trial_end;
     state.userProfile.cardcom_last_four = data.last_four;
 
-    toast(selectedPlan === 'basic' ? '🎁 5 ימי ניסיון הופעלו!' : '🎉 מסלול ' + selectedPlan.toUpperCase() + ' הופעל!', 'ok');
-    setTimeout(() => { updatePlanUI(); showScreen('home'); }, 1000);
+    toast(finalPlan === 'basic' ? '🎁 5 ימי ניסיון הופעלו!' : '🎉 מסלול ' + finalPlan.toUpperCase() + ' הופעל!', 'ok');
+    setTimeout(() => { updatePlanUI(); showScreen('home'); }, 1500);
   } catch(e) {
     console.error('Start trial error:', e);
     toast('שגיאה — נסה שוב', 'err');
