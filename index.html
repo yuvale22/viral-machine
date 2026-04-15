@@ -4484,9 +4484,6 @@ function selectPaywallPlan(plan) {
 
 async function openCardcomPayment() {
   try {
-    // Show a brief loading state
-    toast('מעביר לדף תשלום מאובטח...', 'success');
-
     const res = await fetch('/api/cardcom/create-token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
@@ -4495,7 +4492,9 @@ async function openCardcomPayment() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    // Save the plan info so we can recover after redirect-back
+    cardcomLowProfileCode = data.low_profile_code;
+
+    // Save the plan info as a backup (in case page reloads)
     try {
       localStorage.setItem('vm_pending_plan', JSON.stringify({
         plan: selectedPlan,
@@ -4505,12 +4504,70 @@ async function openCardcomPayment() {
       }));
     } catch(e) {}
 
-    // Full-page redirect to Cardcom — much cleaner than iframe
-    window.location.href = data.url;
+    // Show iframe inside the app — better UX than full redirect
+    document.getElementById('cardcom-container').style.display = 'block';
+    document.getElementById('cardcom-loading').style.display = 'flex';
+    document.getElementById('cardcom-iframe').src = data.url;
+
+    // Smooth scroll to iframe
+    setTimeout(() => {
+      document.getElementById('cardcom-container').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+
+    // Start polling Cardcom for completion (since iframe redirects internally)
+    startCardcomCompletionPolling(data.low_profile_code);
   } catch(e) {
     console.error('Cardcom error:', e);
     toast('שגיאה: ' + e.message, 'err');
   }
+}
+
+// Polls Cardcom for transaction completion — checks every 3s for up to 10 minutes
+function startCardcomCompletionPolling(lowProfileCode) {
+  if (cardcomPollInterval) clearInterval(cardcomPollInterval);
+
+  let pollCount = 0;
+  const MAX_POLLS = 200; // 10 minutes at 3s intervals
+
+  cardcomPollInterval = setInterval(async () => {
+    pollCount++;
+    if (pollCount > MAX_POLLS) {
+      clearInterval(cardcomPollInterval);
+      cardcomPollInterval = null;
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/cardcom/check-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
+        body: JSON.stringify({ low_profile_code: lowProfileCode }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data.status === 'completed') {
+        clearInterval(cardcomPollInterval);
+        cardcomPollInterval = null;
+        await handleCardcomSuccess();
+      } else if (data.status === 'failed') {
+        clearInterval(cardcomPollInterval);
+        cardcomPollInterval = null;
+        handleCardcomFailure();
+      }
+      // status === 'pending' → keep polling
+    } catch(e) {
+      // Silent fail — try again next poll
+    }
+  }, 3000);
+
+  // Safety timeout — clear after 10 minutes
+  setTimeout(() => {
+    if (cardcomPollInterval) {
+      clearInterval(cardcomPollInterval);
+      cardcomPollInterval = null;
+    }
+  }, 600000);
 }
 
 function startCardcomResultPolling() {
@@ -4563,10 +4620,20 @@ async function handleCardcomSuccess() {
     // Clean up localStorage
     try { localStorage.removeItem('vm_pending_plan'); } catch(e) {}
 
-    state.userProfile.status = data.status || (finalPlan === 'basic' ? 'trialing' : 'active');
-    state.userProfile.plan = data.plan || finalPlan;
-    state.userProfile.trial_ends_at = data.trial_end;
-    state.userProfile.cardcom_last_four = data.last_four;
+    // Hide the iframe — payment is done
+    const container = document.getElementById('cardcom-container');
+    if (container) container.style.display = 'none';
+
+    // Reload the user profile from DB to get fresh status (don't trust just the API response)
+    try { await loadUserProfile(); } catch(e) { console.log('Profile reload failed:', e); }
+
+    // Update local state as a backup if loadUserProfile didn't update everything
+    if (state.userProfile) {
+      state.userProfile.status = data.status || state.userProfile.status || (finalPlan === 'basic' ? 'trialing' : 'active');
+      state.userProfile.plan = data.plan || state.userProfile.plan || finalPlan;
+      state.userProfile.trial_ends_at = data.trial_end || state.userProfile.trial_ends_at;
+      state.userProfile.cardcom_last_four = data.last_four || state.userProfile.cardcom_last_four;
+    }
 
     toast(finalPlan === 'basic' ? '🎁 5 ימי ניסיון הופעלו!' : '🎉 מסלול ' + finalPlan.toUpperCase() + ' הופעל!', 'ok');
     setTimeout(() => { updatePlanUI(); showScreen('home'); }, 1500);
@@ -4581,6 +4648,14 @@ function handleCardcomFailure() {
   window.history.replaceState({}, '', window.location.pathname);
   window.removeEventListener('message', handleCardcomMessage);
   if (cardcomPollInterval) { clearInterval(cardcomPollInterval); cardcomPollInterval = null; }
+
+  // Hide the iframe
+  const container = document.getElementById('cardcom-container');
+  if (container) container.style.display = 'none';
+
+  // Clean up
+  try { localStorage.removeItem('vm_pending_plan'); } catch(e) {}
+
   toast('הכרטיס נדחה — נסה כרטיס אחר', 'err');
   showPaywall(state.userProfile?.full_name);
 }
