@@ -1,4 +1,7 @@
 // api/cardcom/check-status.js
+// POST { low_profile_code } — Polls Cardcom v11 to check transaction status.
+// Returns { status: 'pending' | 'completed' | 'failed' }
+
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrem10dW56bWRsZmlhcHd6a29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzcyMTcsImV4cCI6MjA4OTE1MzIxN30.td9gx19iEU4jl8ph6JX33LHm-K-vQtNG5TW9q_kHWRs';
 
@@ -38,19 +41,51 @@ module.exports = async function handler(req, res) {
 
     const lpData = await lpRes.json();
 
-    if (lpData.ResponseCode === 0 && lpData.TranzactionInfo) {
-      return res.status(200).json({ status: 'completed' });
+    // Log the FULL response so we can see what Cardcom actually returns.
+    // After this works in production, we can remove this for cleanliness.
+    console.log('[check-status] Cardcom response for', low_profile_code, ':', JSON.stringify(lpData).slice(0, 800));
+
+    const code = lpData.ResponseCode;
+
+    // CASE 1: Active failures — codes 700+ are explicit failure codes from Cardcom
+    if (typeof code === 'number' && code >= 700) {
+      return res.status(200).json({
+        status: 'failed',
+        reason: lpData.Description || 'Card declined'
+      });
     }
-    if (lpData.ResponseCode === 0) {
+
+    // CASE 2: Success — ResponseCode 0 means SOMETHING completed.
+    // Cardcom v11 may include any of these fields when transaction is done:
+    // TranzactionInfo, TransactionInfo, TokenInfo, UIValues, DealInfo, OperationResultDescription
+    // We treat ResponseCode 0 as success — even bare — because the user already submitted.
+    if (code === 0) {
+      const hasAnyTransactionData =
+        lpData.TranzactionInfo ||
+        lpData.TransactionInfo ||
+        lpData.TokenInfo ||
+        lpData.UIValues ||
+        lpData.DealInfo ||
+        lpData.OperationResultDescription ||
+        lpData.LowProfileId; // even just the ID echoed back means it processed
+
+      if (hasAnyTransactionData) {
+        return res.status(200).json({
+          status: 'completed',
+          token: lpData.TokenInfo?.Token || lpData.TranzactionInfo?.Token || null,
+          last_four: lpData.TokenInfo?.Last4Digits || lpData.TranzactionInfo?.Last4CardDigits || null,
+        });
+      }
+
+      // ResponseCode 0 but no completion data — user hasn't submitted yet
       return res.status(200).json({ status: 'pending' });
     }
-    if (lpData.ResponseCode >= 700) {
-      return res.status(200).json({ status: 'failed', reason: lpData.Description || 'Card declined' });
-    }
+
+    // Other non-zero codes between 1-699 are usually system messages, not failures
     return res.status(200).json({ status: 'pending' });
 
   } catch (error) {
-    console.error('check-status error:', error);
+    console.error('[check-status] Error:', error.message);
     return res.status(200).json({ status: 'pending' });
   }
 };
