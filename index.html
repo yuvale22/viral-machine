@@ -4627,6 +4627,7 @@ function cancelPayment() {
 }
 
 // Polls Cardcom for transaction completion — checks every 3s for up to 10 minutes
+// FIX: Skip first 6 polls (18s) to give user time to enter card details
 function startCardcomCompletionPolling(lowProfileCode) {
   if (cardcomPollInterval) clearInterval(cardcomPollInterval);
 
@@ -4641,6 +4642,9 @@ function startCardcomCompletionPolling(lowProfileCode) {
       return;
     }
 
+    // Skip first 6 polls (18 seconds) — give user time to enter card
+    if (pollCount < 7) return;
+
     try {
       const res = await fetch('/api/cardcom/check-status', {
         method: 'POST',
@@ -4649,6 +4653,7 @@ function startCardcomCompletionPolling(lowProfileCode) {
       });
       if (!res.ok) return;
       const data = await res.json();
+      console.log('[Cardcom poll #' + pollCount + ']', data);
 
       if (data.status === 'completed') {
         clearInterval(cardcomPollInterval);
