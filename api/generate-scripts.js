@@ -48,8 +48,12 @@ function applyReplacements(text, businessName, productName) {
 }
 
 async function visionFallback(video) {
-  // video: { video_id, cover, title }
-  const prompt = `אתה מומחה לתסריטי טיקטוק ויראליים. בהתבסס על תמונת הקאבר והכותרת, כתוב ניתוח שיווקי, המלצות הפקה, ותסריט מוכן לצילום.
+  // video: { video_id, title, he_title, description }
+  // FIX: No 'cover' column exists in cached_videos — use text-only prompt with title + description
+  const videoTitle = video.he_title || video.title || 'ללא כותרת';
+  const videoDesc = video.description || '';
+
+  const prompt = `אתה מומחה לתסריטי טיקטוק ויראליים. בהתבסס על כותרת הסרטון והתיאור שלו, כתוב ניתוח שיווקי, המלצות הפקה, ותסריט מוכן לצילום.
 החזר בדיוק בפורמט הזה (חשוב — שמור על ה-### וההפרדות):
 
 ### 1. איפיון שיווקי
@@ -63,7 +67,8 @@ async function visionFallback(video) {
 ### 3. תסריט ה-Vibe המקורי
 [תסריט מוכן לצילום בעברית, עם הוראות צילום בסוגריים מרובעים. השתמש בתגיות {{BUSINESS_NAME}} ו-{{PRODUCT_NAME}} בתוך התסריט במקומות הרלוונטיים.]
 
-כותרת הסרטון: ${video.title || 'ללא כותרת'}`;
+כותרת הסרטון: ${videoTitle}
+${videoDesc ? 'תיאור: ' + videoDesc : ''}`;
 
   const ctrl = new AbortController();
   const timeout = setTimeout(() => ctrl.abort(), VISION_TIMEOUT_MS);
@@ -81,15 +86,16 @@ async function visionFallback(video) {
         max_tokens: 700,
         messages: [{
           role: 'user',
-          content: video.cover ? [
-            { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: video.cover } },
-          ] : prompt,
+          content: prompt,
         }],
       }),
     });
     clearTimeout(timeout);
-    if (!r.ok) throw new Error('Vision API ' + r.status);
+    if (!r.ok) {
+      const errBody = await r.text().catch(() => '');
+      console.error('OpenAI API error:', r.status, errBody.slice(0, 200));
+      throw new Error('Vision API ' + r.status);
+    }
     const data = await r.json();
     return data.choices?.[0]?.message?.content || '';
   } catch (e) {
@@ -135,18 +141,19 @@ module.exports = async function handler(req, res) {
     // 2. Identify misses — ALL of them, no cap
     const misses = aweme_ids.filter(id => !cacheMap[id]);
 
-    // 3. Fetch video metadata for misses — NOTE: column is video_id, not aweme_id
+    // 3. Fetch video metadata for misses
+    // FIX: select actual columns that exist (no 'cover' column in cached_videos)
     if (misses.length > 0) {
       const missIds = misses.map(id => `"${id}"`).join(',');
       const metaRes = await fetch(
-        `${SUPA_URL}/rest/v1/cached_videos?video_id=in.(${missIds})&select=video_id,cover,title`,
+        `${SUPA_URL}/rest/v1/cached_videos?video_id=in.(${missIds})&select=video_id,title,he_title,description`,
         { headers: adminH }
       );
       const metas = metaRes.ok ? await metaRes.json() : [];
       const metaMap = {};
       metas.forEach(m => { metaMap[m.video_id] = m; });
 
-      // 4. Run vision fallback on ALL misses in parallel (single Promise.all = ~5-8s total)
+      // 4. Run fallback on ALL misses in parallel
       const results = await Promise.all(
         misses.map(id => visionFallback(metaMap[id] || { video_id: id }))
       );
