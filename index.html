@@ -2088,30 +2088,6 @@ function exportCalendarPDF() {
   });
 
   html += `</div><div class="footer">YUMi — לוח תוכן שבועי | ${esc(bizName)} | ${date}</div>
-<!-- BONUS REWARD OVERLAY -->
-<div class="bonus-overlay" id="bonus-overlay" onclick="this.classList.remove('active')">
-  <div class="bonus-card" onclick="event.stopPropagation()">
-    <div class="bonus-trophy">🏆</div>
-    <div style="font-size:22px;font-weight:800;color:var(--brown-dark);margin:16px 0 8px">!אלוף! הסטודיו מתוקתק להיום</div>
-    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">הוספת רשומה פיננסית היום —<br>קבל בונוס חיפוש!</div>
-    <div class="bonus-count">+1 🔍 חיפוש נוסף במתנה</div>
-    <button class="btn-caramel" style="margin-top:20px;width:100%" onclick="document.getElementById('bonus-overlay').classList.remove('active');showScreen('home')">🔥 לחפש טרנדים עכשיו!</button>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:12px">הבונוס פעיל עד חצות הלילה</div>
-  </div>
-</div>
-
-<!-- SEARCH LIMIT MODAL -->
-<div class="limit-modal" id="limit-modal" onclick="this.classList.remove('active')">
-  <div class="limit-modal-card" onclick="event.stopPropagation()">
-    <div style="font-size:40px;margin-bottom:12px">🔍</div>
-    <div style="font-size:20px;font-weight:800;color:var(--brown-dark);margin-bottom:8px">ניצלת את החיפושים להיום</div>
-    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">💡 ידעת? אם תוסיף הוצאה או הכנסה היום, תקבל חיפוש נוסף במתנה! 🎁</div>
-    <button class="btn-primary full" style="margin-bottom:10px" onclick="document.getElementById('limit-modal').classList.remove('active');gatedScreen('expenses')">📊 הוסף רשומה פיננסית</button>
-    <button class="btn-caramel full" onclick="document.getElementById('limit-modal').classList.remove('active');showScreen('plans')">⬆️ שדרג תוכנית</button>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:14px">מחר יתחדשו החיפושים שלך ⏰</div>
-  </div>
-</div>
-
 </body></html>`;
 
   const blob = new Blob([html], { type: 'text/html' });
@@ -2637,30 +2613,6 @@ function generateQuotePDF() {
   </div>
 </div>
 <script>window.onload=()=>window.print();<\/script>
-
-<!-- BONUS REWARD OVERLAY -->
-<div class="bonus-overlay" id="bonus-overlay" onclick="this.classList.remove('active')">
-  <div class="bonus-card" onclick="event.stopPropagation()">
-    <div class="bonus-trophy">🏆</div>
-    <div style="font-size:22px;font-weight:800;color:var(--brown-dark);margin:16px 0 8px">!אלוף! הסטודיו מתוקתק להיום</div>
-    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">הוספת רשומה פיננסית היום —<br>קבל בונוס חיפוש!</div>
-    <div class="bonus-count">+1 🔍 חיפוש נוסף במתנה</div>
-    <button class="btn-caramel" style="margin-top:20px;width:100%" onclick="document.getElementById('bonus-overlay').classList.remove('active');showScreen('home')">🔥 לחפש טרנדים עכשיו!</button>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:12px">הבונוס פעיל עד חצות הלילה</div>
-  </div>
-</div>
-
-<!-- SEARCH LIMIT MODAL -->
-<div class="limit-modal" id="limit-modal" onclick="this.classList.remove('active')">
-  <div class="limit-modal-card" onclick="event.stopPropagation()">
-    <div style="font-size:40px;margin-bottom:12px">🔍</div>
-    <div style="font-size:20px;font-weight:800;color:var(--brown-dark);margin-bottom:8px">ניצלת את החיפושים להיום</div>
-    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">💡 ידעת? אם תוסיף הוצאה או הכנסה היום, תקבל חיפוש נוסף במתנה! 🎁</div>
-    <button class="btn-primary full" style="margin-bottom:10px" onclick="document.getElementById('limit-modal').classList.remove('active');gatedScreen('expenses')">📊 הוסף רשומה פיננסית</button>
-    <button class="btn-caramel full" onclick="document.getElementById('limit-modal').classList.remove('active');showScreen('plans')">⬆️ שדרג תוכנית</button>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:14px">מחר יתחדשו החיפושים שלך ⏰</div>
-  </div>
-</div>
 
 </body></html>`;
 
