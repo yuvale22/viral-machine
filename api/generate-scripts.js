@@ -1,10 +1,10 @@
 // api/generate-scripts.js
 // POST { aweme_ids: [...], business_name, product_name }
-// Cache-first; ALL misses run Vision fallback in parallel (bounded by Vercel 10s max).
+// Cache-first; ALL misses run Claude fallback in parallel.
 
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrem10dW56bWRsZmlhcHd6a29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzcyMTcsImV4cCI6MjA4OTE1MzIxN30.td9gx19iEU4jl8ph6JX33LHm-K-vQtNG5TW9q_kHWRs';
-const VISION_TIMEOUT_MS = 8000;
+const FALLBACK_TIMEOUT_MS = 8500;
 
 async function getUserFromToken(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null;
@@ -18,25 +18,13 @@ async function getUserFromToken(authHeader) {
 
 function parseTranscript(raw) {
   if (!raw) return null;
-  // Try to match 4 sections (new format with viral upgrade)
   const m4 = raw.match(/###\s*1\.\s*[^\n]*\n([\s\S]*?)###\s*2\.\s*[^\n]*\n([\s\S]*?)###\s*3\.\s*[^\n]*\n([\s\S]*?)###\s*4\.\s*[^\n]*\n([\s\S]*)/);
   if (m4) {
-    return {
-      marketing: m4[1].trim(),
-      production: m4[2].trim(),
-      script: m4[3].trim(),
-      viral_upgrade: m4[4].trim(),
-    };
+    return { marketing: m4[1].trim(), production: m4[2].trim(), script: m4[3].trim(), viral_upgrade: m4[4].trim() };
   }
-  // Fallback to 3 sections (old format)
   const m3 = raw.match(/###\s*1\.\s*[^\n]*\n([\s\S]*?)###\s*2\.\s*[^\n]*\n([\s\S]*?)###\s*3\.\s*[^\n]*\n([\s\S]*)/);
   if (m3) {
-    return {
-      marketing: m3[1].trim(),
-      production: m3[2].trim(),
-      script: m3[3].trim(),
-      viral_upgrade: '',
-    };
+    return { marketing: m3[1].trim(), production: m3[2].trim(), script: m3[3].trim(), viral_upgrade: '' };
   }
   return { marketing: '', production: '', script: raw.trim(), viral_upgrade: '' };
 }
@@ -47,9 +35,7 @@ function applyReplacements(text, businessName, productName) {
     .replace(/\{\{PRODUCT_NAME\}\}/g, productName || 'המוצר שלנו');
 }
 
-async function visionFallback(video) {
-  // video: { video_id, title, he_title, description }
-  // FIX: No 'cover' column exists in cached_videos — use text-only prompt with title + description
+async function claudeFallback(video) {
   const videoTitle = video.he_title || video.title || 'ללא כותרת';
   const videoDesc = video.description || '';
 
@@ -71,36 +57,41 @@ async function visionFallback(video) {
 ${videoDesc ? 'תיאור: ' + videoDesc : ''}`;
 
   const ctrl = new AbortController();
-  const timeout = setTimeout(() => ctrl.abort(), VISION_TIMEOUT_MS);
+  const timeout = setTimeout(() => ctrl.abort(), FALLBACK_TIMEOUT_MS);
+
+  const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.error('Claude fallback: No API key found');
+    clearTimeout(timeout);
+    return null;
+  }
 
   try {
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       signal: ctrl.signal,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + process.env.OPENAI_API_KEY,
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 700,
-        messages: [{
-          role: 'user',
-          content: prompt,
-        }],
+        messages: [{ role: 'user', content: prompt }],
       }),
     });
     clearTimeout(timeout);
     if (!r.ok) {
       const errBody = await r.text().catch(() => '');
-      console.error('OpenAI API error:', r.status, errBody.slice(0, 200));
-      throw new Error('Vision API ' + r.status);
+      console.error('Claude API error:', r.status, errBody.slice(0, 200));
+      throw new Error('Claude API ' + r.status);
     }
     const data = await r.json();
-    return data.choices?.[0]?.message?.content || '';
+    return data.content?.[0]?.text || '';
   } catch (e) {
     clearTimeout(timeout);
-    console.error('Vision fallback failed:', e.message);
+    console.error('Claude fallback failed:', e.message);
     return null;
   }
 }
@@ -138,11 +129,10 @@ module.exports = async function handler(req, res) {
     const cacheMap = {};
     cached.forEach(c => { cacheMap[c.aweme_id] = c; });
 
-    // 2. Identify misses — ALL of them, no cap
+    // 2. Identify misses
     const misses = aweme_ids.filter(id => !cacheMap[id]);
 
     // 3. Fetch video metadata for misses
-    // FIX: select actual columns that exist (no 'cover' column in cached_videos)
     if (misses.length > 0) {
       const missIds = misses.map(id => `"${id}"`).join(',');
       const metaRes = await fetch(
@@ -153,9 +143,9 @@ module.exports = async function handler(req, res) {
       const metaMap = {};
       metas.forEach(m => { metaMap[m.video_id] = m; });
 
-      // 4. Run fallback on ALL misses in parallel
+      // 4. Run Claude fallback on ALL misses in parallel
       const results = await Promise.all(
-        misses.map(id => visionFallback(metaMap[id] || { video_id: id }))
+        misses.map(id => claudeFallback(metaMap[id] || { video_id: id }))
       );
 
       // 5. Save successful ones to cache
@@ -176,7 +166,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // 6. Build response — parse + replace placeholders
+    // 6. Build response
     const scripts = aweme_ids.map(id => {
       const entry = cacheMap[id];
       if (!entry?.transcript) {
