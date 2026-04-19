@@ -1931,6 +1931,8 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (tab==='scripts'?i===0:i===1)));
   document.getElementById('tab-scripts').style.display = tab === 'scripts' ? 'block' : 'none';
   document.getElementById('tab-calendar').style.display = tab === 'calendar' ? 'block' : 'none';
+  const moreWrap = document.getElementById('generate-more-wrap');
+  if (moreWrap) moreWrap.style.display = (tab === 'scripts' && state.scripts.length > 0) ? 'block' : 'none';
   if (tab === 'calendar' && state.calendar.length === 0) {
     document.getElementById('calendar-grid').innerHTML = '';
     document.getElementById('calendar-empty').style.display = 'block';
