@@ -1,10 +1,9 @@
 // api/generate-scripts.js
 // POST { aweme_ids: [...], business_name, product_name }
-// Cache-first; ALL misses run Claude fallback in parallel.
+// Cache-first; misses run Claude fallback SEQUENTIALLY with time budget.
 
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrem10dW56bWRsZmlhcHd6a29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzcyMTcsImV4cCI6MjA4OTE1MzIxN30.td9gx19iEU4jl8ph6JX33LHm-K-vQtNG5TW9q_kHWRs';
-const FALLBACK_TIMEOUT_MS = 8500;
 
 async function getUserFromToken(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null;
@@ -19,13 +18,9 @@ async function getUserFromToken(authHeader) {
 function parseTranscript(raw) {
   if (!raw) return null;
   const m4 = raw.match(/###\s*1\.\s*[^\n]*\n([\s\S]*?)###\s*2\.\s*[^\n]*\n([\s\S]*?)###\s*3\.\s*[^\n]*\n([\s\S]*?)###\s*4\.\s*[^\n]*\n([\s\S]*)/);
-  if (m4) {
-    return { marketing: m4[1].trim(), production: m4[2].trim(), script: m4[3].trim(), viral_upgrade: m4[4].trim() };
-  }
+  if (m4) return { marketing: m4[1].trim(), production: m4[2].trim(), script: m4[3].trim(), viral_upgrade: m4[4].trim() };
   const m3 = raw.match(/###\s*1\.\s*[^\n]*\n([\s\S]*?)###\s*2\.\s*[^\n]*\n([\s\S]*?)###\s*3\.\s*[^\n]*\n([\s\S]*)/);
-  if (m3) {
-    return { marketing: m3[1].trim(), production: m3[2].trim(), script: m3[3].trim(), viral_upgrade: '' };
-  }
+  if (m3) return { marketing: m3[1].trim(), production: m3[2].trim(), script: m3[3].trim(), viral_upgrade: '' };
   return { marketing: '', production: '', script: raw.trim(), viral_upgrade: '' };
 }
 
@@ -35,15 +30,15 @@ function applyReplacements(text, businessName, productName) {
     .replace(/\{\{PRODUCT_NAME\}\}/g, productName || 'המוצר שלנו');
 }
 
-async function claudeFallback(video) {
+async function claudeFallback(video, timeoutMs) {
   const videoTitle = video.he_title || video.title || 'ללא כותרת';
   const videoDesc = video.description || '';
 
-  const prompt = `אתה מומחה לתסריטי טיקטוק ויראליים. בהתבסס על כותרת הסרטון והתיאור שלו, כתוב ניתוח שיווקי, המלצות הפקה, ותסריט מוכן לצילום.
-החזר בדיוק בפורמט הזה (חשוב — שמור על ה-### וההפרדות):
+  const prompt = `אתה מומחה לתסריטי טיקטוק ויראליים. בהתבסס על כותרת הסרטון והתיאור, כתוב ניתוח שיווקי קצר, המלצות הפקה, ותסריט מוכן לצילום.
+החזר בדיוק בפורמט הזה:
 
 ### 1. איפיון שיווקי
-[ניתוח קצר של ה-Hook הפסיכולוגי, 2-3 משפטים]
+[2-3 משפטים על ה-Hook הפסיכולוגי]
 
 ### 2. המלצות הפקה
 - צילום: [המלצה]
@@ -51,20 +46,16 @@ async function claudeFallback(video) {
 - עריכה: [המלצה]
 
 ### 3. תסריט ה-Vibe המקורי
-[תסריט מוכן לצילום בעברית, עם הוראות צילום בסוגריים מרובעים. השתמש בתגיות {{BUSINESS_NAME}} ו-{{PRODUCT_NAME}} בתוך התסריט במקומות הרלוונטיים.]
+[תסריט קצר בעברית עם הוראות צילום בסוגריים. השתמש ב-{{BUSINESS_NAME}} ו-{{PRODUCT_NAME}}.]
 
-כותרת הסרטון: ${videoTitle}
-${videoDesc ? 'תיאור: ' + videoDesc : ''}`;
+כותרת: ${videoTitle}
+${videoDesc ? 'תיאור: ' + videoDesc.slice(0, 200) : ''}`;
 
   const ctrl = new AbortController();
-  const timeout = setTimeout(() => ctrl.abort(), FALLBACK_TIMEOUT_MS);
+  const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
 
   const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.error('Claude fallback: No API key found');
-    clearTimeout(timeout);
-    return null;
-  }
+  if (!apiKey) { clearTimeout(timeout); return null; }
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -76,8 +67,8 @@ ${videoDesc ? 'תיאור: ' + videoDesc : ''}`;
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-       model: 'claude-haiku-4-5-20251001',
-        max_tokens: 700,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -85,7 +76,7 @@ ${videoDesc ? 'תיאור: ' + videoDesc : ''}`;
     if (!r.ok) {
       const errBody = await r.text().catch(() => '');
       console.error('Claude API error:', r.status, errBody.slice(0, 200));
-      throw new Error('Claude API ' + r.status);
+      return null;
     }
     const data = await r.json();
     return data.content?.[0]?.text || '';
@@ -100,6 +91,7 @@ module.exports.config = { maxDuration: 10 };
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const startTime = Date.now();
 
   const user = await getUserFromToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -119,7 +111,7 @@ module.exports = async function handler(req, res) {
   };
 
   try {
-    // 1. Fetch existing analyses from video_analysis
+    // 1. Fetch existing analyses
     const idsParam = aweme_ids.map(id => `"${id}"`).join(',');
     const cacheRes = await fetch(
       `${SUPA_URL}/rest/v1/video_analysis?aweme_id=in.(${idsParam})&select=aweme_id,transcript,analysis_quality`,
@@ -132,7 +124,8 @@ module.exports = async function handler(req, res) {
     // 2. Identify misses
     const misses = aweme_ids.filter(id => !cacheMap[id]);
 
-    // 3. Fetch video metadata for misses
+    // 3. Fetch metadata for misses
+    let metaMap = {};
     if (misses.length > 0) {
       const missIds = misses.map(id => `"${id}"`).join(',');
       const metaRes = await fetch(
@@ -140,30 +133,42 @@ module.exports = async function handler(req, res) {
         { headers: adminH }
       );
       const metas = metaRes.ok ? await metaRes.json() : [];
-      const metaMap = {};
       metas.forEach(m => { metaMap[m.video_id] = m; });
+    }
 
-      // 4. Run Claude fallback on ALL misses in parallel
-      const results = await Promise.all(
-        misses.map(id => claudeFallback(metaMap[id] || { video_id: id }))
+    // 4. Run Claude fallback SEQUENTIALLY with time budget
+    // Vercel Hobby = 10s max. Reserve 1.5s for DB + response.
+    const TIME_BUDGET_MS = 8000;
+    const toInsert = [];
+
+    for (const id of misses) {
+      const elapsed = Date.now() - startTime;
+      const remaining = TIME_BUDGET_MS - elapsed;
+
+      // Stop if less than 3 seconds left — not enough for a Claude call
+      if (remaining < 3000) {
+        console.log(`Time budget exhausted (${elapsed}ms elapsed), skipping remaining ${misses.length - misses.indexOf(id)} videos`);
+        break;
+      }
+
+      const transcript = await claudeFallback(
+        metaMap[id] || { video_id: id },
+        Math.min(remaining - 500, 5000) // per-call timeout: remaining minus buffer, max 5s
       );
 
-      // 5. Save successful ones to cache
-      const toInsert = [];
-      results.forEach((transcript, i) => {
-        if (transcript) {
-          const id = misses[i];
-          cacheMap[id] = { aweme_id: id, transcript, analysis_quality: 'lite' };
-          toInsert.push({ aweme_id: id, transcript, analysis_quality: 'lite' });
-        }
-      });
-      if (toInsert.length > 0) {
-        fetch(SUPA_URL + '/rest/v1/video_analysis', {
-          method: 'POST',
-          headers: { ...adminH, 'Prefer': 'resolution=merge-duplicates' },
-          body: JSON.stringify(toInsert),
-        }).catch(e => console.error('Save error:', e));
+      if (transcript) {
+        cacheMap[id] = { aweme_id: id, transcript, analysis_quality: 'lite' };
+        toInsert.push({ aweme_id: id, transcript, analysis_quality: 'lite' });
       }
+    }
+
+    // 5. Save to cache (fire and forget)
+    if (toInsert.length > 0) {
+      fetch(SUPA_URL + '/rest/v1/video_analysis', {
+        method: 'POST',
+        headers: { ...adminH, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify(toInsert),
+      }).catch(e => console.error('Save error:', e));
     }
 
     // 6. Build response
@@ -186,14 +191,16 @@ module.exports = async function handler(req, res) {
 
     const readyCount = scripts.filter(s => s.status === 'ready').length;
     const failedCount = scripts.filter(s => s.status === 'failed').length;
+    const pending = failedCount;
 
     return res.status(200).json({
       scripts,
       total: aweme_ids.length,
       ready: readyCount,
       failed: failedCount,
+      pending,
       message: failedCount > 0
-        ? `${readyCount} תסריטים נוצרו (${failedCount} סרטונים לא הצליחו — נסה סרטונים אחרים)`
+        ? `${readyCount} תסריטים נוצרו (${failedCount} עדיין בעיבוד — לחץ שוב לקבל את השאר)`
         : null,
     });
 
