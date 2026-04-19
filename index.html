@@ -954,7 +954,13 @@
         <p style="color:var(--text-muted);font-size:13px;margin-top:12px">ייצור לך לוז מלא לשבוע עם שעות פרסום ופלטפורמות</p>
       </div>
     </div>
-    <div style="display:flex;gap:12px;justify-content:center;margin-top:32px;flex-wrap:wrap">
+    <div id="generate-more-wrap" style="display:none;text-align:center;margin-top:24px">
+      <button class="btn-caramel full" id="gen-more-btn" onclick="generateMoreScripts()" style="max-width:500px;margin:0 auto;font-size:16px;padding:16px 32px">
+        ✨ צור עוד 5 תסריטים על בסיס אלה
+      </button>
+      <p style="color:var(--text-muted);font-size:12px;margin-top:8px">ייצור 5 תסריטים חדשים בסגנון דומה — מותאמים ליום צילום</p>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap">
       <button class="btn-primary" onclick="reSearch()">🔄 חפש סרטונים חדשים</button>
     </div>
   </div></div>
@@ -1950,6 +1956,82 @@ function renderScripts(bizName) {
     </div>`).join('');
   // Reset calendar tab
   switchTab('scripts');
+  // Show "generate more" button if there are scripts
+  const moreWrap = document.getElementById('generate-more-wrap');
+  if (moreWrap) moreWrap.style.display = state.scripts.length > 0 ? 'block' : 'none';
+}
+
+async function generateMoreScripts() {
+  const btn = document.getElementById('gen-more-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ מייצר תסריטים נוספים...';
+
+  try {
+    // Build examples from existing scripts
+    const examples = state.scripts.slice(0, 5).map((s, i) =>
+      `תסריט ${i+1}: ${s.title}\nHook: ${s.hook || 'ללא'}\n${s.script.slice(0, 300)}`
+    ).join('\n\n---\n\n');
+
+    const prompt = `אתה מומחה לתסריטי טיקטוק ויראליים בעברית.
+
+שם העסק: ${state.bizName}
+תחום: ${state.industry?.label || ''}
+
+הנה ${state.scripts.length} תסריטים שכבר נוצרו לעסק הזה:
+
+${examples}
+
+עכשיו צור 5 תסריטים חדשים ומקוריים בסגנון דומה. כל תסריט צריך להיות שונה מספיק כדי לתת מגוון ליום צילום.
+
+החזר בדיוק בפורמט JSON הבא, בלי markdown ובלי backticks:
+[
+  {
+    "title": "שם התסריט",
+    "hook": "ה-Hook הפסיכולוגי — משפט אחד",
+    "production": "- צילום: [המלצה]\\n- סאונד: [המלצה]\\n- עריכה: [המלצה]",
+    "script": "התסריט המלא בעברית עם הוראות צילום בסוגריים מרובעים. השתמש ב-${state.bizName} בתוך התסריט."
+  }
+]
+
+החזר בדיוק 5 תסריטים.`;
+
+    const raw = await callClaude(prompt, 4000);
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const newScripts = JSON.parse(clean);
+
+    if (!Array.isArray(newScripts) || newScripts.length === 0) {
+      throw new Error('לא התקבלו תסריטים');
+    }
+
+    const startIdx = state.scripts.length;
+    newScripts.forEach((s, i) => {
+      state.scripts.push({
+        title: s.title || 'תסריט ' + (startIdx + i + 1),
+        format: 'וריאציה AI',
+        inspired: 'בהשראת התסריטים הקודמים',
+        hook: s.hook || '',
+        script: (s.production ? '📋 המלצות הפקה:\n' + s.production + '\n\n' : '') + '🎬 תסריט מוכן:\n' + (s.script || ''),
+        caption: '#' + state.bizName.replace(/\s+/g, '') + ' #ויראלי #טיקטוק',
+      });
+    });
+
+    // Update history
+    const h = getHistory();
+    if (h.length > 0 && h[0].bizName === state.bizName) {
+      h[0].scriptsCount = state.scripts.length;
+      h[0].scripts = state.scripts;
+      localStorage.setItem('vm_history', JSON.stringify(h));
+    }
+
+    renderScripts(state.bizName);
+    toast(`${newScripts.length} תסריטים חדשים נוצרו! סה"כ ${state.scripts.length} תסריטים`, 'ok');
+  } catch(e) {
+    console.error('Generate more error:', e);
+    toast('שגיאה ביצירת תסריטים: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ צור עוד 5 תסריטים על בסיס אלה';
+  }
 }
 
 async function generateCalendar() {
