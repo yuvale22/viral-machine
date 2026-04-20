@@ -159,7 +159,16 @@
   .script-card:hover { box-shadow: var(--shadow-md); border-color: var(--border-hover); }
   .script-badge { position: absolute; top: 20px; left: 20px; background: var(--brown); color: var(--cream); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; font-family: 'Rubik'; }
   .script-title { font-size: 17px; font-weight: 700; color: var(--brown); margin-bottom: 14px; }
-  .script-body { font-size: 14px; line-height: 2; color: var(--text); white-space: pre-wrap; background: var(--cream); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 14px; border: 1px solid var(--sand-light); }
+  .script-body { font-size: 14px; line-height: 2; color: var(--text); white-space: pre-wrap; background: var(--cream); border-radius: var(--radius-sm); padding: 20px; margin-bottom: 14px; border: 1px solid var(--sand-light); transition: border-color 0.3s, box-shadow 0.3s; }
+  .script-body.editing { border-color: var(--caramel); box-shadow: 0 0 0 3px rgba(196,133,59,0.12); outline: none; background: #fff; }
+  .script-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-edit { background: var(--surface-warm); border: 1px solid var(--sand); border-radius: 50px; padding: 10px 20px; color: var(--text-secondary); font-size: 13px; cursor: pointer; font-family: inherit; width: 100%; margin-top: 0; transition: all 0.2s; flex: 1; }
+  .btn-edit:hover { background: rgba(196,133,59,0.08); border-color: var(--caramel-light); color: var(--brown); }
+  .btn-edit.saving { background: var(--green); color: #fff; border-color: var(--green); }
+  .gen-more-loading { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px; }
+  .gen-more-spinner { width: 48px; height: 48px; border: 3px solid var(--sand); border-top-color: var(--caramel); border-radius: 50%; animation: gearSpin 1s linear infinite; }
+  .gen-more-text { font-size: 15px; font-weight: 600; color: var(--brown); }
+  .gen-more-sub { font-size: 12px; color: var(--text-muted); }
   .script-caption { font-size: 12px; color: var(--text-muted); line-height: 1.7; direction: ltr; text-align: left; }
 
   /* ========== CALENDAR ========== */
@@ -1546,7 +1555,7 @@ let state = {
   rapidKey: localStorage.getItem('vm_rapid') || '',
   claudeKey: localStorage.getItem('vm_claude') || '',
   industry: null, videos: [], selected: [], scripts: [], calendar: [], bizName: '', trendVideos: [], lastQuote: null,
-  adminUser: null, creatorsCache: {},
+  adminUser: null, creatorsCache: {}, generatedMore: false,
   user: null, userProfile: null,
 };
 
@@ -1867,7 +1876,7 @@ async function startSearch(industryId) {
   // Check search limit
   if (!IS_ADMIN && !(await checkSearchLimit())) return;
   state.industry = INDUSTRIES.find(i => i.id === industryId);
-  state.videos = []; state.selected = []; state.scripts = []; state.calendar = [];
+  state.videos = []; state.selected = []; state.scripts = []; state.calendar = []; state.generatedMore = false;
   document.getElementById('search-title').textContent = state.industry.emoji + ' סיטואציות ויראליות — ' + state.industry.label;
   document.getElementById('search-title-bar').textContent = state.industry.label;
   document.getElementById('search-content').style.display = 'none';
@@ -2069,7 +2078,7 @@ function switchTab(tab) {
   document.getElementById('tab-scripts').style.display = tab === 'scripts' ? 'block' : 'none';
   document.getElementById('tab-calendar').style.display = tab === 'calendar' ? 'block' : 'none';
   const moreWrap = document.getElementById('generate-more-wrap');
-  if (moreWrap) moreWrap.style.display = (tab === 'scripts' && state.scripts.length > 0) ? 'block' : 'none';
+  if (moreWrap) moreWrap.style.display = (tab === 'scripts' && state.scripts.length > 0 && !state.generatedMore) ? 'block' : 'none';
   if (tab === 'calendar' && state.calendar.length === 0) {
     document.getElementById('calendar-grid').innerHTML = '';
     document.getElementById('calendar-empty').style.display = 'block';
@@ -2089,24 +2098,33 @@ function renderScripts(bizName) {
       </div>
       <div class="script-title">${esc(s.title)}</div>
       ${s.hook ? `<div style="font-size:12px;color:var(--caramel);margin-bottom:10px;font-weight:600">🪝 Hook: ${esc(s.hook)}</div>` : ''}
-      <pre class="script-body">${esc(s.script)}</pre>
+      <pre class="script-body" id="script-body-${i}">${esc(s.script)}</pre>
       <div class="script-caption">${esc(s.caption)}</div>
-      <button class="btn-copy" id="copy-${i}" onclick="copyScript(${i})">📋 העתק תסריט</button>
+      <div class="script-actions">
+        <button class="btn-copy" id="copy-${i}" onclick="copyScript(${i})" style="flex:1;margin-top:8px">📋 העתק</button>
+        <button class="btn-edit" id="edit-${i}" onclick="toggleEditScript(${i})" style="flex:1;margin-top:8px">✏️ ערוך</button>
+      </div>
     </div>`).join('');
   // Reset calendar tab
   switchTab('scripts');
-  // Show "generate more" button if there are scripts
+  // Show "generate more" button only if scripts exist AND not already generated more
   const moreWrap = document.getElementById('generate-more-wrap');
-  if (moreWrap) moreWrap.style.display = state.scripts.length > 0 ? 'block' : 'none';
+  if (moreWrap) moreWrap.style.display = (state.scripts.length > 0 && !state.generatedMore) ? 'block' : 'none';
 }
 
 async function generateMoreScripts() {
-  const btn = document.getElementById('gen-more-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ מייצר תסריטים נוספים...';
+  const wrap = document.getElementById('generate-more-wrap');
+
+  // Replace button with loading animation
+  wrap.innerHTML = `
+    <div class="gen-more-loading">
+      <div class="gen-more-spinner"></div>
+      <div class="gen-more-text">✨ מייצר 5 תסריטים נוספים...</div>
+      <div class="gen-more-sub">בונה וריאציות מקוריות על בסיס התסריטים שנוצרו</div>
+    </div>
+  `;
 
   try {
-    // Build examples from existing scripts
     const examples = state.scripts.slice(0, 5).map((s, i) =>
       `תסריט ${i+1}: ${s.title}\nHook: ${s.hook || 'ללא'}\n${s.script.slice(0, 300)}`
     ).join('\n\n---\n\n');
@@ -2162,14 +2180,54 @@ ${examples}
       localStorage.setItem('vm_history', JSON.stringify(h));
     }
 
+    // Mark as generated — hide button permanently for this session
+    state.generatedMore = true;
     renderScripts(state.bizName);
     toast(`${newScripts.length} תסריטים חדשים נוצרו! סה"כ ${state.scripts.length} תסריטים`, 'ok');
   } catch(e) {
     console.error('Generate more error:', e);
     toast('שגיאה ביצירת תסריטים: ' + e.message, 'err');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '✨ צור עוד 5 תסריטים על בסיס אלה';
+    // Restore button on error
+    wrap.innerHTML = `
+      <button class="btn-caramel full" id="gen-more-btn" onclick="generateMoreScripts()" style="max-width:500px;margin:0 auto;font-size:16px;padding:16px 32px">
+        ✨ צור עוד 5 תסריטים על בסיס אלה
+      </button>
+      <p style="color:var(--text-muted);font-size:12px;margin-top:8px">ייצור 5 תסריטים חדשים בסגנון דומה — מותאמים ליום צילום</p>
+    `;
+  }
+}
+
+// ========== SCRIPT EDITING ==========
+function toggleEditScript(idx) {
+  const body = document.getElementById('script-body-' + idx);
+  const btn = document.getElementById('edit-' + idx);
+  if (!body || !btn) return;
+
+  if (body.contentEditable === 'true') {
+    // Save mode
+    body.contentEditable = 'false';
+    body.classList.remove('editing');
+    btn.textContent = '✏️ ערוך';
+    btn.classList.remove('saving');
+
+    // Update state with edited content
+    state.scripts[idx].script = body.innerText;
+
+    // Update history too
+    const h = getHistory();
+    if (h.length > 0 && h[0].bizName === state.bizName) {
+      h[0].scripts = state.scripts;
+      localStorage.setItem('vm_history', JSON.stringify(h));
+    }
+
+    toast('התסריט עודכן ✓', 'ok');
+  } else {
+    // Edit mode
+    body.contentEditable = 'true';
+    body.classList.add('editing');
+    body.focus();
+    btn.textContent = '💾 שמור';
+    btn.classList.add('saving');
   }
 }
 
