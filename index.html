@@ -2,8 +2,17 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>YUMi</title>
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#6B4226">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="YUMi">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="msapplication-TileColor" content="#6B4226">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -255,21 +264,142 @@
 
   /* ========== MOBILE ========== */
   @media (max-width: 640px) {
+    /* Typography */
     .setup-title { font-size: 32px; }
-    .setup-card { padding: 28px; }
-    .home-heading h1 { font-size: 26px; }
-    .industry-grid { flex-wrap: wrap; gap: 8px; }
-    .ind-card { flex: unset; width: calc(33% - 8px); max-width: none; min-height: 80px; padding: 14px 6px; font-size: 11px; }
-    .video-grid { grid-template-columns: 1fr; }
-    .scripts-grid { grid-template-columns: 1fr; }
+    .setup-card { padding: 24px 20px; }
+    .home-heading h1 { font-size: 24px; }
+    .home-heading p { font-size: 14px; }
+    .screen-heading h2 { font-size: 22px; }
+
+    /* Layout */
+    .page { padding: 0 14px; }
+    .section { padding: 32px 0; }
+    .topbar { padding: 0 14px; }
+    .topbar-inner { height: 56px; }
+    .topbar-logo { font-size: 14px; gap: 6px; }
+    .topbar-logo svg { width: 26px; height: 26px; }
+
+    /* Industry grid — 2x2 for easier tapping */
+    .industry-grid { flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .ind-card { flex: unset; width: calc(50% - 6px); max-width: none; min-height: 80px; padding: 16px 8px; font-size: 12px; }
+    .ind-emoji { font-size: 28px; }
+
+    /* Bigger buttons for touch */
+    .btn-primary { padding: 16px 28px; font-size: 15px; min-height: 52px; }
+    .btn-caramel { padding: 16px 28px; font-size: 15px; min-height: 52px; }
+    .btn-secondary { padding: 10px 16px; font-size: 12px; min-height: 42px; }
+    .btn-copy { padding: 14px 16px; font-size: 14px; min-height: 48px; }
+
+    /* Cards — full width */
+    .video-grid { grid-template-columns: 1fr; gap: 10px; }
+    .vid-card { padding: 16px; }
+    .vid-title { font-size: 13px; }
+    .vid-stats { gap: 5px; }
+    .vid-stat { font-size: 11px; padding: 3px 8px; }
+
+    .scripts-grid { grid-template-columns: 1fr; gap: 12px; }
+    .script-card { padding: 20px 16px; }
+    .script-body { padding: 14px; font-size: 13px; line-height: 1.9; }
+
     .calendar-grid { grid-template-columns: 1fr; }
+    .day-card { padding: 18px; }
+
+    /* Gen panel */
+    .gen-panel { padding: 20px 16px; }
     .gen-row { flex-direction: column; }
-    .stats-row { gap: 24px; flex-wrap: wrap; }
-    .stat-num { font-size: 28px; }
+
+    /* Stats row */
+    .stats-row { gap: 16px; flex-wrap: wrap; justify-content: center; }
+    .stat-num { font-size: 24px; }
+    .stat-label { font-size: 11px; }
+
+    /* Stepper — dots only */
     .st span:not(.st-dot) { display: none; }
     .st-line { width: 20px; }
-    .page { padding: 0 16px; }
+    .st-dot { width: 28px; height: 28px; font-size: 12px; }
+
+    /* Tab nav */
     .tab-nav { max-width: 100%; }
+    .tab-btn { padding: 10px 12px; font-size: 13px; }
+
+    /* Tools row */
+    .tools-row { gap: 10px; margin-top: 32px; }
+    .tool-card { padding: 16px; gap: 10px; min-width: unset; max-width: none; flex: unset; width: 100%; }
+    .tool-icon { font-size: 24px; }
+    .tool-name { font-size: 14px; }
+    .tool-desc { font-size: 11px; }
+
+    /* Plans */
+    .plans-header h1 { font-size: 24px; }
+    .plan-card { padding: 24px 20px; }
+    .paywall-cards-grid { grid-template-columns: 1fr; max-width: 380px; margin-left: auto; margin-right: auto; }
+
+    /* Clients */
+    .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .summary-card { padding: 14px; }
+    .summary-num { font-size: 20px; }
+    .client-card { padding: 16px; }
+    .client-meta { grid-template-columns: 1fr; }
+    .client-actions { flex-direction: column; }
+    .client-actions button { width: 100%; justify-content: center; }
+
+    /* Auth */
+    .auth-card { padding: 28px 20px; max-width: 100%; }
+    .field-input { padding: 14px 16px; font-size: 16px; /* prevents iOS zoom */ }
+    .otp-digit { width: 42px; height: 50px; font-size: 22px; }
+
+    /* Paywall */
+    .paywall-welcome { font-size: 20px; }
+    .paywall-card { padding: 28px 20px; }
+
+    /* Expenses */
+    .client-amount { font-size: 18px; }
+
+    /* Marquee smaller */
+    .marquee { padding: 10px 0; }
+    .marquee-item { font-size: 10px; letter-spacing: 3px; padding: 0 18px; }
+
+    /* Trends */
+    .trend-grid { grid-template-columns: 1fr; gap: 10px; }
+    .trend-card { padding: 16px; }
+
+    /* History */
+    .history-card { padding: 16px; flex-direction: column; gap: 12px; align-items: flex-start; }
+    .history-actions { width: 100%; justify-content: flex-end; }
+
+    /* Quote */
+    .quote-service-item { padding: 14px 12px; }
+    .qsvc-price-input { width: 90px; }
+
+    /* Gen overlay */
+    .gen-overlay { padding: 20px 16px; }
+    .gen-title-text { font-size: 18px; }
+    .gen-steps { gap: 12px; }
+    .gen-step { padding: 12px 14px; }
+
+    /* Standalone mode — safe area padding */
+    .topbar { padding-top: env(safe-area-inset-top); }
+    body { padding-bottom: env(safe-area-inset-bottom); }
+
+    /* Prevent text selection on UI elements (app-like feel) */
+    .btn-primary, .btn-secondary, .btn-caramel, .btn-copy, .btn-paid, .btn-unpaid,
+    .ind-card, .tool-card, .tab-btn, .trends-tab, .vid-card, .fav-btn,
+    .topbar, .stepper, .st, .stat, .marquee { -webkit-user-select: none; user-select: none; }
+
+    /* Smooth scrolling */
+    html { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+
+    /* Fix iOS input zoom */
+    input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"],
+    select, textarea { font-size: 16px !important; }
+  }
+
+  /* PWA standalone mode adjustments */
+  @media (display-mode: standalone) {
+    .topbar { padding-top: env(safe-area-inset-top); }
+    body { padding-bottom: env(safe-area-inset-bottom); }
+    /* Hide "skip paywall" in installed app */
+    .paywall-skip { display: none; }
   }
   /* ========== GENERATION OVERLAY ========== */
   .gen-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(253,246,236,0.95); backdrop-filter: blur(12px); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 32px; text-align: center; padding: 24px; }
@@ -4846,6 +4976,56 @@ function showBonusReward() {
 function canUseCreative() {
   const status = state.userProfile?.status;
   return status === 'trialing' || status === 'active';
+}
+
+// ========== PWA SERVICE WORKER + INSTALL ==========
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed:', err));
+  });
+}
+
+// PWA Install Prompt
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show install banner after user has used the app a bit
+  setTimeout(() => showInstallBanner(), 30000); // 30 seconds
+});
+
+function showInstallBanner() {
+  if (!deferredPrompt) return;
+  // Don't show if already installed
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'pwa-install-banner';
+  banner.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:400;background:var(--brown-dark);color:var(--cream);border-radius:16px;padding:16px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,0.3);max-width:360px;width:calc(100% - 32px);animation:fadeUp 0.4s ease';
+  banner.innerHTML = `
+    <div style="font-size:32px;flex-shrink:0">📲</div>
+    <div style="flex:1">
+      <div style="font-size:14px;font-weight:700;margin-bottom:2px">התקן את YUMi</div>
+      <div style="font-size:12px;opacity:0.7">גישה מהירה מהמסך הראשי</div>
+    </div>
+    <button onclick="installPWA()" style="background:var(--caramel);color:#fff;border:none;border-radius:10px;padding:10px 18px;font:700 13px Heebo;cursor:pointer;white-space:nowrap">התקן</button>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;padding:4px">✕</button>
+  `;
+  document.body.appendChild(banner);
+  // Auto-hide after 15 seconds
+  setTimeout(() => { if (banner.parentElement) banner.remove(); }, 15000);
+}
+
+async function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const result = await deferredPrompt.userChoice;
+  if (result.outcome === 'accepted') {
+    toast('YUMi הותקנה! 🎉', 'ok');
+  }
+  deferredPrompt = null;
+  const banner = document.getElementById('pwa-install-banner');
+  if (banner) banner.remove();
 }
 </script>
 
