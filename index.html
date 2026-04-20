@@ -723,6 +723,10 @@
 <!-- ========== PAYWALL (Trial + Cardcom) ========== -->
 <div id="screen-paywall" class="screen">
   <div class="paywall-wrap" style="max-width:1100px;margin:0 auto">
+    <!-- Back button (shown for logged-in users who already have access) -->
+    <div id="paywall-back" style="display:none;width:100%;max-width:1100px;text-align:right;margin-bottom:8px">
+      <button class="btn-secondary" onclick="showScreen('home')" style="font-size:13px">← חזור</button>
+    </div>
     <!-- Header -->
     <div class="yumi-logo" style="margin-bottom:12px">
       <svg width="56" height="56" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -730,11 +734,11 @@
         <path d="M35 28C35 28 38 28 40 31L50 48L60 31C62 28 65 28 65 28C68 28 70 30 70 33C70 34 69.5 35.5 69 36.5L55 58V72C55 75 53 77 50 77C47 77 45 75 45 72V58L31 36.5C30.5 35.5 30 34 30 33C30 30 32 28 35 28Z" fill="var(--cream)"/>
       </svg>
     </div>
-    <div class="paywall-welcome" style="margin-bottom:4px;font-size:22px">ברוכים הבאים, <span id="paywall-name"></span></div>
-    <div style="text-align:center;margin:10px 0 6px">
+    <div class="paywall-welcome" style="margin-bottom:4px;font-size:22px" id="paywall-welcome-text">ברוכים הבאים, <span id="paywall-name"></span></div>
+    <div id="paywall-trial-section" style="text-align:center;margin:10px 0 6px">
       <div class="trial-badge"><span class="dot"></span> 5 ימי ניסיון חינם על מסלול Basic</div>
     </div>
-    <div class="paywall-subtitle" style="margin-bottom:24px;font-size:14px">בחר מסלול — לא ניגבה שקל עד <strong id="paywall-trial-date"></strong></div>
+    <div class="paywall-subtitle" style="margin-bottom:24px;font-size:14px" id="paywall-subtitle">בחר מסלול — לא ניגבה שקל עד <strong id="paywall-trial-date"></strong></div>
 
     <!-- Monthly / Yearly Toggle -->
     <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:32px">
@@ -767,7 +771,7 @@
           <li class="disabled"><span class="feat-icon">✗</span> הצעות מחיר</li>
           <li class="disabled"><span class="feat-icon">✗</span> דשבורד פיננסי</li>
         </ul>
-        <button class="plan-btn plan-btn-outline" onclick="selectPaywallPlan('basic')">התחל 5 ימי ניסיון ←</button>
+        <button class="plan-btn plan-btn-outline" id="basic-plan-btn" onclick="selectPaywallPlan('basic')">התחל 5 ימי ניסיון ←</button>
       </div>
 
       <!-- PRO (highlighted) -->
@@ -827,8 +831,8 @@
     </div>
 
     <!-- Trust + Skip -->
-    <div class="paywall-trust" style="margin-top:16px">🔒 מאובטח &nbsp;•&nbsp; ביטול בכל רגע &nbsp;•&nbsp; ₪0 עד <span id="paywall-trust-date"></span></div>
-    <button class="paywall-skip" onclick="skipPaywall()">התחל ניסיון חינם ל-5 ימים (בלי כרטיס)</button>
+    <div class="paywall-trust" id="paywall-trust" style="margin-top:16px">🔒 מאובטח &nbsp;•&nbsp; ביטול בכל רגע &nbsp;•&nbsp; ₪0 עד <span id="paywall-trust-date"></span></div>
+    <button class="paywall-skip" id="paywall-skip-btn" onclick="skipPaywall()">התחל ניסיון חינם ל-5 ימים (בלי כרטיס)</button>
   </div>
 </div>
 
@@ -4711,8 +4715,41 @@ function showPaywall(firstName) {
   const dateStr = trialEnd.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
 
   document.getElementById('paywall-name').textContent = firstName || state.userProfile?.full_name || '';
-  document.getElementById('paywall-trial-date').textContent = dateStr;
-  document.getElementById('paywall-trust-date').textContent = dateStr;
+
+  // Determine user state
+  const status = state.userProfile?.status;
+  const hasUsedTrial = status === 'trialing' || status === 'active' || status === 'expired' || status === 'read_only';
+  const isActive = status === 'trialing' || status === 'active';
+
+  // Show/hide back button (only for users who already have access)
+  document.getElementById('paywall-back').style.display = isActive ? 'block' : 'none';
+
+  // Show/hide trial elements
+  const trialSection = document.getElementById('paywall-trial-section');
+  const subtitle = document.getElementById('paywall-subtitle');
+  const skipBtn = document.getElementById('paywall-skip-btn');
+  const trustEl = document.getElementById('paywall-trust');
+  const basicBtn = document.getElementById('basic-plan-btn');
+  const welcomeText = document.getElementById('paywall-welcome-text');
+
+  if (hasUsedTrial) {
+    // User already used trial or is paying — upgrade mode
+    trialSection.style.display = 'none';
+    subtitle.innerHTML = 'בחר מסלול לשדרוג';
+    skipBtn.style.display = 'none';
+    trustEl.innerHTML = '🔒 מאובטח &nbsp;•&nbsp; ביטול בכל רגע';
+    basicBtn.textContent = 'בחר Basic ←';
+    welcomeText.innerHTML = 'שדרג את YUMi שלך';
+  } else {
+    // New user — trial mode
+    trialSection.style.display = '';
+    document.getElementById('paywall-trial-date').textContent = dateStr;
+    subtitle.innerHTML = 'בחר מסלול — לא ניגבה שקל עד <strong>' + dateStr + '</strong>';
+    skipBtn.style.display = '';
+    trustEl.innerHTML = '🔒 מאובטח &nbsp;•&nbsp; ביטול בכל רגע &nbsp;•&nbsp; ₪0 עד <span id="paywall-trust-date">' + dateStr + '</span>';
+    basicBtn.textContent = 'התחל 5 ימי ניסיון ←';
+    welcomeText.innerHTML = 'ברוכים הבאים, <span id="paywall-name">' + esc(firstName || state.userProfile?.full_name || '') + '</span>';
+  }
 
   // Reset cardcom
   document.getElementById('cardcom-container').style.display = 'none';
