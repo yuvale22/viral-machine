@@ -274,10 +274,17 @@
     /* Layout */
     .page { padding: 0 14px; }
     .section { padding: 32px 0; }
-    .topbar { padding: 0 14px; }
-    .topbar-inner { height: 56px; }
-    .topbar-logo { font-size: 14px; gap: 6px; }
-    .topbar-logo svg { width: 26px; height: 26px; }
+    .topbar { padding: 0 10px; }
+    .topbar-inner { height: 52px; }
+    .topbar-logo { font-size: 14px; gap: 4px; }
+    .topbar-logo svg { width: 24px; height: 24px; }
+    .topbar-logo span[style*="font-size:26px"] { font-size: 20px !important; }
+    .topbar-actions { gap: 4px !important; }
+    .topbar-actions .btn-secondary { padding: 6px 10px; font-size: 14px; min-height: 36px; min-width: 36px; display: flex; align-items: center; justify-content: center; }
+    /* Hide upgrade text on mobile — keep icon only */
+    #btn-upgrade { font-size: 12px !important; padding: 6px 8px !important; }
+    /* Plan badge smaller */
+    #plan-badge { font-size: 8px !important; padding: 1px 5px !important; }
 
     /* Industry grid — 2x2 for easier tapping */
     .industry-grid { flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -913,9 +920,9 @@
 <!-- ========== HOME ========== -->
 <div id="screen-home" class="screen">
   <div class="topbar">
-    <div class="topbar-inner" style="justify-content:center;position:relative">
-      <div class="topbar-logo" onclick="showScreen('home')" style="justify-content:center"><svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-left:8px"><circle cx="50" cy="50" r="48" fill="var(--brown-dark)"/><path d="M35 28C35 28 38 28 40 31L50 48L60 31C62 28 65 28 65 28C68 28 70 30 70 33C70 34 69.5 35.5 69 36.5L55 58V72C55 75 53 77 50 77C47 77 45 75 45 72V58L31 36.5C30.5 35.5 30 34 30 33C30 30 32 28 35 28Z" fill="var(--cream)"/></svg><span style="direction:ltr;display:inline-block;font-size:26px;letter-spacing:-1px;font-weight:900;color:var(--brown)">YUMi</span> <span id="plan-badge" style="font-size:10px;background:var(--caramel);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px"></span></div>
-      <div class="topbar-actions" style="position:absolute;left:0;top:50%;transform:translateY(-50%)">
+    <div class="topbar-inner">
+      <div class="topbar-logo" onclick="showScreen('home')"><svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-left:8px"><circle cx="50" cy="50" r="48" fill="var(--brown-dark)"/><path d="M35 28C35 28 38 28 40 31L50 48L60 31C62 28 65 28 65 28C68 28 70 30 70 33C70 34 69.5 35.5 69 36.5L55 58V72C55 75 53 77 50 77C47 77 45 75 45 72V58L31 36.5C30.5 35.5 30 34 30 33C30 30 32 28 35 28Z" fill="var(--cream)"/></svg><span style="direction:ltr;display:inline-block;font-size:26px;letter-spacing:-1px;font-weight:900;color:var(--brown)">YUMi</span> <span id="plan-badge" style="font-size:10px;background:var(--caramel);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px"></span></div>
+      <div class="topbar-actions">
         <button class="btn-secondary" onclick="showScreen('history')">📂</button>
         <button class="btn-secondary" onclick="showScreen('plans')" id="btn-upgrade" style="display:none">⬆️ שדרג</button>
         <button class="btn-secondary" onclick="showScreen('admin')" id="btn-admin-home" style="display:none">🛠️</button>
