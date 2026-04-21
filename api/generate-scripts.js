@@ -1,6 +1,7 @@
 // api/generate-scripts.js
 // POST { aweme_ids: [...], business_name, product_name }
-// Cache-first; misses run Claude fallback SEQUENTIALLY with time budget.
+// Cache-first; misses run Claude fallback SEQUENTIALLY.
+// Client now sends 1 video per call, so we give full time budget to each.
 
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrem10dW56bWRsZmlhcHd6a29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzcyMTcsImV4cCI6MjA4OTE1MzIxN30.td9gx19iEU4jl8ph6JX33LHm-K-vQtNG5TW9q_kHWRs';
@@ -136,24 +137,21 @@ module.exports = async function handler(req, res) {
       metas.forEach(m => { metaMap[m.video_id] = m; });
     }
 
-    // 4. Run Claude fallback SEQUENTIALLY with time budget
-    // Vercel Hobby = 10s max. Reserve 1.5s for DB + response.
-    const TIME_BUDGET_MS = 8000;
+    // 4. Run Claude fallback — give full remaining time (client sends 1 video per call)
     const toInsert = [];
 
     for (const id of misses) {
       const elapsed = Date.now() - startTime;
-      const remaining = TIME_BUDGET_MS - elapsed;
+      const remaining = 9500 - elapsed; // 9.5s total budget (Vercel limit is 10s)
 
-      // Stop if less than 3 seconds left — not enough for a Claude call
-      if (remaining < 3000) {
-        console.log(`Time budget exhausted (${elapsed}ms elapsed), skipping remaining ${misses.length - misses.indexOf(id)} videos`);
+      if (remaining < 2000) {
+        console.log(`Time budget exhausted (${elapsed}ms elapsed)`);
         break;
       }
 
       const transcript = await claudeFallback(
         metaMap[id] || { video_id: id },
-        Math.min(remaining - 500, 5000) // per-call timeout: remaining minus buffer, max 5s
+        remaining - 500 // give Claude all remaining time minus small buffer
       );
 
       if (transcript) {
@@ -191,17 +189,12 @@ module.exports = async function handler(req, res) {
 
     const readyCount = scripts.filter(s => s.status === 'ready').length;
     const failedCount = scripts.filter(s => s.status === 'failed').length;
-    const pending = failedCount;
 
     return res.status(200).json({
       scripts,
       total: aweme_ids.length,
       ready: readyCount,
       failed: failedCount,
-      pending,
-      message: failedCount > 0
-        ? `${readyCount} תסריטים נוצרו (${failedCount} עדיין בעיבוד — לחץ שוב לקבל את השאר)`
-        : null,
     });
 
   } catch (error) {
