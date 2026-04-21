@@ -2013,7 +2013,7 @@ async function startSearch(industryId) {
     if (state.user) {
       const newSeen = [...seenIds, ...state.videos.map(v => v.video_id)].slice(-200);
       try {
-        await fetch(`${SUPA_URL}/rest/v1/seen_videos`, {
+        await fetch(`${SUPA_URL}/rest/v1/seen_videos?on_conflict=user_id,industry_id`, {
           method: 'POST',
           headers: { ...supaHeaders(true), 'Prefer': 'resolution=merge-duplicates' },
           body: JSON.stringify({ user_id: state.user.id, industry_id: industryId, video_ids: newSeen, updated_at: new Date().toISOString() }),
