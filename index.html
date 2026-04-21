@@ -2471,9 +2471,11 @@ function copyScript(i) {
 function reSearch() { startSearch(state.industry.id); }
 
 // ========== HISTORY ==========
-function renderHistory() {
-  const h = getHistory();
+async function renderHistory() {
   const container = document.getElementById('history-list');
+  container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">טוען היסטוריה...</div>';
+  await loadHistoryFromDB();
+  const h = getHistory();
   if (h.length === 0) {
     container.innerHTML = `<div class="empty-state"><div class="icon">📂</div><p>עדיין אין היסטוריה.<br>צור תסריטים ראשונים והם יישמרו כאן.</p></div>`;
     return;
@@ -2493,6 +2495,7 @@ function renderHistory() {
       </div>
     </div>
   `).join('');
+  updateHistoryCount();
 }
 
 function loadHistory(idx) {
