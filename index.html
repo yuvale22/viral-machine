@@ -3806,6 +3806,11 @@ async function checkSearchLimit() {
     const usedToday = (logs || []).length;
 
     if (usedToday >= totalLimit) {
+      // Update modal content based on bonus status
+      const expBtn = document.getElementById('limit-modal-expense-btn');
+      const expHint = document.getElementById('limit-modal-expense-hint');
+      if (expBtn) expBtn.style.display = hasBonus ? 'none' : '';
+      if (expHint) expHint.style.display = hasBonus ? 'none' : '';
       document.getElementById('limit-modal').classList.add('active');
       return false;
     }
@@ -5287,8 +5292,8 @@ async function installPWA() {
   <div class="limit-modal-card" onclick="event.stopPropagation()">
     <div style="font-size:40px;margin-bottom:12px">🔍</div>
     <div style="font-size:20px;font-weight:800;color:var(--brown-dark);margin-bottom:8px">ניצלת את החיפושים להיום</div>
-    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">💡 ידעת? אם תוסיף הוצאה או הכנסה היום, תקבל חיפוש נוסף במתנה! 🎁</div>
-    <button class="btn-primary full" style="margin-bottom:10px" onclick="document.getElementById('limit-modal').classList.remove('active');gatedScreen('expenses')">📊 הוסף רשומה פיננסית</button>
+    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6" id="limit-modal-expense-hint">💡 ידעת? אם תוסיף הוצאה או הכנסה היום, תקבל חיפוש נוסף במתנה! 🎁</div>
+    <button class="btn-primary full" style="margin-bottom:10px" id="limit-modal-expense-btn" onclick="document.getElementById('limit-modal').classList.remove('active');gatedScreen('expenses')">📊 הוסף רשומה פיננסית</button>
     <button class="btn-caramel full" onclick="document.getElementById('limit-modal').classList.remove('active');showScreen('plans')">⬆️ שדרג תוכנית</button>
     <div style="font-size:12px;color:var(--text-muted);margin-top:14px">מחר יתחדשו החיפושים שלך ⏰</div>
   </div>
