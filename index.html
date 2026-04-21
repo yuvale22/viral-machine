@@ -2025,7 +2025,7 @@ async function startSearch(industryId) {
     await sleep(250);
     loadEl.style.display = 'none';
     document.getElementById('search-content').style.display = 'block';
-    document.getElementById('videos-count').textContent = `🏪 ${state.videos.length} סרטונים מבעלי עסקים — בחר עד 5`;
+    document.getElementById('videos-count').textContent = `🏪 ${state.videos.length} סרטונים מבעלי עסקים — בחר עד 3`;
     renderVideos();
   } catch(e) {
     loadEl.style.display = 'none';
@@ -2056,14 +2056,14 @@ function renderVideos() {
   }).join('');
   const info = document.getElementById('selected-info');
   info.innerHTML = state.selected.length > 0
-    ? `<div class="count-badge"><span class="pulse"></span>${state.selected.length} / 5 סרטונים נבחרו</div>`
+    ? `<div class="count-badge"><span class="pulse"></span>${state.selected.length} / 3 סרטונים נבחרו</div>`
     : '';
 }
 
 function toggleVideo(videoId) {
   if (state.selected.includes(videoId)) state.selected = state.selected.filter(id => id !== videoId);
-  else if (state.selected.length < 5) state.selected.push(videoId);
-  else { toast('ניתן לבחור עד 5','err'); return; }
+  else if (state.selected.length < 3) state.selected.push(videoId);
+  else { toast('ניתן לבחור עד 3','err'); return; }
   renderVideos();
   document.getElementById('gen-panel').style.display = state.selected.length > 0 ? 'block' : 'none';
   document.getElementById('gen-btn').textContent = `✨ צור תסריטים (${state.selected.length} נבחרו)`;
