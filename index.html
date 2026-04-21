@@ -764,12 +764,12 @@
           <div class="plan-price" id="pw-basic-price">₪99 <span>/ חודש</span></div>
         </div>
         <ul class="plan-features">
-          <li><span class="feat-icon">✓</span> עד 2 לקוחות</li>
+          <li><span class="feat-icon">✓</span> עד 3 לקוחות</li>
           <li><span class="feat-icon">✓</span> 30 חיפושים/תסריטים בחודש</li>
           <li><span class="feat-icon">✓</span> תסריטים AI בעברית</li>
           <li class="disabled"><span class="feat-icon">✗</span> לוח תוכן שבועי</li>
           <li class="disabled"><span class="feat-icon">✗</span> הצעות מחיר</li>
-          <li class="disabled"><span class="feat-icon">✗</span> דשבורד פיננסי</li>
+          <li><span class="feat-icon">✓</span> דשבורד פיננסי</li>
         </ul>
         <button class="plan-btn plan-btn-outline" id="basic-plan-btn" onclick="selectPaywallPlan('basic')">התחל 5 ימי ניסיון ←</button>
       </div>
@@ -786,11 +786,11 @@
         </div>
         <ul class="plan-features">
           <li><span class="feat-icon">✓</span> עד 10 לקוחות</li>
-          <li><span class="feat-icon">✓</span> חיפושים ותסריטים ללא הגבלה</li>
+          <li><span class="feat-icon">✓</span> 80 חיפושים/תסריטים בחודש</li>
           <li><span class="feat-icon">✓</span> תסריטים AI בעברית</li>
           <li><span class="feat-icon">✓</span> לוח תוכן שבועי</li>
+          <li><span class="feat-icon">✓</span> דשבורד פיננסי</li>
           <li class="disabled"><span class="feat-icon">✗</span> הצעות מחיר White-label</li>
-          <li class="disabled"><span class="feat-icon">✗</span> דשבורד פיננסי</li>
         </ul>
         <button class="plan-btn plan-btn-primary" onclick="selectPaywallPlan('pro')">בחר ושלם עכשיו ←</button>
       </div>
@@ -1565,9 +1565,9 @@ let state = {
 
 // ========== PRICING CONFIG ==========
 const PLAN_CONFIG = {
-  trial: { maxClients: 2, maxSearches: 2, perClient: true, calendar: false, quotes: false, expenses: false, label: 'ניסיון', emoji: '🎁' },
-  basic: { maxClients: 2, maxSearches: 30, perClient: false, calendar: false, quotes: false, expenses: false, label: 'Basic', emoji: '⚡' },
-  pro:   { maxClients: 10, maxSearches: 999, perClient: false, calendar: true, quotes: false, expenses: false, label: 'PRO', emoji: '🚀' },
+  trial: { maxClients: 2, maxSearches: 2, perClient: true, calendar: false, quotes: false, expenses: true, label: 'ניסיון', emoji: '🎁' },
+  basic: { maxClients: 3, maxSearches: 30, perClient: false, calendar: false, quotes: false, expenses: true, label: 'Basic', emoji: '⚡' },
+  pro:   { maxClients: 10, maxSearches: 80, perClient: false, calendar: true, quotes: false, expenses: true, label: 'PRO', emoji: '🚀' },
   max:   { maxClients: 999, maxSearches: 999, perClient: false, calendar: true, quotes: true, expenses: true, label: 'MAX', emoji: '👑' },
 };
 
@@ -1581,9 +1581,9 @@ const TRIAL_DAYS = 5;
 
 const PLAN_LIMITS = {
   free:    { searches: 2, scripts: 0, calendar: false, clients: false, quotes: false, trends: false, expenses: false },
-  trial:   { searches: 2, scripts: 2, calendar: false, clients: true, quotes: false, trends: true, expenses: false },
-  basic:   { searches: 30, scripts: 30, calendar: false, clients: true, quotes: false, trends: true, expenses: false },
-  pro:     { searches: 999, scripts: 999, calendar: true, clients: true, quotes: false, trends: true, expenses: false },
+  trial:   { searches: 2, scripts: 2, calendar: false, clients: true, quotes: false, trends: true, expenses: true },
+  basic:   { searches: 30, scripts: 30, calendar: false, clients: true, quotes: false, trends: true, expenses: true },
+  pro:     { searches: 80, scripts: 80, calendar: true, clients: true, quotes: false, trends: true, expenses: true },
   max:     { searches: 999, scripts: 999, calendar: true, clients: true, quotes: true, trends: true, expenses: true },
 };
 
