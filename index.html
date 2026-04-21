@@ -956,7 +956,7 @@
     </div>
 
     <div class="stats-row">
-      <div class="stat"><div class="stat-num">10+</div><div class="stat-label">תחומים</div></div>
+      <div class="stat"><div class="stat-num">7</div><div class="stat-label">תחומים</div></div>
       <div class="stat"><div class="stat-num" id="history-count-stat">0</div><div class="stat-label">תסריטים שנוצרו</div></div>
       <div class="stat"><div class="stat-num" id="clients-count-stat">0</div><div class="stat-label">לקוחות פעילים</div></div>
     </div>
@@ -2082,7 +2082,7 @@ function switchTab(tab) {
   document.getElementById('tab-scripts').style.display = tab === 'scripts' ? 'block' : 'none';
   document.getElementById('tab-calendar').style.display = tab === 'calendar' ? 'block' : 'none';
   const moreWrap = document.getElementById('generate-more-wrap');
-  if (moreWrap) moreWrap.style.display = (tab === 'scripts' && state.scripts.length > 0 && !state.generatedMore) ? 'block' : 'none';
+  if (moreWrap) moreWrap.style.display = (tab === 'scripts' && state.scripts.length > 0 && state.scripts.length < 6) ? 'block' : 'none';
   if (tab === 'calendar' && state.calendar.length === 0) {
     document.getElementById('calendar-grid').innerHTML = '';
     document.getElementById('calendar-empty').style.display = 'block';
@@ -2113,7 +2113,7 @@ function renderScripts(bizName) {
   switchTab('scripts');
   // Show "generate more" button only if scripts exist AND not already generated more
   const moreWrap = document.getElementById('generate-more-wrap');
-  if (moreWrap) moreWrap.style.display = (state.scripts.length > 0 && !state.generatedMore) ? 'block' : 'none';
+  if (moreWrap) moreWrap.style.display = (state.scripts.length > 0 && state.scripts.length < 6) ? 'block' : 'none';
 }
 
 async function generateMoreScripts() {
