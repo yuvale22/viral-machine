@@ -1752,14 +1752,77 @@ function smartFilter(allVideos, maxResults, industryId) {
   return { filtered, filterLabel };
 }
 
+// ========== HISTORY (Supabase-backed with local cache) ==========
+let _historyCache = null;
+
 function getHistory() {
-  try { return JSON.parse(localStorage.getItem('vm_history') || '[]'); } catch { return []; }
+  // Sync getter — returns cache (loaded async on startup)
+  return _historyCache || [];
 }
-function saveToHistory(entry) {
-  const h = getHistory();
-  h.unshift(entry);
-  if (h.length > 50) h.length = 50;
-  localStorage.setItem('vm_history', JSON.stringify(h));
+
+async function loadHistoryFromDB() {
+  if (!state.user) { _historyCache = []; return; }
+  try {
+    const rows = await supa.select('scripts_history', `user_id=eq.${state.user.id}&order=created_at.desc&limit=50`);
+    _historyCache = (rows || []).map(r => ({
+      id: r.id,
+      date: r.created_at ? new Date(r.created_at).toLocaleDateString('he-IL') : '',
+      bizName: r.biz_name,
+      industry: r.industry,
+      industryEmoji: r.industry_emoji,
+      scriptsCount: r.scripts_count,
+      scripts: r.scripts || [],
+      _dbId: r.id,
+    }));
+  } catch(e) {
+    console.log('History load error:', e);
+    _historyCache = [];
+  }
+}
+
+async function saveToHistory(entry) {
+  // Save to Supabase
+  if (state.user) {
+    try {
+      const result = await supa.insert('scripts_history', {
+        user_id: state.user.id,
+        biz_name: entry.bizName,
+        industry: entry.industry,
+        industry_emoji: entry.industryEmoji,
+        scripts_count: entry.scriptsCount,
+        scripts: entry.scripts,
+      });
+      if (result && result[0]) {
+        entry.id = result[0].id;
+        entry._dbId = result[0].id;
+      }
+    } catch(e) { console.log('History save error:', e); }
+  }
+  // Update cache
+  if (!_historyCache) _historyCache = [];
+  _historyCache.unshift(entry);
+  if (_historyCache.length > 50) _historyCache.length = 50;
+}
+
+async function updateHistoryInDB(entry) {
+  // Update existing history entry in Supabase (e.g. after editing or generating more)
+  if (!state.user || !entry._dbId) return;
+  try {
+    await fetch(`${SUPA_URL}/rest/v1/scripts_history?id=eq.${entry._dbId}`, {
+      method: 'PATCH',
+      headers: { ...supaHeaders(true), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scripts: entry.scripts, scripts_count: entry.scripts.length }),
+    });
+  } catch(e) { console.log('History update error:', e); }
+}
+
+async function deleteHistoryFromDB(dbId) {
+  if (!state.user || !dbId) return;
+  try {
+    await fetch(`${SUPA_URL}/rest/v1/scripts_history?id=eq.${dbId}`, {
+      method: 'DELETE', headers: supaHeaders(true),
+    });
+  } catch(e) { console.log('History delete error:', e); }
 }
 
 window.onload = async () => {
@@ -1780,6 +1843,7 @@ window.onload = async () => {
     try {
       state.user = JSON.parse(savedUser);
       await loadUserProfile();
+      await loadHistoryFromDB();
 
       // Handle Cardcom redirect back (from iframe or full redirect)
       if (urlParams.has('cardcom_success')) {
@@ -1931,10 +1995,14 @@ async function startSearch(industryId) {
       _cached: true,
     }));
 
-    // Filter out videos this user has already seen — keeps the experience fresh across sessions
-    const seenKey = `vm_seen_${state.user?.id || 'anon'}_${industryId}`;
+    // Filter out videos this user has already seen — synced across devices via Supabase
     let seenIds = [];
-    try { seenIds = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch(e) {}
+    if (state.user) {
+      try {
+        const seenRows = await supa.select('seen_videos', `user_id=eq.${state.user.id}&industry_id=eq.${industryId}`);
+        if (seenRows && seenRows[0]) seenIds = seenRows[0].video_ids || [];
+      } catch(e) { console.log('Seen load error:', e); }
+    }
     const unseen = allCached.filter(v => !seenIds.includes(v.video_id));
 
     // Shuffle so every visit feels fresh
@@ -1942,9 +2010,17 @@ async function startSearch(industryId) {
     const shuffled = pool.sort(() => Math.random() - 0.5);
     state.videos = shuffled.slice(0, 5);
 
-    // Mark these as seen (keep last 200)
-    const newSeen = [...seenIds, ...state.videos.map(v => v.video_id)];
-    try { localStorage.setItem(seenKey, JSON.stringify(newSeen.slice(-200))); } catch(e) {}
+    // Mark these as seen in Supabase (keep last 200)
+    if (state.user) {
+      const newSeen = [...seenIds, ...state.videos.map(v => v.video_id)].slice(-200);
+      try {
+        await fetch(`${SUPA_URL}/rest/v1/seen_videos`, {
+          method: 'POST',
+          headers: { ...supaHeaders(true), 'Prefer': 'resolution=merge-duplicates' },
+          body: JSON.stringify({ user_id: state.user.id, industry_id: industryId, video_ids: newSeen, updated_at: new Date().toISOString() }),
+        });
+      } catch(e) { console.log('Seen save error:', e); }
+    }
 
     progBar.style.width = '100%';
     await sleep(250);
@@ -2181,7 +2257,7 @@ ${examples}
     if (h.length > 0 && h[0].bizName === state.bizName) {
       h[0].scriptsCount = state.scripts.length;
       h[0].scripts = state.scripts;
-      localStorage.setItem('vm_history', JSON.stringify(h));
+      updateHistoryInDB(h[0]);
     }
 
     // Mark as generated — hide button permanently for this session
@@ -2221,7 +2297,7 @@ function toggleEditScript(idx) {
     const h = getHistory();
     if (h.length > 0 && h[0].bizName === state.bizName) {
       h[0].scripts = state.scripts;
-      localStorage.setItem('vm_history', JSON.stringify(h));
+      updateHistoryInDB(h[0]);
     }
 
     toast('התסריט עודכן ✓', 'ok');
@@ -2432,10 +2508,12 @@ function loadHistory(idx) {
   toast(`נטען: ${entry.bizName}`,'ok');
 }
 
-function deleteHistory(idx) {
+async function deleteHistory(idx) {
   const h = getHistory();
+  const entry = h[idx];
+  if (entry?._dbId) await deleteHistoryFromDB(entry._dbId);
   h.splice(idx, 1);
-  localStorage.setItem('vm_history', JSON.stringify(h));
+  _historyCache = h;
   renderHistory();
   toast('נמחק','ok');
 }
@@ -3517,6 +3595,7 @@ async function userLogin() {
     state.user = user;
     localStorage.setItem('vm_user', JSON.stringify(user));
     await loadUserProfile();
+    await loadHistoryFromDB();
     toast('התחברת בהצלחה!', 'ok');
     if (isSuperAdmin()) {
       showScreen('admin');
