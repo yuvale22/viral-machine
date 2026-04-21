@@ -1770,7 +1770,7 @@ async function loadHistoryFromDB() {
       bizName: r.biz_name,
       industry: r.industry,
       industryEmoji: r.industry_emoji,
-      scriptsCount: r.scripts_count,
+      scriptsCount: (r.scripts || []).length,
       scripts: r.scripts || [],
       _dbId: r.id,
     }));
@@ -1789,7 +1789,6 @@ async function saveToHistory(entry) {
         biz_name: entry.bizName,
         industry: entry.industry,
         industry_emoji: entry.industryEmoji,
-        scripts_count: entry.scriptsCount,
         scripts: entry.scripts,
       });
       if (result && result[0]) {
@@ -1811,7 +1810,7 @@ async function updateHistoryInDB(entry) {
     await fetch(`${SUPA_URL}/rest/v1/scripts_history?id=eq.${entry._dbId}`, {
       method: 'PATCH',
       headers: { ...supaHeaders(true), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scripts: entry.scripts, scripts_count: entry.scripts.length }),
+      body: JSON.stringify({ scripts: entry.scripts }),
     });
   } catch(e) { console.log('History update error:', e); }
 }
@@ -2077,37 +2076,49 @@ async function generateScripts() {
 
   const overlay = document.getElementById('gen-overlay');
   overlay.classList.add('active');
-  document.getElementById('gen-overlay-title').textContent = 'מנתח את הסרטונים עבור ' + name + '...';
   setGenStep(1);
 
   const btn = document.getElementById('gen-btn');
   btn.disabled = true;
 
+  const totalVideos = state.selected.length;
+  const allScripts = [];
+
   try {
-    // state.selected is an array of video_id strings
-    const res = await fetch('/api/generate-scripts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
-      body: JSON.stringify({
-        aweme_ids: state.selected,
-        business_name: name,
-        product_name: '',
-      }),
-    });
+    // Process each video one at a time — avoids Vercel 10s timeout
+    for (let i = 0; i < totalVideos; i++) {
+      const videoId = state.selected[i];
+      document.getElementById('gen-overlay-title').textContent = `מייצר תסריט ${i + 1} מתוך ${totalVideos} עבור ${name}...`;
+      if (i === 0) setGenStep(1);
+      else setGenStep(2);
 
-    setGenStep(2);
-    const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || 'Server error');
+      try {
+        const res = await fetch('/api/generate-scripts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
+          body: JSON.stringify({
+            aweme_ids: [videoId],
+            business_name: name,
+            product_name: '',
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.scripts) {
+          const ready = data.scripts.filter(s => s.status === 'ready');
+          ready.forEach(s => allScripts.push(s));
+        }
+      } catch(e) {
+        console.log('Script generation failed for video ' + videoId + ':', e.message);
+      }
+    }
 
-    // Map API response (marketing/production/script) to existing UI format
-    const ready = (data.scripts || []).filter(s => s.status === 'ready');
-    if (ready.length === 0) {
+    if (allScripts.length === 0) {
       overlay.classList.remove('active');
-      toast(data.message || 'הסרטונים עדיין בעיבוד — נסה שוב בעוד דקה', 'err');
+      toast('לא הצלחנו ליצור תסריטים — נסה סרטונים אחרים', 'err');
       return;
     }
 
-    state.scripts = ready.map((s, i) => ({
+    state.scripts = allScripts.map((s, i) => ({
       title: 'תסריט ' + (i+1) + (s.quality === 'lite' ? ' (ניתוח מהיר)' : ''),
       format: 'ניתוח שיווקי + תסריט',
       inspired: 'סרטון ' + (i+1),
@@ -2117,9 +2128,10 @@ async function generateScripts() {
     }));
 
     setGenStep(3);
+    document.getElementById('gen-overlay-title').textContent = 'שומר תסריטים...';
     await sleep(400);
 
-    saveToHistory({
+    await saveToHistory({
       id: Date.now(),
       date: new Date().toLocaleDateString('he-IL'),
       bizName: name, industry: state.industry.label,
@@ -2129,10 +2141,7 @@ async function generateScripts() {
     });
 
     overlay.classList.remove('active');
-    const msg = data.pending > 0
-      ? state.scripts.length + ' תסריטים מוכנים! (' + data.pending + ' עדיין בעיבוד)'
-      : state.scripts.length + ' תסריטים נוצרו בהתבסס על הסרטונים שבחרת!';
-    toast(msg, 'ok');
+    toast(state.scripts.length + ' תסריטים נוצרו בהצלחה!', 'ok');
     state.calendar = [];
     renderScripts(name);
     showScreen('scripts');
