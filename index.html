@@ -2085,13 +2085,16 @@ async function generateScripts() {
   const allScripts = [];
 
   try {
-    // Process each video one at a time — avoids Vercel 10s timeout
+    // Process each video one at a time
     for (let i = 0; i < totalVideos; i++) {
       const videoId = state.selected[i];
       document.getElementById('gen-overlay-title').textContent = `מייצר תסריט ${i + 1} מתוך ${totalVideos} עבור ${name}...`;
       if (i === 0) setGenStep(1);
       else setGenStep(2);
 
+      let gotScript = false;
+
+      // Try 1: generate-scripts API (uses cache + Claude on server)
       try {
         const res = await fetch('/api/generate-scripts', {
           method: 'POST',
@@ -2105,10 +2108,57 @@ async function generateScripts() {
         const data = await res.json();
         if (res.ok && data.scripts) {
           const ready = data.scripts.filter(s => s.status === 'ready');
-          ready.forEach(s => allScripts.push(s));
+          if (ready.length > 0) {
+            ready.forEach(s => allScripts.push(s));
+            gotScript = true;
+          }
         }
       } catch(e) {
-        console.log('Script generation failed for video ' + videoId + ':', e.message);
+        console.log('generate-scripts failed for ' + videoId + ':', e.message);
+      }
+
+      // Try 2: If server failed, use /api/claude directly (no timeout issues)
+      if (!gotScript) {
+        document.getElementById('gen-overlay-title').textContent = `מייצר תסריט ${i + 1} מתוך ${totalVideos} (fallback)...`;
+        try {
+          const video = state.videos.find(v => v.video_id === videoId) || {};
+          const videoTitle = video.heTitle || video.title || 'ללא כותרת';
+          const videoDesc = video.desc || '';
+
+          const prompt = `אתה מומחה לתסריטי טיקטוק ויראליים. בהתבסס על כותרת הסרטון והתיאור, כתוב ניתוח שיווקי קצר, המלצות הפקה, ותסריט מוכן לצילום עבור העסק "${name}".
+החזר בדיוק בפורמט הזה:
+
+### 1. איפיון שיווקי
+[2-3 משפטים על ה-Hook הפסיכולוגי]
+
+### 2. המלצות הפקה
+- צילום: [המלצה]
+- סאונד: [המלצה]
+- עריכה: [המלצה]
+
+### 3. תסריט ה-Vibe המקורי
+[תסריט קצר בעברית עם הוראות צילום בסוגריים. השתמש בשם "${name}" בתוך התסריט.]
+
+כותרת הסרטון: ${videoTitle}
+${videoDesc ? 'תיאור: ' + videoDesc.slice(0, 200) : ''}`;
+
+          const raw = await callClaude(prompt, 700);
+          if (raw && raw.length > 50) {
+            // Parse the response
+            const m3 = raw.match(/###\s*1\.\s*[^\n]*\n([\s\S]*?)###\s*2\.\s*[^\n]*\n([\s\S]*?)###\s*3\.\s*[^\n]*\n([\s\S]*)/);
+            allScripts.push({
+              aweme_id: videoId,
+              status: 'ready',
+              quality: 'lite',
+              marketing: m3 ? m3[1].trim() : '',
+              production: m3 ? m3[2].trim() : '',
+              script: m3 ? m3[3].trim() : raw,
+            });
+            gotScript = true;
+          }
+        } catch(e) {
+          console.log('Claude fallback also failed for ' + videoId + ':', e.message);
+        }
       }
     }
 
