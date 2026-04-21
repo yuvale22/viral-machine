@@ -4855,8 +4855,6 @@ function showPaywall(firstName) {
   trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
   const dateStr = trialEnd.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  document.getElementById('paywall-name').textContent = firstName || state.userProfile?.full_name || '';
-
   // Determine user state
   const status = state.userProfile?.status;
   const hasUsedTrial = status === 'trialing' || status === 'active' || status === 'expired' || status === 'read_only';
