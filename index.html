@@ -2597,7 +2597,7 @@ async function searchTikTok(query, region) {
   const r = region || 'us';
   const res = await fetch('/api/search-tiktok', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
     body: JSON.stringify({ endpoint: 'feed/search', params: { keywords: query, region: r, count: 30, cursor: 0, publish_time: 0, sort_type: 0 } })
   });
   if (!res.ok) throw new Error('TikTok API error ' + res.status);
@@ -2615,7 +2615,7 @@ async function searchUsers(query) {
   try {
     const res = await fetch('/api/search-tiktok', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
       body: JSON.stringify({ endpoint: 'user/search', params: { keywords: query, count: 10, cursor: 0 } })
     });
     if (!res.ok) return [];
@@ -2630,7 +2630,7 @@ async function callClaude(prompt, maxTokens, imageUrls) {
   if (imageUrls && imageUrls.length > 0) body.image_urls = imageUrls;
   const res = await fetch('/api/claude', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
     body: JSON.stringify(body)
   });
   const data = await res.json();
@@ -3328,7 +3328,7 @@ async function fetchUserPosts(username) {
   const clean = username.replace('@','').trim();
   const res = await fetch('/api/search-tiktok', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
     body: JSON.stringify({ endpoint: 'user/posts', params: { unique_id: clean, count: 20, cursor: 0 } })
   });
   if (!res.ok) throw new Error('TikTok API error ' + res.status);
@@ -3871,77 +3871,8 @@ async function selectPlan(plan) {
     return;
   }
 
-  // Paid plans → Cardcom (requires HTTPS hosting — Vercel)
-  const IS_HOSTED = window.location.protocol === 'https:';
-  const CARDCOM_TERMINAL = '170602';
-  const CARDCOM_API_NAME = 'nBpN6Pz2AqazwWsiicQM';
-  const PLAN_PRICES = { basic: 99, pro: 199 };
-  const price = PLAN_PRICES[plan];
-  if (!price) return;
-
-  if (IS_HOSTED) {
-    // Real Cardcom payment via API route
-    toast('מכין דף תשלום מאובטח...', 'ok');
-    try {
-      const returnUrl = window.location.origin + window.location.pathname + `?payment_success=1&plan=${plan}`;
-      const failUrl = window.location.origin + window.location.pathname + '?payment_fail=1';
-
-      const res = await fetch('/api/create-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, userId: state.user?.id, returnUrl, failUrl })
-      });
-      const data = await res.json();
-
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      
-      // Cardcom unavailable — offer trial
-      if (data.trial) {
-        toast(`✅ תוכנית ${plan.toUpperCase()} הופעלה לניסיון 30 יום! (סליקה תחובר בקרוב)`, 'ok');
-        const expires = new Date();
-        expires.setDate(expires.getDate() + 30);
-        if (state.userProfile && state.user) {
-          state.userProfile.plan = plan;
-          state.userProfile.plan_expires_at = expires.toISOString();
-          try {
-            await fetch(`${SUPA_URL}/rest/v1/user_profiles?id=eq.${state.user.id}`, {
-              method: 'PATCH',
-              headers: { ...supaHeaders(true), 'Prefer': 'return=representation' },
-              body: JSON.stringify({ plan, plan_expires_at: expires.toISOString() })
-            });
-          } catch(e) {}
-        }
-        updatePlanUI();
-        showScreen('home');
-        return;
-      }
-
-      toast('שגיאה בסליקה: ' + (data.error || 'Unknown'), 'err');
-    } catch(e) {
-      toast('שגיאה: ' + e.message, 'err');
-    }
-  } else {
-    // Trial mode (local file:// — no Cardcom)
-    toast(`✅ תוכנית ${plan.toUpperCase()} הופעלה לניסיון 30 יום!`, 'ok');
-    const expires = new Date();
-    expires.setDate(expires.getDate() + 30);
-    if (state.userProfile && state.user) {
-      state.userProfile.plan = plan;
-      state.userProfile.plan_expires_at = expires.toISOString();
-      try {
-        await fetch(`${SUPA_URL}/rest/v1/user_profiles?id=eq.${state.user.id}`, {
-          method: 'PATCH',
-          headers: { ...supaHeaders(true), 'Prefer': 'return=representation' },
-          body: JSON.stringify({ plan, plan_expires_at: expires.toISOString() })
-        });
-      } catch(e) {}
-    }
-    updatePlanUI();
-    showScreen('home');
-  }
+  // Paid plans → redirect to paywall
+  showPaywall(state.userProfile?.full_name);
 }
 
 // Handle payment return from Cardcom
