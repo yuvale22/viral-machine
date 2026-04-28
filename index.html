@@ -764,7 +764,7 @@
           <div class="plan-price" id="pw-basic-price">₪99 <span>/ חודש</span></div>
         </div>
         <ul class="plan-features">
-          <li><span class="feat-icon">✓</span> עד 3 עסקים</li>
+          <li><span class="feat-icon">✓</span> עד 5 עסקים</li>
           <li><span class="feat-icon">✓</span> 5 יצירות תסריטים ביום</li>
           <li><span class="feat-icon">✓</span> תסריטים AI בעברית</li>
           <li class="disabled"><span class="feat-icon">✗</span> לוח תוכן שבועי</li>
@@ -936,7 +936,7 @@
     <div class="topbar-inner">
       <div class="topbar-logo" onclick="showScreen('home')"><svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-left:8px"><circle cx="50" cy="50" r="48" fill="var(--brown-dark)"/><path d="M35 28C35 28 38 28 40 31L50 48L60 31C62 28 65 28 65 28C68 28 70 30 70 33C70 34 69.5 35.5 69 36.5L55 58V72C55 75 53 77 50 77C47 77 45 75 45 72V58L31 36.5C30.5 35.5 30 34 30 33C30 30 32 28 35 28Z" fill="var(--cream)"/></svg><span style="direction:ltr;display:inline-block;font-size:26px;letter-spacing:-1px;font-weight:900;color:var(--brown)">YUMi</span> <span id="plan-badge" style="font-size:10px;background:var(--caramel);color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px"></span></div>
       <div class="topbar-actions">
-        <button class="btn-secondary" onclick="showScreen('history')">📂</button>
+        <button class="btn-secondary" onclick="showScreen('history')">🏪</button>
         <button class="btn-secondary" onclick="showScreen('plans')" id="btn-upgrade" style="display:none">⬆️ שדרג</button>
         <button class="btn-secondary" onclick="showScreen('admin')" id="btn-admin-home" style="display:none">🛠️</button>
         <button class="btn-secondary" onclick="userLogout()">🚪</button>
@@ -1130,13 +1130,21 @@
 <!-- ========== HISTORY ========== -->
 <div id="screen-history" class="screen">
   <div class="topbar"><div class="topbar-inner">
-    <div class="topbar-logo" onclick="showScreen('home')">היסטוריה</div>
+    <div class="topbar-logo" onclick="showScreen('home')">העסקים שלי</div>
     <button class="btn-secondary" onclick="showScreen('home')">← חזור</button>
   </div></div>
   <div class="page"><div class="section">
+    <!-- Quota bar for businesses -->
+    <div id="history-quota" style="background:var(--surface);border:1px solid var(--sand);border-radius:14px;padding:16px 20px;margin-bottom:24px;box-shadow:var(--shadow-sm)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:14px;font-weight:600;color:var(--brown)">🏪 עסקים שנוצרו</span>
+        <span style="font-size:14px;font-weight:700;color:var(--caramel)" id="history-biz-count">0/5</span>
+      </div>
+      <div class="quota-bar-track"><div class="quota-bar-fill" id="history-biz-fill" style="width:0%"></div></div>
+    </div>
     <div class="screen-heading">
-      <h2>📂 היסטוריית תסריטים</h2>
-      <p>כל ההפקות שיצרת — מסודרות לפי תאריך</p>
+      <h2>🏪 העסקים שלי</h2>
+      <p>כל העסקים שיצרת להם תוכן — לחץ לצפייה או ליצירת תוכן חדש</p>
     </div>
     <div class="divider"></div>
     <div id="history-list" class="history-list"></div>
@@ -1576,8 +1584,8 @@ let state = {
 
 // ========== PRICING CONFIG ==========
 const PLAN_CONFIG = {
-  trial: { maxClients: 2, maxBusinesses: 2, maxDailySearches: 2, perClient: true, calendar: false, quotes: false, expenses: true, label: 'ניסיון', emoji: '🎁' },
-  basic: { maxClients: 3, maxBusinesses: 3, maxDailySearches: 5, perClient: false, calendar: false, quotes: false, expenses: true, label: 'Basic', emoji: '⚡' },
+  trial: { maxClients: 2, maxBusinesses: 4, maxDailySearches: 2, perClient: true, calendar: false, quotes: false, expenses: true, label: 'ניסיון', emoji: '🎁' },
+  basic: { maxClients: 3, maxBusinesses: 5, maxDailySearches: 5, perClient: false, calendar: false, quotes: false, expenses: true, label: 'Basic', emoji: '⚡' },
   pro:   { maxClients: 10, maxBusinesses: 10, maxDailySearches: 20, perClient: false, calendar: true, quotes: false, expenses: true, label: 'PRO', emoji: '🚀' },
   max:   { maxClients: 999, maxBusinesses: 999, maxDailySearches: 999, perClient: false, calendar: true, quotes: true, expenses: true, label: 'MAX', emoji: '👑' },
 };
@@ -2547,52 +2555,142 @@ function reSearch() { startSearch(state.industry.id); }
 // ========== HISTORY ==========
 async function renderHistory() {
   const container = document.getElementById('history-list');
-  container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">טוען היסטוריה...</div>';
+  container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">טוען עסקים...</div>';
   await loadHistoryFromDB();
   const h = getHistory();
+
+  // Update business quota
+  const plan = getUserPlan();
+  const cfg = PLAN_CONFIG[plan] || PLAN_CONFIG.trial;
+  const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
+  const bizLimit = cfg.maxBusinesses + (hasBonus ? 1 : 0);
+  const uniqueNames = [...new Set(h.map(e => e.bizName.trim().toLowerCase()))];
+  const bizCount = uniqueNames.length;
+
+  document.getElementById('history-biz-count').textContent = bizCount + '/' + bizLimit;
+  document.getElementById('history-biz-fill').style.width = Math.min(100, Math.round(bizCount / bizLimit * 100)) + '%';
+
   if (h.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">📂</div><p>עדיין אין היסטוריה.<br>צור תסריטים ראשונים והם יישמרו כאן.</p></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="icon">🏪</div><p>עדיין אין עסקים.<br>צור תסריטים ראשונים והם יישמרו כאן.</p></div>`;
     return;
   }
-  container.innerHTML = h.map((entry,i) => `
-    <div class="history-card" onclick="loadHistory(${i})">
-      <div class="history-info">
-        <div class="history-biz">${entry.industryEmoji||''} ${esc(entry.bizName)}</div>
-        <div class="history-meta">
-          <span>📅 ${esc(entry.date)}</span>
-          <span>📝 ${entry.scriptsCount} תסריטים</span>
-          <span>${esc(entry.industry||'')}</span>
+
+  // Group by business name
+  const bizMap = {};
+  h.forEach((entry, idx) => {
+    const key = entry.bizName.trim().toLowerCase();
+    if (!bizMap[key]) {
+      bizMap[key] = {
+        name: entry.bizName,
+        industry: entry.industry,
+        industryEmoji: entry.industryEmoji,
+        entries: [],
+        totalScripts: 0,
+        lastDate: entry.date,
+      };
+    }
+    bizMap[key].entries.push({ ...entry, _histIdx: idx });
+    bizMap[key].totalScripts += (entry.scripts || []).length;
+    // Keep latest date
+    if (entry.date > bizMap[key].lastDate) bizMap[key].lastDate = entry.date;
+  });
+
+  const businesses = Object.values(bizMap);
+
+  container.innerHTML = businesses.map((biz, i) => `
+    <div class="history-card" style="flex-direction:column;align-items:stretch;cursor:default;padding:24px" >
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,rgba(196,133,59,0.15),rgba(196,133,59,0.05));display:flex;align-items:center;justify-content:center;font-size:24px">${biz.industryEmoji || '🏪'}</div>
+          <div>
+            <div style="font-size:18px;font-weight:800;color:var(--brown-dark)">${esc(biz.name)}</div>
+            <div style="font-size:13px;color:var(--text-muted);display:flex;gap:10px;margin-top:2px">
+              <span>${esc(biz.industry || '')}</span>
+              <span>📝 ${biz.totalScripts} תסריטים</span>
+              <span>📅 ${esc(biz.lastDate)}</span>
+            </div>
+          </div>
         </div>
+        <button class="btn-danger-ghost" onclick="event.stopPropagation();deleteBusiness('${esc(biz.name.replace(/'/g, "\\'"))}')" title="מחק עסק">🗑️</button>
       </div>
-      <div class="history-actions">
-        <button class="btn-danger-ghost" onclick="event.stopPropagation();deleteHistory(${i})">🗑️</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-secondary" onclick="viewBusinessScripts('${esc(biz.name.replace(/'/g, "\\'"))}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px">
+          📝 צפה בתסריטים
+        </button>
+        <button class="btn-caramel" onclick="createMoreForBusiness('${esc(biz.name.replace(/'/g, "\\'"))}', '${esc((biz.industry || '').replace(/'/g, "\\'"))}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:12px 20px;font-size:14px">
+          ✨ צור עוד תוכן
+        </button>
       </div>
     </div>
   `).join('');
   updateHistoryCount();
 }
 
-function loadHistory(idx) {
+function viewBusinessScripts(bizName) {
   const h = getHistory();
-  const entry = h[idx];
-  if (!entry) return;
-  state.scripts = entry.scripts || [];
-  state.bizName = entry.bizName;
-  state.industry = INDUSTRIES.find(ind => ind.label === entry.industry) || INDUSTRIES[0];
+  // Collect all scripts for this business
+  const allScripts = [];
+  let industry = null;
+  h.forEach(entry => {
+    if (entry.bizName.trim().toLowerCase() === bizName.trim().toLowerCase()) {
+      (entry.scripts || []).forEach(s => allScripts.push(s));
+      if (!industry) industry = INDUSTRIES.find(ind => ind.label === entry.industry) || INDUSTRIES[0];
+    }
+  });
+  if (allScripts.length === 0) { toast('אין תסריטים לעסק זה', 'err'); return; }
+  state.scripts = allScripts;
+  state.bizName = bizName;
+  state.industry = industry || INDUSTRIES[0];
   state.calendar = [];
-  renderScripts(entry.bizName);
+  renderScripts(bizName);
   showScreen('scripts');
-  toast(`נטען: ${entry.bizName}`,'ok');
 }
 
-async function deleteHistory(idx) {
+async function createMoreForBusiness(bizName, industryLabel) {
+  // Check daily limit only (business already exists)
+  if (!canUseCreative()) { showPaywall(state.userProfile?.full_name); return; }
+
+  const plan = getUserPlan();
+  const cfg = PLAN_CONFIG[plan] || PLAN_CONFIG.trial;
+  const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
+  const dailyLimit = cfg.maxDailySearches + (hasBonus ? 1 : 0);
+
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const todayLogs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
+    const usedToday = (todayLogs || []).length;
+    if (usedToday >= dailyLimit) {
+      showLimitModal('daily', hasBonus);
+      return;
+    }
+  } catch(e) {}
+
+  // Find industry
+  const industry = INDUSTRIES.find(ind => ind.label === industryLabel) || INDUSTRIES[0];
+  state.industry = industry;
+  state.bizName = bizName;
+  state.videos = []; state.selected = []; state.scripts = []; state.calendar = [];
+
+  // Go to search with industry preselected
+  startSearch(industry.id);
+
+  // Pre-fill business name after screen loads
+  setTimeout(() => {
+    const nameInput = document.getElementById('biz-name');
+    if (nameInput) nameInput.value = bizName;
+  }, 500);
+}
+
+async function deleteBusiness(bizName) {
+  if (!confirm(`למחוק את כל התסריטים של "${bizName}"?`)) return;
   const h = getHistory();
-  const entry = h[idx];
-  if (entry?._dbId) await deleteHistoryFromDB(entry._dbId);
-  h.splice(idx, 1);
-  _historyCache = h;
+  const toDelete = h.filter(e => e.bizName.trim().toLowerCase() === bizName.trim().toLowerCase());
+  for (const entry of toDelete) {
+    if (entry._dbId) await deleteHistoryFromDB(entry._dbId);
+  }
+  _historyCache = h.filter(e => e.bizName.trim().toLowerCase() !== bizName.trim().toLowerCase());
   renderHistory();
-  toast('נמחק','ok');
+  toast(bizName + ' נמחק', 'ok');
 }
 
 // ========== TOAST ==========
