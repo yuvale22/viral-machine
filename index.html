@@ -2596,6 +2596,7 @@ async function renderHistory() {
   });
 
   const businesses = Object.values(bizMap);
+  window._bizList = businesses; // Store for onclick handlers
 
   container.innerHTML = businesses.map((biz, i) => `
     <div class="history-card" style="flex-direction:column;align-items:stretch;cursor:default;padding:24px" >
@@ -2611,13 +2612,13 @@ async function renderHistory() {
             </div>
           </div>
         </div>
-        <button class="btn-danger-ghost" onclick="event.stopPropagation();deleteBusiness('${esc(biz.name.replace(/'/g, "\\'"))}')" title="מחק עסק">🗑️</button>
+        <button class="btn-danger-ghost" onclick="event.stopPropagation();deleteBusiness(${i})" title="מחק עסק">🗑️</button>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn-secondary" onclick="viewBusinessScripts('${esc(biz.name.replace(/'/g, "\\'"))}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px">
+        <button class="btn-secondary" onclick="viewBusinessScripts(${i})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px">
           📝 צפה בתסריטים
         </button>
-        <button class="btn-caramel" onclick="createMoreForBusiness('${esc(biz.name.replace(/'/g, "\\'"))}', '${esc((biz.industry || '').replace(/'/g, "\\'"))}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:12px 20px;font-size:14px">
+        <button class="btn-caramel" onclick="createMoreForBusiness(${i})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:12px 20px;font-size:14px">
           ✨ צור עוד תוכן
         </button>
       </div>
@@ -2626,28 +2627,30 @@ async function renderHistory() {
   updateHistoryCount();
 }
 
-function viewBusinessScripts(bizName) {
+function viewBusinessScripts(bizIdx) {
+  const biz = window._bizList?.[bizIdx];
+  if (!biz) return;
   const h = getHistory();
-  // Collect all scripts for this business
   const allScripts = [];
   let industry = null;
   h.forEach(entry => {
-    if (entry.bizName.trim().toLowerCase() === bizName.trim().toLowerCase()) {
+    if (entry.bizName.trim().toLowerCase() === biz.name.trim().toLowerCase()) {
       (entry.scripts || []).forEach(s => allScripts.push(s));
       if (!industry) industry = INDUSTRIES.find(ind => ind.label === entry.industry) || INDUSTRIES[0];
     }
   });
   if (allScripts.length === 0) { toast('אין תסריטים לעסק זה', 'err'); return; }
   state.scripts = allScripts;
-  state.bizName = bizName;
+  state.bizName = biz.name;
   state.industry = industry || INDUSTRIES[0];
   state.calendar = [];
-  renderScripts(bizName);
+  renderScripts(biz.name);
   showScreen('scripts');
 }
 
-async function createMoreForBusiness(bizName, industryLabel) {
-  // Check daily limit only (business already exists)
+async function createMoreForBusiness(bizIdx) {
+  const biz = window._bizList?.[bizIdx];
+  if (!biz) return;
   if (!canUseCreative()) { showPaywall(state.userProfile?.full_name); return; }
 
   const plan = getUserPlan();
@@ -2665,32 +2668,30 @@ async function createMoreForBusiness(bizName, industryLabel) {
     }
   } catch(e) {}
 
-  // Find industry
-  const industry = INDUSTRIES.find(ind => ind.label === industryLabel) || INDUSTRIES[0];
+  const industry = INDUSTRIES.find(ind => ind.label === biz.industry) || INDUSTRIES[0];
   state.industry = industry;
-  state.bizName = bizName;
+  state.bizName = biz.name;
   state.videos = []; state.selected = []; state.scripts = []; state.calendar = [];
 
-  // Go to search with industry preselected
   startSearch(industry.id);
-
-  // Pre-fill business name after screen loads
   setTimeout(() => {
     const nameInput = document.getElementById('biz-name');
-    if (nameInput) nameInput.value = bizName;
+    if (nameInput) nameInput.value = biz.name;
   }, 500);
 }
 
-async function deleteBusiness(bizName) {
-  if (!confirm(`למחוק את כל התסריטים של "${bizName}"?`)) return;
+async function deleteBusiness(bizIdx) {
+  const biz = window._bizList?.[bizIdx];
+  if (!biz) return;
+  if (!confirm('למחוק את כל התסריטים של "' + biz.name + '"?')) return;
   const h = getHistory();
-  const toDelete = h.filter(e => e.bizName.trim().toLowerCase() === bizName.trim().toLowerCase());
+  const toDelete = h.filter(e => e.bizName.trim().toLowerCase() === biz.name.trim().toLowerCase());
   for (const entry of toDelete) {
     if (entry._dbId) await deleteHistoryFromDB(entry._dbId);
   }
-  _historyCache = h.filter(e => e.bizName.trim().toLowerCase() !== bizName.trim().toLowerCase());
+  _historyCache = h.filter(e => e.bizName.trim().toLowerCase() !== biz.name.trim().toLowerCase());
   renderHistory();
-  toast(bizName + ' נמחק', 'ok');
+  toast(biz.name + ' נמחק', 'ok');
 }
 
 // ========== TOAST ==========
