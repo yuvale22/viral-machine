@@ -764,8 +764,8 @@
           <div class="plan-price" id="pw-basic-price">₪99 <span>/ חודש</span></div>
         </div>
         <ul class="plan-features">
-          <li><span class="feat-icon">✓</span> עד 3 לקוחות</li>
-          <li><span class="feat-icon">✓</span> 30 חיפושים/תסריטים בחודש</li>
+          <li><span class="feat-icon">✓</span> עד 3 עסקים</li>
+          <li><span class="feat-icon">✓</span> 5 יצירות תסריטים ביום</li>
           <li><span class="feat-icon">✓</span> תסריטים AI בעברית</li>
           <li class="disabled"><span class="feat-icon">✗</span> לוח תוכן שבועי</li>
           <li class="disabled"><span class="feat-icon">✗</span> הצעות מחיר</li>
@@ -785,8 +785,8 @@
           <div class="plan-price" id="pw-pro-price">₪139 <span>/ חודש</span></div>
         </div>
         <ul class="plan-features">
-          <li><span class="feat-icon">✓</span> עד 10 לקוחות</li>
-          <li><span class="feat-icon">✓</span> 80 חיפושים/תסריטים בחודש</li>
+          <li><span class="feat-icon">✓</span> עד 10 עסקים</li>
+          <li><span class="feat-icon">✓</span> 20 יצירות תסריטים ביום</li>
           <li><span class="feat-icon">✓</span> תסריטים AI בעברית</li>
           <li><span class="feat-icon">✓</span> לוח תוכן שבועי</li>
           <li><span class="feat-icon">✓</span> דשבורד פיננסי</li>
@@ -806,8 +806,8 @@
           <div class="plan-price" id="pw-max-price">₪259 <span>/ חודש</span></div>
         </div>
         <ul class="plan-features">
-          <li><span class="feat-icon">✓</span> לקוחות ללא הגבלה</li>
-          <li><span class="feat-icon">✓</span> חיפושים ותסריטים ללא הגבלה</li>
+          <li><span class="feat-icon">✓</span> עסקים ללא הגבלה</li>
+          <li><span class="feat-icon">✓</span> יצירות ללא הגבלה</li>
           <li><span class="feat-icon">✓</span> תסריטים AI בעברית</li>
           <li><span class="feat-icon">✓</span> לוח תוכן שבועי</li>
           <li><span class="feat-icon">✓</span> הצעות מחיר White-label</li>
@@ -947,11 +947,22 @@
   <div class="page"><div class="section">
     <!-- Search Quota Bar -->
     <div class="quota-bar" id="search-quota-bar" style="display:none">
-      <div class="quota-bar-top">
-        <span class="quota-bar-label">🔍 חיפושים היום</span>
-        <span class="quota-bar-count" id="quota-count">0/2</span>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div class="quota-bar-top">
+            <span class="quota-bar-label">🏪 עסקים</span>
+            <span class="quota-bar-count" id="quota-biz-count">0/2</span>
+          </div>
+          <div class="quota-bar-track"><div class="quota-bar-fill" id="quota-biz-fill" style="width:0%"></div></div>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <div class="quota-bar-top">
+            <span class="quota-bar-label">🔍 יצירות היום</span>
+            <span class="quota-bar-count" id="quota-daily-count">0/2</span>
+          </div>
+          <div class="quota-bar-track"><div class="quota-bar-fill" id="quota-daily-fill" style="width:0%"></div></div>
+        </div>
       </div>
-      <div class="quota-bar-track"><div class="quota-bar-fill" id="quota-fill" style="width:0%"></div></div>
       <div class="quota-bar-bonus" id="quota-bonus" style="display:none">🎁 +1 בונוס פעיל!</div>
     </div>
 
@@ -1565,10 +1576,10 @@ let state = {
 
 // ========== PRICING CONFIG ==========
 const PLAN_CONFIG = {
-  trial: { maxClients: 2, maxSearches: 2, perClient: true, calendar: false, quotes: false, expenses: true, label: 'ניסיון', emoji: '🎁' },
-  basic: { maxClients: 3, maxSearches: 30, perClient: false, calendar: false, quotes: false, expenses: true, label: 'Basic', emoji: '⚡' },
-  pro:   { maxClients: 10, maxSearches: 80, perClient: false, calendar: true, quotes: false, expenses: true, label: 'PRO', emoji: '🚀' },
-  max:   { maxClients: 999, maxSearches: 999, perClient: false, calendar: true, quotes: true, expenses: true, label: 'MAX', emoji: '👑' },
+  trial: { maxClients: 2, maxBusinesses: 2, maxDailySearches: 2, perClient: true, calendar: false, quotes: false, expenses: true, label: 'ניסיון', emoji: '🎁' },
+  basic: { maxClients: 3, maxBusinesses: 3, maxDailySearches: 5, perClient: false, calendar: false, quotes: false, expenses: true, label: 'Basic', emoji: '⚡' },
+  pro:   { maxClients: 10, maxBusinesses: 10, maxDailySearches: 20, perClient: false, calendar: true, quotes: false, expenses: true, label: 'PRO', emoji: '🚀' },
+  max:   { maxClients: 999, maxBusinesses: 999, maxDailySearches: 999, perClient: false, calendar: true, quotes: true, expenses: true, label: 'MAX', emoji: '👑' },
 };
 
 const PLAN_PRICES = {
@@ -1941,7 +1952,7 @@ function saveKeys() {
 
 async function startSearch(industryId) {
   // Check search limit
-  if (!IS_ADMIN && !(await checkSearchLimit())) return;
+  if (!IS_ADMIN && !canUseCreative()) { showPaywall(state.userProfile?.full_name); return; }
   state.industry = INDUSTRIES.find(i => i.id === industryId);
   state.videos = []; state.selected = []; state.scripts = []; state.calendar = []; state.generatedMore = false;
   document.getElementById('search-title').textContent = state.industry.emoji + ' סיטואציות ויראליות — ' + state.industry.label;
@@ -2072,6 +2083,10 @@ function toggleVideo(videoId) {
 async function generateScripts() {
   const name = document.getElementById('biz-name').value.trim();
   if (!name) { toast('נא להכניס שם עסק','err'); return; }
+
+  // Check business limit before proceeding
+  if (!IS_ADMIN && !(await checkBusinessLimit(name))) return;
+
   state.bizName = name;
 
   const overlay = document.getElementById('gen-overlay');
@@ -3786,7 +3801,7 @@ function canUseFeature(feature) {
   return true;
 }
 
-async function checkSearchLimit() {
+async function checkBusinessLimit(bizName) {
   // Check if user can use creative features
   if (!canUseCreative()) {
     showPaywall(state.userProfile?.full_name);
@@ -3795,61 +3810,103 @@ async function checkSearchLimit() {
 
   const plan = getUserPlan();
   const cfg = PLAN_CONFIG[plan] || PLAN_CONFIG.trial;
-  const baseLimit = cfg.maxSearches;
+  const maxBiz = cfg.maxBusinesses;
+  const maxDaily = cfg.maxDailySearches;
   const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
-  const totalLimit = baseLimit + (hasBonus ? 1 : 0);
+  const bizLimit = maxBiz + (hasBonus ? 1 : 0);
+  const dailyLimit = maxDaily + (hasBonus ? 1 : 0);
 
-  // Count today's searches from search_log
   try {
-    const today = new Date().toISOString().slice(0,10);
-    const logs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
-    const usedToday = (logs || []).length;
+    // 1. Get unique business names (permanent limit)
+    const history = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=biz_name');
+    const uniqueNames = [...new Set((history || []).map(h => h.biz_name.trim().toLowerCase()))];
+    const isExisting = uniqueNames.includes(bizName.trim().toLowerCase());
 
-    if (usedToday >= totalLimit) {
-      // Update modal content based on bonus status
-      const expBtn = document.getElementById('limit-modal-expense-btn');
-      const expHint = document.getElementById('limit-modal-expense-hint');
-      if (expBtn) expBtn.style.display = hasBonus ? 'none' : '';
-      if (expHint) expHint.style.display = hasBonus ? 'none' : '';
-      document.getElementById('limit-modal').classList.add('active');
+    // 2. Get today's search count (daily limit)
+    const today = new Date().toISOString().slice(0,10);
+    const todayLogs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
+    const usedToday = (todayLogs || []).length;
+
+    // Check business limit (only for NEW businesses)
+    if (!isExisting && uniqueNames.length >= bizLimit) {
+      showLimitModal('business', hasBonus);
+      return false;
+    }
+
+    // Check daily limit (for all searches)
+    if (usedToday >= dailyLimit) {
+      showLimitModal('daily', hasBonus);
       return false;
     }
 
     // Log this search
-    await supa.insert('search_log', {
-      user_id: state.user.id,
-      search_type: 'videos',
-    });
+    await supa.insert('search_log', { user_id: state.user.id, search_type: 'scripts' });
 
-    updateQuotaBar(usedToday + 1, totalLimit, hasBonus);
+    const bizCount = isExisting ? uniqueNames.length : uniqueNames.length + 1;
+    updateQuotaBar(bizCount, bizLimit, usedToday + 1, dailyLimit, hasBonus);
     return true;
   } catch(e) {
-    console.error('Search limit check error:', e);
+    console.error('Limit check error:', e);
     return true; // fail open
   }
 }
 
-function updateQuotaBar(used, total, hasBonus) {
+function showLimitModal(type, hasBonus) {
+  const icon = document.getElementById('limit-modal-icon');
+  const title = document.getElementById('limit-modal-title');
+  const hint = document.getElementById('limit-modal-expense-hint');
+  const expBtn = document.getElementById('limit-modal-expense-btn');
+  const footer = document.getElementById('limit-modal-footer');
+
+  if (type === 'business') {
+    icon.textContent = '🏪';
+    title.textContent = 'הגעת למגבלת העסקים בתוכנית שלך';
+    hint.textContent = '💡 ידעת? אם תוסיף הוצאה או הכנסה היום, תקבל עסק נוסף במתנה! 🎁';
+    footer.textContent = 'שדרג כדי להוסיף עסקים נוספים';
+  } else {
+    icon.textContent = '🔍';
+    title.textContent = 'ניצלת את היצירות להיום';
+    hint.textContent = '💡 ידעת? אם תוסיף הוצאה או הכנסה היום, תקבל יצירה נוספת במתנה! 🎁';
+    footer.textContent = 'מחר יתחדשו היצירות שלך ⏰';
+  }
+
+  // Hide expense option if already used bonus today
+  if (expBtn) expBtn.style.display = hasBonus ? 'none' : '';
+  if (hint) hint.style.display = hasBonus ? 'none' : '';
+
+  document.getElementById('limit-modal').classList.add('active');
+}
+
+function updateQuotaBar(bizUsed, bizTotal, dailyUsed, dailyTotal, hasBonus) {
   const bar = document.getElementById('search-quota-bar');
   if (!bar) return;
   bar.style.display = 'block';
-  document.getElementById('quota-count').textContent = used + '/' + total;
-  document.getElementById('quota-fill').style.width = Math.min(100, Math.round(used/total*100)) + '%';
+
+  document.getElementById('quota-biz-count').textContent = bizUsed + '/' + bizTotal;
+  document.getElementById('quota-biz-fill').style.width = Math.min(100, Math.round(bizUsed/bizTotal*100)) + '%';
+
+  document.getElementById('quota-daily-count').textContent = dailyUsed + '/' + dailyTotal;
+  document.getElementById('quota-daily-fill').style.width = Math.min(100, Math.round(dailyUsed/dailyTotal*100)) + '%';
+
   const bonusEl = document.getElementById('quota-bonus');
   if (bonusEl) bonusEl.style.display = hasBonus ? 'flex' : 'none';
 }
 
 async function loadQuotaBar() {
-  const plan = getUserPlan();
   if (!state.user) return;
+  const plan = getUserPlan();
   const cfg = PLAN_CONFIG[plan] || PLAN_CONFIG.trial;
-  const baseLimit = cfg.maxSearches;
   const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
-  const totalLimit = baseLimit + (hasBonus ? 1 : 0);
+  const bizLimit = cfg.maxBusinesses + (hasBonus ? 1 : 0);
+  const dailyLimit = cfg.maxDailySearches + (hasBonus ? 1 : 0);
   try {
+    const history = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=biz_name');
+    const uniqueNames = [...new Set((history || []).map(h => h.biz_name.trim().toLowerCase()))];
+
     const today = new Date().toISOString().slice(0,10);
-    const logs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
-    updateQuotaBar((logs||[]).length, totalLimit, hasBonus);
+    const todayLogs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
+
+    updateQuotaBar(uniqueNames.length, bizLimit, (todayLogs||[]).length, dailyLimit, hasBonus);
   } catch(e) {}
 }
 
@@ -5211,8 +5268,8 @@ async function installPWA() {
   <div class="bonus-card" onclick="event.stopPropagation()">
     <div class="bonus-trophy">🏆</div>
     <div style="font-size:22px;font-weight:800;color:var(--brown-dark);margin:16px 0 8px">!אלוף! הסטודיו מתוקתק להיום</div>
-    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">הוספת רשומה פיננסית היום —<br>קבל בונוס חיפוש!</div>
-    <div class="bonus-count">+1 🔍 חיפוש נוסף במתנה</div>
+    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">הוספת רשומה פיננסית היום —<br>קבל בונוס יצירה + עסק נוסף!</div>
+    <div class="bonus-count">+1 🎁 בונוס יצירה + עסק</div>
     <button class="btn-caramel" style="margin-top:20px;width:100%" onclick="document.getElementById('bonus-overlay').classList.remove('active');showScreen('home')">🔥 לחפש טרנדים עכשיו!</button>
     <div style="font-size:12px;color:var(--text-muted);margin-top:12px">הבונוס פעיל עד חצות הלילה</div>
   </div>
@@ -5221,12 +5278,12 @@ async function installPWA() {
 <!-- SEARCH LIMIT MODAL -->
 <div class="limit-modal" id="limit-modal" onclick="this.classList.remove('active')">
   <div class="limit-modal-card" onclick="event.stopPropagation()">
-    <div style="font-size:40px;margin-bottom:12px">🔍</div>
-    <div style="font-size:20px;font-weight:800;color:var(--brown-dark);margin-bottom:8px">ניצלת את החיפושים להיום</div>
-    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6" id="limit-modal-expense-hint">💡 ידעת? אם תוסיף הוצאה או הכנסה היום, תקבל חיפוש נוסף במתנה! 🎁</div>
+    <div style="font-size:40px;margin-bottom:12px" id="limit-modal-icon">🔍</div>
+    <div style="font-size:20px;font-weight:800;color:var(--brown-dark);margin-bottom:8px" id="limit-modal-title">הגעת למגבלה</div>
+    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6" id="limit-modal-expense-hint">💡 ידעת? אם תוסיף הוצאה או הכנסה היום, תקבל בונוס במתנה! 🎁</div>
     <button class="btn-primary full" style="margin-bottom:10px" id="limit-modal-expense-btn" onclick="document.getElementById('limit-modal').classList.remove('active');gatedScreen('expenses')">📊 הוסף רשומה פיננסית</button>
     <button class="btn-caramel full" onclick="document.getElementById('limit-modal').classList.remove('active');showScreen('plans')">⬆️ שדרג תוכנית</button>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:14px">מחר יתחדשו החיפושים שלך ⏰</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:14px" id="limit-modal-footer">שדרג כדי לקבל יותר</div>
   </div>
 </div>
 
