@@ -2113,7 +2113,7 @@ async function generateScripts() {
     const uniqueNames = [...new Set(h.map(e => e.bizName.trim().toLowerCase()))];
     const isExisting = uniqueNames.includes(name.trim().toLowerCase());
     if (!isExisting) {
-      if (!confirm('שם העסק הוא "' + name + '" — בטוח שהשם נכון?\n\nלאחר היצירה לא ניתן לשנות את השם.')) return;
+      if (!confirm('האם אתה בטוח ששם העסק הוא "' + name + '"?\n\nלאחר מכן לא תוכל לשנות את השם.')) return;
     }
   }
 
@@ -2239,7 +2239,23 @@ ${videoDesc ? 'תיאור: ' + videoDesc.slice(0, 200) : ''}`;
     });
 
     overlay.classList.remove('active');
-    toast(state.scripts.length + ' תסריטים נוצרו בהצלחה!', 'ok');
+
+    // Show remaining daily uses
+    try {
+      const plan = getUserPlan();
+      const cfg = PLAN_CONFIG[plan] || PLAN_CONFIG.trial;
+      const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
+      const dailyLimit = cfg.maxDailySearches + (hasBonus ? 1 : 0);
+      const today = new Date().toISOString().slice(0,10);
+      const todayLogs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
+      const usedToday = (todayLogs || []).length;
+      const remaining = Math.max(0, dailyLimit - usedToday);
+      toast(state.scripts.length + ' תסריטים נוצרו! נשארו ' + remaining + ' יצירות היום', 'ok');
+    } catch(e) {
+      toast(state.scripts.length + ' תסריטים נוצרו בהצלחה!', 'ok');
+    }
+
+    state.lockedBizName = null; // Reset lock
     state.calendar = [];
     renderScripts(name);
     showScreen('scripts');
@@ -2647,9 +2663,6 @@ async function renderHistory() {
           ✨ צור עוד תוכן
         </button>
       </div>
-      <div style="margin-top:8px;text-align:center">
-        <button style="background:none;border:none;color:var(--text-muted);font:400 12px Heebo;cursor:pointer;padding:4px 8px" onclick="renameBusiness(${i})">✏️ שנה שם עסק</button>
-      </div>
     </div>
   `).join('');
   updateHistoryCount();
@@ -2716,31 +2729,6 @@ async function deleteBusiness(bizIdx) {
   _historyCache = h.filter(e => e.bizName.trim().toLowerCase() !== biz.name.trim().toLowerCase());
   renderHistory();
   toast(biz.name + ' נמחק', 'ok');
-}
-
-async function renameBusiness(bizIdx) {
-  const biz = window._bizList?.[bizIdx];
-  if (!biz) return;
-  const newName = prompt('שם חדש לעסק (במקום "' + biz.name + '"):', biz.name);
-  if (!newName || newName.trim() === '' || newName.trim().toLowerCase() === biz.name.trim().toLowerCase()) return;
-
-  const h = getHistory();
-  const toUpdate = h.filter(e => e.bizName.trim().toLowerCase() === biz.name.trim().toLowerCase());
-  for (const entry of toUpdate) {
-    entry.bizName = newName.trim();
-    if (entry._dbId) {
-      try {
-        await fetch(SUPA_URL + '/rest/v1/scripts_history?id=eq.' + entry._dbId, {
-          method: 'PATCH',
-          headers: { ...supaHeaders(true), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ biz_name: newName.trim() }),
-        });
-      } catch(e) { console.log('Rename error:', e); }
-    }
-  }
-  _historyCache = h;
-  renderHistory();
-  toast('שם העסק שונה ל"' + newName.trim() + '"', 'ok');
 }
 
 // ========== TOAST ==========
