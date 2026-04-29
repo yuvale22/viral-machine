@@ -2247,8 +2247,8 @@ ${videoDesc ? 'תיאור: ' + videoDesc.slice(0, 200) : ''}`;
       const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
       const dailyLimit = cfg.maxDailySearches + (hasBonus ? 1 : 0);
       const today = new Date().toISOString().slice(0,10);
-      const todayLogs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
-      const usedToday = (todayLogs || []).length;
+      const hist = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=created_at');
+      const usedToday = (hist || []).filter(h => h.created_at && h.created_at.slice(0,10) === today).length;
       const remaining = Math.max(0, dailyLimit - usedToday);
       toast(state.scripts.length + ' תסריטים נוצרו! נשארו ' + remaining + ' יצירות היום', 'ok');
     } catch(e) {
@@ -2701,8 +2701,8 @@ async function createMoreForBusiness(bizIdx) {
 
   try {
     const today = new Date().toISOString().slice(0,10);
-    const todayLogs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
-    const usedToday = (todayLogs || []).length;
+    const hist = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=created_at');
+    const usedToday = (hist || []).filter(h => h.created_at && h.created_at.slice(0,10) === today).length;
     if (usedToday >= dailyLimit) {
       showLimitModal('daily', hasBonus);
       return;
@@ -3953,15 +3953,16 @@ async function checkBusinessLimit(bizName) {
   const dailyLimit = maxDaily + (hasBonus ? 1 : 0);
 
   try {
-    // 1. Get unique business names (permanent limit)
-    const history = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=biz_name');
+    // Get all history entries
+    const history = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=biz_name,created_at');
+
+    // 1. Count unique businesses (permanent limit)
     const uniqueNames = [...new Set((history || []).map(h => h.biz_name.trim().toLowerCase()))];
     const isExisting = uniqueNames.includes(bizName.trim().toLowerCase());
 
-    // 2. Get today's search count (daily limit)
-    const today = new Date().toISOString().slice(0,10);
-    const todayLogs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
-    const usedToday = (todayLogs || []).length;
+    // 2. Count today's creations from scripts_history (daily limit)
+    const today = new Date().toISOString().slice(0, 10);
+    const usedToday = (history || []).filter(h => h.created_at && h.created_at.slice(0, 10) === today).length;
 
     // Check business limit (only for NEW businesses)
     if (!isExisting && uniqueNames.length >= bizLimit) {
@@ -3969,14 +3970,11 @@ async function checkBusinessLimit(bizName) {
       return false;
     }
 
-    // Check daily limit (for all searches)
+    // Check daily limit (for ALL creations — new and existing)
     if (usedToday >= dailyLimit) {
       showLimitModal('daily', hasBonus);
       return false;
     }
-
-    // Log this search
-    await supa.insert('search_log', { user_id: state.user.id, search_type: 'scripts' });
 
     const bizCount = isExisting ? uniqueNames.length : uniqueNames.length + 1;
     updateQuotaBar(bizCount, bizLimit, usedToday + 1, dailyLimit, hasBonus);
@@ -4036,13 +4034,13 @@ async function loadQuotaBar() {
   const bizLimit = cfg.maxBusinesses + (hasBonus ? 1 : 0);
   const dailyLimit = cfg.maxDailySearches + (hasBonus ? 1 : 0);
   try {
-    const history = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=biz_name');
+    const history = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=biz_name,created_at');
     const uniqueNames = [...new Set((history || []).map(h => h.biz_name.trim().toLowerCase()))];
 
-    const today = new Date().toISOString().slice(0,10);
-    const todayLogs = await supa.select('search_log', 'user_id=eq.' + state.user.id + '&created_at=gte.' + today + 'T00:00:00');
+    const today = new Date().toISOString().slice(0, 10);
+    const usedToday = (history || []).filter(h => h.created_at && h.created_at.slice(0, 10) === today).length;
 
-    updateQuotaBar(uniqueNames.length, bizLimit, (todayLogs||[]).length, dailyLimit, hasBonus);
+    updateQuotaBar(uniqueNames.length, bizLimit, usedToday, dailyLimit, hasBonus);
   } catch(e) {}
 }
 
