@@ -1062,6 +1062,10 @@
     <div id="gen-panel" class="gen-panel" style="display:none">
       <h3>📝 שם העסק</h3>
       <input class="field-input" id="biz-name" placeholder="הכנס את שם העסק">
+      <div id="biz-name-locked" style="display:none;background:var(--cream);border:1px solid var(--sand);border-radius:var(--radius-xs);padding:14px 18px;font-size:15px;color:var(--brown);font-weight:700;align-items:center;justify-content:space-between">
+        <span id="biz-name-locked-text"></span>
+        <span style="font-size:12px;color:var(--text-muted)">🔒 שם נעול</span>
+      </div>
       <button class="btn-primary full" id="gen-btn" style="margin-top:20px" onclick="generateScripts()">✨ צור תסריטים</button>
     </div>
   </div></div>
@@ -1578,7 +1582,7 @@ let state = {
   rapidKey: localStorage.getItem('vm_rapid') || '',
   claudeKey: localStorage.getItem('vm_claude') || '',
   industry: null, videos: [], selected: [], scripts: [], calendar: [], bizName: '', trendVideos: [], lastQuote: null,
-  adminUser: null, creatorsCache: {}, generatedMore: false,
+  adminUser: null, creatorsCache: {}, generatedMore: false, lockedBizName: null,
   user: null, userProfile: null,
 };
 
@@ -1958,11 +1962,12 @@ function saveKeys() {
   setTimeout(() => showScreen('home'), 500);
 }
 
-async function startSearch(industryId) {
+async function startSearch(industryId, lockedName) {
   // Check search limit
   if (!IS_ADMIN && !canUseCreative()) { showPaywall(state.userProfile?.full_name); return; }
   state.industry = INDUSTRIES.find(i => i.id === industryId);
   state.videos = []; state.selected = []; state.scripts = []; state.calendar = []; state.generatedMore = false;
+  state.lockedBizName = lockedName || null;
   document.getElementById('search-title').textContent = state.industry.emoji + ' סיטואציות ויראליות — ' + state.industry.label;
   document.getElementById('search-title-bar').textContent = state.industry.label;
   document.getElementById('search-content').style.display = 'none';
@@ -2086,11 +2091,31 @@ function toggleVideo(videoId) {
   renderVideos();
   document.getElementById('gen-panel').style.display = state.selected.length > 0 ? 'block' : 'none';
   document.getElementById('gen-btn').textContent = `✨ צור תסריטים (${state.selected.length} נבחרו)`;
+  // Show locked name or input
+  if (state.lockedBizName) {
+    document.getElementById('biz-name').style.display = 'none';
+    document.getElementById('biz-name-locked').style.display = 'flex';
+    document.getElementById('biz-name-locked-text').textContent = state.lockedBizName;
+  } else {
+    document.getElementById('biz-name').style.display = '';
+    document.getElementById('biz-name-locked').style.display = 'none';
+  }
 }
 
 async function generateScripts() {
-  const name = document.getElementById('biz-name').value.trim();
+  // Get name — from locked state or from input
+  const name = state.lockedBizName || document.getElementById('biz-name').value.trim();
   if (!name) { toast('נא להכניס שם עסק','err'); return; }
+
+  // For NEW businesses (not locked), confirm the name
+  if (!state.lockedBizName) {
+    const h = getHistory();
+    const uniqueNames = [...new Set(h.map(e => e.bizName.trim().toLowerCase()))];
+    const isExisting = uniqueNames.includes(name.trim().toLowerCase());
+    if (!isExisting) {
+      if (!confirm('שם העסק הוא "' + name + '" — בטוח שהשם נכון?\n\nלאחר היצירה לא ניתן לשנות את השם.')) return;
+    }
+  }
 
   // Check business limit before proceeding
   if (!IS_ADMIN && !(await checkBusinessLimit(name))) return;
@@ -2622,6 +2647,9 @@ async function renderHistory() {
           ✨ צור עוד תוכן
         </button>
       </div>
+      <div style="margin-top:8px;text-align:center">
+        <button style="background:none;border:none;color:var(--text-muted);font:400 12px Heebo;cursor:pointer;padding:4px 8px" onclick="renameBusiness(${i})">✏️ שנה שם עסק</button>
+      </div>
     </div>
   `).join('');
   updateHistoryCount();
@@ -2673,11 +2701,7 @@ async function createMoreForBusiness(bizIdx) {
   state.bizName = biz.name;
   state.videos = []; state.selected = []; state.scripts = []; state.calendar = [];
 
-  startSearch(industry.id);
-  setTimeout(() => {
-    const nameInput = document.getElementById('biz-name');
-    if (nameInput) nameInput.value = biz.name;
-  }, 500);
+  startSearch(industry.id, biz.name); // Pass locked name
 }
 
 async function deleteBusiness(bizIdx) {
@@ -2692,6 +2716,31 @@ async function deleteBusiness(bizIdx) {
   _historyCache = h.filter(e => e.bizName.trim().toLowerCase() !== biz.name.trim().toLowerCase());
   renderHistory();
   toast(biz.name + ' נמחק', 'ok');
+}
+
+async function renameBusiness(bizIdx) {
+  const biz = window._bizList?.[bizIdx];
+  if (!biz) return;
+  const newName = prompt('שם חדש לעסק (במקום "' + biz.name + '"):', biz.name);
+  if (!newName || newName.trim() === '' || newName.trim().toLowerCase() === biz.name.trim().toLowerCase()) return;
+
+  const h = getHistory();
+  const toUpdate = h.filter(e => e.bizName.trim().toLowerCase() === biz.name.trim().toLowerCase());
+  for (const entry of toUpdate) {
+    entry.bizName = newName.trim();
+    if (entry._dbId) {
+      try {
+        await fetch(SUPA_URL + '/rest/v1/scripts_history?id=eq.' + entry._dbId, {
+          method: 'PATCH',
+          headers: { ...supaHeaders(true), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ biz_name: newName.trim() }),
+        });
+      } catch(e) { console.log('Rename error:', e); }
+    }
+  }
+  _historyCache = h;
+  renderHistory();
+  toast('שם העסק שונה ל"' + newName.trim() + '"', 'ok');
 }
 
 // ========== TOAST ==========
