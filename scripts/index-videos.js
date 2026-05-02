@@ -7,13 +7,11 @@ if(!SK||!OK){console.error('Missing env: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_K
 const H={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'};
 
 async function pick(){
-  // KILL-LIST: skip videos already in video_analysis
   console.log('   📋 Building kill-list of already-analyzed videos...');
   const er=await fetch(`${SUPA_URL}/rest/v1/video_analysis?select=aweme_id&limit=50000`,{headers:H});
   const done=new Set((er.ok?await er.json():[]).map(r=>r.aweme_id));
   console.log(`   🎯 ${done.size} videos already analyzed (will be skipped)`);
 
-  // Only pull videos added in the last 48 hours — TikTok URLs expire fast
   const cutoff=new Date(Date.now()-48*60*60*1000).toISOString();
   console.log(`   ⏰ Only considering videos added after ${cutoff.slice(0,16)}`);
 
@@ -35,9 +33,6 @@ async function pick(){
   console.log(`   ✨ ${fresh.length} fresh videos selected (≤48h old, has audio_url)\n`);
   return fresh;
 }
-
-// getFresh() removed — audio_url is now stored in cached_videos by the fetcher.
-// The indexer reads it directly, making zero RapidAPI calls.
 
 async function dl(url){
   const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0','Referer':'https://www.tiktok.com/'}});
@@ -92,7 +87,6 @@ async function save(row){
 }
 
 async function checkDailyLimit(){
-  // Hard cap on videos analyzed per UTC day — protects RapidAPI free quota (300/month)
   const DAILY_LIMIT=12;
   const today=new Date().toISOString().slice(0,10);
   const r=await fetch(`${SUPA_URL}/rest/v1/video_analysis?select=aweme_id&created_at=gte.${today}T00:00:00&limit=10000`,{headers:H});
@@ -102,9 +96,9 @@ async function checkDailyLimit(){
 
 (async()=>{
   console.log('🚀 YUMi Indexer v2\n');
-  const dl=await checkDailyLimit();
-  console.log(`📊 Today: ${dl.count}/${dl.limit} analyses`);
-  if(dl.reached){console.log('🛑 Daily limit reached. Saving budget for tomorrow.');return;}
+  const dailyStatus=await checkDailyLimit();
+  console.log(`📊 Today: ${dailyStatus.count}/${dailyStatus.limit} analyses`);
+  if(dailyStatus.reached){console.log('🛑 Daily limit reached. Saving budget for tomorrow.');return;}
   const vids=await pick();
   if(!vids.length){console.log('✅ Nothing to process');return;}
   console.log(`\n🎬 Processing ${vids.length}:\n`);
