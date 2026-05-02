@@ -2,7 +2,7 @@
 require('dotenv').config();
 const SUPA_URL='https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SK=process.env.SUPABASE_SERVICE_ROLE_KEY, OK=process.env.OPENAI_API_KEY;
-const BATCH=20, MAX=25*1024*1024;
+const BATCH=999, MAX=25*1024*1024;
 if(!SK||!OK){console.error('Missing env: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY');process.exit(1);}
 const H={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'};
 
@@ -17,7 +17,7 @@ async function pick(){
 
   const fresh=[];
   let offset=0,page=200;
-  while(fresh.length<BATCH&&offset<2000){
+  while(fresh.length<BATCH&&offset<5000){
     const q=`select=*&audio_url=not.is.null&created_at=gte.${cutoff}&order=play_count.desc&limit=${page}&offset=${offset}`;
     const cr=await fetch(`${SUPA_URL}/rest/v1/cached_videos?${q}`,{headers:H});
     const rows=cr.ok?await cr.json():[];
