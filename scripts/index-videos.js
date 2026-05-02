@@ -1,8 +1,8 @@
-// scripts/index-videos.js — YUMi Full Indexer v2
+// scripts/index-videos.js — YUMi Full Indexer v2 (unlimited)
 require('dotenv').config();
 const SUPA_URL='https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SK=process.env.SUPABASE_SERVICE_ROLE_KEY, OK=process.env.OPENAI_API_KEY;
-const BATCH=8, MAX=25*1024*1024;
+const BATCH=20, MAX=25*1024*1024;
 if(!SK||!OK){console.error('Missing env: SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY');process.exit(1);}
 const H={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'};
 
@@ -86,19 +86,8 @@ async function save(row){
   if(!r.ok)throw new Error('Save:'+(await r.text()).slice(0,100));
 }
 
-async function checkDailyLimit(){
-  const DAILY_LIMIT=12;
-  const today=new Date().toISOString().slice(0,10);
-  const r=await fetch(`${SUPA_URL}/rest/v1/video_analysis?select=aweme_id&created_at=gte.${today}T00:00:00&limit=10000`,{headers:H});
-  const rows=r.ok?await r.json():[];
-  return{count:rows.length,limit:DAILY_LIMIT,reached:rows.length>=DAILY_LIMIT};
-}
-
 (async()=>{
-  console.log('🚀 YUMi Indexer v2\n');
-  const dailyStatus=await checkDailyLimit();
-  console.log(`📊 Today: ${dailyStatus.count}/${dailyStatus.limit} analyses`);
-  if(dailyStatus.reached){console.log('🛑 Daily limit reached. Saving budget for tomorrow.');return;}
+  console.log('🚀 YUMi Indexer v2 (unlimited)\n');
   const vids=await pick();
   if(!vids.length){console.log('✅ Nothing to process');return;}
   console.log(`\n🎬 Processing ${vids.length}:\n`);
