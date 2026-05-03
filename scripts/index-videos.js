@@ -114,7 +114,15 @@ async function save(row){
       await save({aweme_id:id,transcript:st,language:t.language||'unknown',duration_seconds:Math.round(t.duration||v.duration||0),audio_source:useMusic?'music_original':'video_extracted',source_url:url,analysis_quality:'full'});
       console.log('✓');ok++;
       await new Promise(r=>setTimeout(r,2500));
-    }catch(e){console.log(`   ✗ ${e.message}`);fail++;}
+    }catch(e){
+      const msg=e.message||'';
+      if(msg.includes('exceeded')||msg.includes('quota')||msg.includes('429')||msg.includes('insufficient_quota')){
+        console.log(`   🛑 OpenAI quota exceeded — stopping.`);
+        fail++;
+        break;
+      }
+      console.log(`   ✗ ${msg}`);fail++;
+    }
   }
   console.log(`\n${'='.repeat(50)}\n✅ OK: ${ok}   ❌ Fail: ${fail}\n${'='.repeat(50)}`);
 })();
