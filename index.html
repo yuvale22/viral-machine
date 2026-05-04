@@ -1907,7 +1907,7 @@ function updateHistoryCount() {
 }
 
 function buildGrid() {
-  document.getElementById('industry-grid').innerHTML = INDUSTRIES.map((ind, i) =>
+  document.getElementById('industry-grid').innerHTML = INDUSTRIES.filter(ind => !ind.hidden).map((ind, i) =>
     `<button class="ind-card stagger" style="animation-delay:${i*45}ms" onclick="startSearch('${ind.id}')">
       <span class="ind-emoji">${ind.emoji}</span><span>${ind.label}</span>
     </button>`
@@ -2663,6 +2663,21 @@ async function renderHistory() {
           ✨ צור עוד תוכן
         </button>
       </div>
+      <div style="margin-top:8px">
+        <button class="btn-secondary" onclick="toggleLinkForm(${i})" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px;font-size:13px" id="link-btn-${i}">
+          📎 הדבק לינק לסרטון
+        </button>
+        <div id="link-form-${i}" style="display:none;margin-top:12px;background:var(--cream);border:1px solid var(--sand);border-radius:14px;padding:20px">
+          <label style="font-size:13px;font-weight:600;color:var(--brown);display:block;margin-bottom:6px">🔗 לינק לסרטון TikTok</label>
+          <input class="field-input" id="link-url-${i}" placeholder="https://www.tiktok.com/@user/video/..." style="margin-bottom:12px">
+          <label style="font-size:13px;font-weight:600;color:var(--brown);display:block;margin-bottom:6px">📝 מה קורה בסרטון? מה הופך אותו לייחודי?</label>
+          <textarea class="field-input" id="link-desc-${i}" placeholder="למשל: בעל מסעדה מראה איך מכינים את המנה הכי נמכרת, עם reveal מפתיע בסוף..." style="min-height:80px;resize:vertical;font-family:inherit;line-height:1.7"></textarea>
+          <div style="display:flex;gap:10px;margin-top:14px">
+            <button class="btn-primary" onclick="generateFromLink(${i})" id="link-gen-btn-${i}" style="flex:1;padding:14px;font-size:15px">✨ צור תסריט</button>
+            <button class="btn-secondary" onclick="toggleLinkForm(${i})" style="padding:14px 20px">ביטול</button>
+          </div>
+        </div>
+      </div>
     </div>
   `).join('');
   updateHistoryCount();
@@ -2729,6 +2744,139 @@ async function deleteBusiness(bizIdx) {
   _historyCache = h.filter(e => e.bizName.trim().toLowerCase() !== biz.name.trim().toLowerCase());
   renderHistory();
   toast(biz.name + ' נמחק', 'ok');
+}
+
+function toggleLinkForm(bizIdx) {
+  const form = document.getElementById('link-form-' + bizIdx);
+  if (!form) return;
+  const isOpen = form.style.display !== 'none';
+  // Close all other forms
+  document.querySelectorAll('[id^="link-form-"]').forEach(f => f.style.display = 'none');
+  if (!isOpen) {
+    form.style.display = 'block';
+    document.getElementById('link-url-' + bizIdx).value = '';
+    document.getElementById('link-desc-' + bizIdx).value = '';
+    document.getElementById('link-url-' + bizIdx).focus();
+  }
+}
+
+async function generateFromLink(bizIdx) {
+  const biz = window._bizList?.[bizIdx];
+  if (!biz) return;
+
+  const url = document.getElementById('link-url-' + bizIdx).value.trim();
+  const desc = document.getElementById('link-desc-' + bizIdx).value.trim();
+
+  if (!url) { toast('נא להדביק לינק לסרטון', 'err'); return; }
+  if (!desc || desc.length < 10) { toast('נא לתאר מה קורה בסרטון (לפחות 10 תווים)', 'err'); return; }
+
+  // Check daily limit
+  if (!canUseCreative()) { showPaywall(state.userProfile?.full_name); return; }
+  const plan = getUserPlan();
+  const cfg = PLAN_CONFIG[plan] || PLAN_CONFIG.trial;
+  const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
+  const dailyLimit = cfg.maxDailySearches + (hasBonus ? 1 : 0);
+
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const hist = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=created_at');
+    const usedToday = (hist || []).filter(h => h.created_at && h.created_at.slice(0,10) === today).length;
+    if (usedToday >= dailyLimit) {
+      showLimitModal('daily', hasBonus);
+      return;
+    }
+  } catch(e) {}
+
+  const btn = document.getElementById('link-gen-btn-' + bizIdx);
+  btn.disabled = true;
+  btn.textContent = '⏳ מייצר תסריט...';
+
+  try {
+    // Extract video info from link if possible
+    let videoTitle = '';
+    let videoAuthor = '';
+    try {
+      const match = url.match(/video\/(\d+)/);
+      if (match) {
+        // Try to get video info from TikTok API
+        const infoRes = await fetch('/api/search-tiktok', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
+          body: JSON.stringify({ endpoint: 'user/posts', params: { unique_id: url.match(/@([\w.]+)/)?.[1] || '', count: 1, cursor: 0 } })
+        });
+        // If fails, that's ok — we have the description
+      }
+    } catch(e) {}
+
+    const prompt = `אתה מומחה לתסריטי טיקטוק ויראליים בעברית.
+
+שם העסק: ${biz.name}
+תחום: ${biz.industry || ''}
+
+המשתמש מצא סרטון TikTok שהוא רוצה ליצור תוכן בהשראתו.
+
+לינק לסרטון: ${url}
+
+תיאור הסרטון מהמשתמש:
+"${desc}"
+
+בהתבסס על התיאור של המשתמש, צור תסריט מותאם לעסק "${biz.name}".
+
+כתוב בדיוק בפורמט הזה:
+
+### 1. איפיון שיווקי
+[2-3 משפטים על ה-Hook הפסיכולוגי שעובד בסרטון הזה ואיך להתאים אותו לעסק]
+
+### 2. המלצות הפקה
+- צילום: [המלצה]
+- סאונד: [המלצה]
+- עריכה: [המלצה]
+
+### 3. תסריט מוכן לצילום
+[תסריט מלא בעברית עם הוראות צילום בסוגריים. השתמש בשם "${biz.name}" בתוך התסריט. 15-25 שניות.]`;
+
+    const raw = await callClaude(prompt, 1000);
+    if (!raw || raw.length < 50) throw new Error('לא התקבל תסריט');
+
+    const m3 = raw.match(/###\s*1\.\s*[^\n]*\n([\s\S]*?)###\s*2\.\s*[^\n]*\n([\s\S]*?)###\s*3\.\s*[^\n]*\n([\s\S]*)/);
+
+    const newScript = {
+      title: 'תסריט מלינק — ' + biz.name,
+      format: 'בהשראת סרטון חיצוני',
+      inspired: '📎 ' + url.slice(0, 50) + '...',
+      hook: m3 ? m3[1].trim().slice(0, 120) : '',
+      script: (m3 ? '📋 המלצות הפקה:\n' + m3[2].trim() + '\n\n' : '') + '🎬 תסריט מוכן:\n' + (m3 ? m3[3].trim() : raw),
+      caption: '#' + biz.name.replace(/\s+/g, '') + ' #ויראלי #טיקטוק',
+    };
+
+    // Save to history
+    await saveToHistory({
+      id: Date.now(),
+      date: new Date().toLocaleDateString('he-IL'),
+      bizName: biz.name,
+      industry: biz.industry,
+      industryEmoji: biz.industryEmoji,
+      scriptsCount: 1,
+      scripts: [newScript],
+    });
+
+    toggleLinkForm(bizIdx);
+    toast('תסריט נוצר בהצלחה מהלינק! 🎉', 'ok');
+
+    // Show the script immediately
+    state.scripts = [newScript];
+    state.bizName = biz.name;
+    state.industry = INDUSTRIES.find(ind => ind.label === biz.industry) || INDUSTRIES[0];
+    state.calendar = [];
+    renderScripts(biz.name);
+    showScreen('scripts');
+
+  } catch(e) {
+    toast('שגיאה: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ צור תסריט';
+  }
 }
 
 // ========== TOAST ==========
@@ -3859,6 +4007,21 @@ async function loadUserProfile() {
     const profiles = await supa.select('user_profiles', `id=eq.${state.user.id}`);
     if (profiles && profiles.length > 0) {
       state.userProfile = profiles[0];
+
+      // Auto-expire: if trial/plan ended, downgrade to expired
+      const expiresAt = state.userProfile.trial_ends_at;
+      const status = state.userProfile.status;
+      if (expiresAt && (status === 'active' || status === 'trialing') && new Date(expiresAt) < new Date()) {
+        state.userProfile.status = 'expired';
+        state.userProfile.plan = 'free';
+        try {
+          await fetch(SUPA_URL + '/rest/v1/user_profiles?id=eq.' + state.user.id, {
+            method: 'PATCH',
+            headers: { ...supaHeaders(true), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'expired', plan: 'free' }),
+          });
+        } catch(e) { console.log('Expiry update error:', e); }
+      }
     } else {
       state.userProfile = { plan: 'free' };
     }
@@ -3877,7 +4040,7 @@ function getUserPlan() {
   if (isSuperAdmin()) return 'max';
   const status = state.userProfile?.status;
   if (status === 'trialing') return 'trial';
-  if (status === 'read_only' || status === 'pending_payment') return 'free';
+  if (status === 'read_only' || status === 'pending_payment' || status === 'expired') return 'free';
   // Active user — get plan from profile or subscription
   const p = state.userProfile?.plan || 'free';
   return p;
