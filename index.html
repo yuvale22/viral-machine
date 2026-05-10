@@ -1058,6 +1058,9 @@
       <div class="divider"></div>
       <div id="selected-info" style="text-align:center"></div>
       <div class="video-grid" id="video-grid"></div>
+      <div style="text-align:center;margin-top:16px">
+        <button class="btn-secondary" onclick="refreshVideos()" style="display:inline-flex;align-items:center;gap:6px;font-size:13px">🔄 חפש סרטונים חדשים</button>
+      </div>
     </div>
     <div id="gen-panel" class="gen-panel" style="display:none">
       <h3>📝 שם העסק</h3>
@@ -2110,7 +2113,7 @@ async function generateScripts() {
   // For NEW businesses (not locked), confirm the name
   if (!state.lockedBizName) {
     const h = getHistory();
-    const uniqueNames = [...new Set(h.map(e => e.bizName.trim().toLowerCase()))];
+    const uniqueNames = [...new Set(h.filter(e => e.bizName !== "__refresh__").map(e => e.bizName.trim().toLowerCase()))];
     const isExisting = uniqueNames.includes(name.trim().toLowerCase());
     if (!isExisting) {
       if (!confirm('האם אתה בטוח ששם העסק הוא "' + name + '"?\n\nלאחר מכן לא תוכל לשנות את השם.')) return;
@@ -2593,6 +2596,45 @@ function copyScript(i) {
 
 function reSearch() { startSearch(state.industry.id); }
 
+async function refreshVideos() {
+  if (!state.industry) return;
+
+  // Check daily limit
+  if (!canUseCreative()) { showPaywall(state.userProfile?.full_name); return; }
+  const plan = getUserPlan();
+  const cfg = PLAN_CONFIG[plan] || PLAN_CONFIG.trial;
+  const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
+  const dailyLimit = cfg.maxDailySearches + (hasBonus ? 1 : 0);
+
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const hist = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=created_at');
+    const usedToday = (hist || []).filter(h => h.created_at && h.created_at.slice(0,10) === today).length;
+    if (usedToday >= dailyLimit) {
+      showLimitModal('daily', hasBonus);
+      return;
+    }
+
+    const remaining = dailyLimit - usedToday;
+    if (!confirm('הרענון מוריד 1 מהיצירות היומיות שלך.\nנשארו לך ' + remaining + ' יצירות היום.\n\nלהמשיך?')) return;
+
+    // Log refresh as daily usage
+    await supa.insert('scripts_history', {
+      user_id: state.user.id,
+      biz_name: '__refresh__',
+      industry: state.industry.label,
+      industry_emoji: state.industry.emoji,
+      scripts: [],
+    });
+
+  } catch(e) { console.log('Refresh limit check error:', e); }
+
+  // Reload videos
+  state.selected = [];
+  document.getElementById('gen-panel').style.display = 'none';
+  startSearch(state.industry.id, state.lockedBizName || null);
+}
+
 // ========== HISTORY ==========
 async function renderHistory() {
   const container = document.getElementById('history-list');
@@ -2605,7 +2647,7 @@ async function renderHistory() {
   const cfg = PLAN_CONFIG[plan] || PLAN_CONFIG.trial;
   const hasBonus = state.userProfile?.last_bonus_date === new Date().toISOString().slice(0,10);
   const bizLimit = cfg.maxBusinesses + (hasBonus ? 1 : 0);
-  const uniqueNames = [...new Set(h.map(e => e.bizName.trim().toLowerCase()))];
+  const uniqueNames = [...new Set(h.filter(e => e.bizName !== "__refresh__").map(e => e.bizName.trim().toLowerCase()))];
   const bizCount = uniqueNames.length;
 
   document.getElementById('history-biz-count').textContent = bizCount + '/' + bizLimit;
@@ -2616,9 +2658,10 @@ async function renderHistory() {
     return;
   }
 
-  // Group by business name
+  // Group by business name (skip refresh tracking entries)
   const bizMap = {};
   h.forEach((entry, idx) => {
+    if (entry.bizName === '__refresh__') return; // Skip refresh tracking entries
     const key = entry.bizName.trim().toLowerCase();
     if (!bizMap[key]) {
       bizMap[key] = {
@@ -4119,8 +4162,8 @@ async function checkBusinessLimit(bizName) {
     // Get all history entries
     const history = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=biz_name,created_at');
 
-    // 1. Count unique businesses (permanent limit)
-    const uniqueNames = [...new Set((history || []).map(h => h.biz_name.trim().toLowerCase()))];
+    // 1. Count unique businesses (permanent limit) — skip refresh tracking
+    const uniqueNames = [...new Set((history || []).filter(h => h.biz_name !== '__refresh__').map(h => h.biz_name.trim().toLowerCase()))];
     const isExisting = uniqueNames.includes(bizName.trim().toLowerCase());
 
     // 2. Count today's creations from scripts_history (daily limit)
@@ -4198,7 +4241,7 @@ async function loadQuotaBar() {
   const dailyLimit = cfg.maxDailySearches + (hasBonus ? 1 : 0);
   try {
     const history = await supa.select('scripts_history', 'user_id=eq.' + state.user.id + '&select=biz_name,created_at');
-    const uniqueNames = [...new Set((history || []).map(h => h.biz_name.trim().toLowerCase()))];
+    const uniqueNames = [...new Set((history || []).filter(h => h.biz_name !== '__refresh__').map(h => h.biz_name.trim().toLowerCase()))];
 
     const today = new Date().toISOString().slice(0, 10);
     const usedToday = (history || []).filter(h => h.created_at && h.created_at.slice(0, 10) === today).length;
