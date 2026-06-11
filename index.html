@@ -1874,6 +1874,16 @@ window.onload = async () => {
 
   const urlParams = new URLSearchParams(window.location.search);
 
+  // Save plan choice from landing page (e.g. ?plan=pro&billing=monthly)
+  const landingPlan = urlParams.get('plan');
+  const landingBilling = urlParams.get('billing');
+  if (landingPlan && ['basic','pro','max'].includes(landingPlan)) {
+    localStorage.setItem('vm_pending_landing_plan', landingPlan);
+    localStorage.setItem('vm_pending_landing_billing', landingBilling === 'annual' ? 'yearly' : 'monthly');
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+
   if (IS_ADMIN) {
     if (supaToken) { showScreen('admin'); } else { showScreen('admin-login'); }
     return;
@@ -1904,6 +1914,8 @@ window.onload = async () => {
       // Route based on user status
       if (isSuperAdmin()) {
         showScreen('admin');
+      } else if (await startPendingLandingPlan()) {
+        // Going to payment from landing page (already logged in)
       } else if (state.userProfile?.status === 'pending_payment') {
         showPaywall(state.userProfile.full_name);
       } else {
@@ -1916,6 +1928,10 @@ window.onload = async () => {
     }
   } else {
     showScreen('auth');
+    // If coming from landing page with plan, show register tab
+    if (localStorage.getItem('vm_pending_landing_plan')) {
+      switchAuthTab('register');
+    }
   }
 };
 
@@ -3761,7 +3777,10 @@ async function userRegister() {
     state.userProfile = { status: 'pending_payment', full_name: name, email };
 
     toast('חשבון נוצר! 🎉', 'ok');
-    showPaywall(name);
+    // If coming from landing page with plan choice, go straight to payment
+    if (!(await startPendingLandingPlan())) {
+      showPaywall(name);
+    }
   } catch(e) {
     toast('שגיאה: ' + e.message, 'err');
   }
@@ -3930,9 +3949,11 @@ async function verifyOTP() {
     await loadUserProfile();
     toast('חשבון אומת בהצלחה! 🎉', 'ok');
 
-    // Route to paywall or home
-    setTimeout(() => {
-      if (state.userProfile?.status === 'pending_payment') {
+    // Route: pending landing plan > paywall > home
+    setTimeout(async () => {
+      if (await startPendingLandingPlan()) {
+        // Going to payment from landing page
+      } else if (state.userProfile?.status === 'pending_payment') {
         showPaywall(state.userProfile.full_name || user.email);
       } else {
         updatePlanUI();
@@ -4020,6 +4041,8 @@ async function userLogin() {
     toast('התחברת בהצלחה!', 'ok');
     if (isSuperAdmin()) {
       showScreen('admin');
+    } else if (await startPendingLandingPlan()) {
+      // Going to payment from landing page
     } else if (state.userProfile?.status === 'pending_payment') {
       showPaywall(state.userProfile.full_name);
     } else {
@@ -5567,6 +5590,28 @@ function showBonusReward() {
 function canUseCreative() {
   const status = state.userProfile?.status;
   return status === 'trialing' || status === 'active';
+}
+
+// Direct purchase flow from landing page
+async function startPendingLandingPlan() {
+  const plan = localStorage.getItem('vm_pending_landing_plan');
+  const billing = localStorage.getItem('vm_pending_landing_billing') || 'monthly';
+  if (!plan) return false;
+
+  // Clear pending
+  localStorage.removeItem('vm_pending_landing_plan');
+  localStorage.removeItem('vm_pending_landing_billing');
+
+  // Set billing toggle
+  selectedBillingCycle = billing;
+  selectedPlan = plan;
+
+  // Go directly to payment
+  toast('מעביר לתשלום...', 'ok');
+  setTimeout(() => {
+    openCardcomPayment();
+  }, 500);
+  return true;
 }
 
 // ========== PWA SERVICE WORKER + INSTALL ==========
