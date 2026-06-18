@@ -47,6 +47,10 @@ module.exports = async function handler(req, res) {
   const API_NAME = process.env.CARDCOM_API_NAME || 'nBpN6Pz2AqazwWsiicQM';
   const today = new Date().toISOString().slice(0, 10);
 
+  // ?debug=1 -> return the FULL Cardcom response so we can see exactly what it sends back,
+  // without changing any data. Great for diagnosing the expiration / field-name issue.
+  const debugMode = req.query?.debug === '1';
+
   let charged = 0, failed = 0, skipped = 0;
   const log = [];
 
@@ -67,7 +71,10 @@ module.exports = async function handler(req, res) {
       const amount = (PRICES[plan] || PRICES.pro)[cycle];
 
       // ===== Charge the saved token (Cardcom v11) =====
-      // NOTE: verify these field names against your Cardcom terminal docs before going live.
+      // We rely on the TOKEN ALONE - the token already carries the card details,
+      // exactly like the first payment (LowProfile/Create) succeeded without us
+      // sending an expiration. Sending an empty/wrong CardExpiration is what caused
+      // error 60000416 ("invalid expiration format"), so we DO NOT send it by default.
       const payload = {
         TerminalNumber: TERMINAL,
         ApiName: API_NAME,
@@ -76,8 +83,14 @@ module.exports = async function handler(req, res) {
         ExternalUniqTranId: sub.id + '-' + today, // idempotency: don't double-charge same day
         ReturnValue: sub.id,
         Token: sub.cardcom_token,
-        CardExpiration: sub.cardcom_token_exp || undefined, // MMYY, if your terminal requires it
       };
+
+      // If a properly-formatted expiration IS stored (MMYY, exactly 4 digits), include it -
+      // some terminals require it. Otherwise we omit it entirely.
+      const exp = (sub.cardcom_token_exp || '').replace(/\D/g, ''); // digits only
+      if (exp.length === 4) {
+        payload.CardExpiration = exp;
+      }
 
       try {
         const r = await fetch('https://secure.cardcom.solutions/api/v11/Transactions/Transaction', {
@@ -87,6 +100,16 @@ module.exports = async function handler(req, res) {
         });
         const data = await r.json();
         const ok = data.ResponseCode === 0;
+
+        // DEBUG: surface the entire Cardcom response (and what we sent) without touching data.
+        if (debugMode) {
+          log.push({
+            user: sub.id,
+            sent: { ...payload, Token: '***hidden***' }, // don't echo the raw token
+            cardcom_response: data,
+          });
+          continue; // skip DB writes in debug mode
+        }
 
         if (ok) {
           const newNext = nextDate(sub.next_charge_date || today, cycle);
@@ -111,7 +134,7 @@ module.exports = async function handler(req, res) {
           charged++;
           log.push({ user: sub.id, plan, amount, result: 'charged', next: newNext });
         } else {
-          // Charge declined — stop access. (Optionally add a grace/retry window here.)
+          // Charge declined - stop access. (Optionally add a grace/retry window here.)
           await fetch(`${SUPA_URL}/rest/v1/user_profiles?id=eq.${sub.id}`, {
             method: 'PATCH',
             headers: supaHeaders(),
@@ -133,7 +156,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    return res.status(200).json({ ok: true, today, charged, failed, skipped, total: subs.length, log });
+    return res.status(200).json({ ok: true, debug: debugMode, today, charged, failed, skipped, total: subs.length, log });
   } catch (error) {
     console.error('charge-recurring error:', error);
     return res.status(500).json({ error: error.message });
