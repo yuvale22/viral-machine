@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cardcom/charge-recurring",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}
