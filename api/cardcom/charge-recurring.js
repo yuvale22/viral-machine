@@ -1,67 +1,141 @@
 // api/cardcom/charge-recurring.js
-// POST — Cron: charges due subscriptions via Cardcom token
-// Secured with CRON_SECRET header
+// CRON endpoint — runs daily, charges every active subscription whose
+// next_charge_date has arrived, using the saved Cardcom token.
+// This is what makes the "gym membership" model work: bills again and again
+// until the user cancels (auto_renew = false).
+//
+// Triggered by Vercel Cron (see vercel.json). Protected by CRON_SECRET.
 
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // REQUIRED — service role, bypasses RLS
 
-function getServiceKey() { return process.env.SUPABASE_SERVICE_ROLE_KEY; }
+const PRICES = {
+  basic: { monthly: 99, yearly: 990 },
+  pro:   { monthly: 139, yearly: 1390 },
+  max:   { monthly: 259, yearly: 2590 },
+};
 
-async function supaAdmin(method, path, body) {
-  const key = getServiceKey();
-  const opts = { method, headers: { 'apikey': key, 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' } };
-  if (method === 'POST') opts.headers['Prefer'] = 'return=representation';
-  if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(SUPA_URL + '/rest/v1/' + path, opts);
-  return r.json();
+function supaHeaders() {
+  return {
+    'apikey': SERVICE_KEY,
+    'Authorization': 'Bearer ' + SERVICE_KEY,
+    'Content-Type': 'application/json',
+  };
 }
 
-async function chargeToken(token, amount, productName) {
-  const params = new URLSearchParams({
-    'TerminalNumber': process.env.CARDCOM_TERMINAL || '170602',
-    'ApiName': process.env.CARDCOM_API_NAME || 'nBpN6Pz2AqazwWsiicQM',
-    'TokenToCharge.Token': token,
-    'TokenToCharge.SumToBill': String(amount / 100),
-    'TokenToCharge.CoinId': '1',
-    'TokenToCharge.NumOfPayments': '1',
-    'ProductName': productName,
-  });
-  const r = await fetch('https://secure.cardcom.solutions/api/v11/BillGold/ChargeToken', {
-    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString(),
-  });
-  return r.json();
+// Advance a YYYY-MM-DD date by 1 month or 1 year
+function nextDate(fromISO, cycle) {
+  const d = new Date(fromISO);
+  if (cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
+  else d.setMonth(d.getMonth() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const secret = req.headers['x-cron-secret'] || (req.headers.authorization || '').replace('Bearer ', '');
-  if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) return res.status(403).json({ error: 'Unauthorized' });
+  // Allow Vercel Cron (sends a special header) or manual call with the secret
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const secretOk = req.query?.secret === process.env.CRON_SECRET
+    || req.headers['authorization'] === 'Bearer ' + process.env.CRON_SECRET;
+  if (!isVercelCron && !secretOk) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  if (!SERVICE_KEY) {
+    return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not set' });
+  }
+
+  const TERMINAL = parseInt(process.env.CARDCOM_TERMINAL || '170602', 10);
+  const API_NAME = process.env.CARDCOM_API_NAME || 'nBpN6Pz2AqazwWsiicQM';
+  const today = new Date().toISOString().slice(0, 10);
+
+  let charged = 0, failed = 0, skipped = 0;
+  const log = [];
 
   try {
-    const subs = await supaAdmin('GET', 'subscriptions?select=*&or=(and(status.eq.trialing,trial_end.lte.now()),and(status.eq.active,current_period_end.lte.now()))&cancel_at_period_end=eq.false&charge_failures=lt.3');
-    if (!Array.isArray(subs) || subs.length === 0) return res.status(200).json({ message: 'No subscriptions due', charged: 0 });
+    // Find subscriptions due today: active + auto-renew on + has a token + due
+    const q = `select=*&status=eq.active&auto_renew=eq.true`
+      + `&cardcom_token=not.is.null&next_charge_date=lte.${today}`;
+    const subsRes = await fetch(`${SUPA_URL}/rest/v1/user_profiles?${q}`, { headers: supaHeaders() });
+    const subs = await subsRes.json();
 
-    const results = [];
-    for (const sub of subs) {
-      if (!sub.cardcom_token) { await supaAdmin('PATCH', 'user_profiles?id=eq.' + sub.user_id, { status: 'read_only' }); results.push({ id: sub.id, status: 'no_token' }); continue; }
-      const label = { basic:'Basic', pro:'Pro', agency:'Agency' }[sub.plan] || sub.plan;
-      try {
-        const cr = await chargeToken(sub.cardcom_token, sub.amount_ils, 'YUMi ' + label);
-        const ok = String(cr.ResponseCode) === '0';
-        await supaAdmin('POST', 'billing_log', { user_id: sub.user_id, subscription_id: sub.id, cardcom_deal_id: cr.InternalDealNumber || null, amount_ils: sub.amount_ils, status: ok ? 'success' : 'failed', cardcom_response: cr, failure_reason: ok ? null : cr.Description });
-        if (ok) {
-          const end = new Date(Date.now() + 30*24*60*60*1000);
-          await supaAdmin('PATCH', 'subscriptions?id=eq.' + sub.id, { status: 'active', current_period_start: new Date().toISOString(), current_period_end: end.toISOString(), last_charge_date: new Date().toISOString(), last_charge_status: 'success', charge_failures: 0 });
-          await supaAdmin('PATCH', 'user_profiles?id=eq.' + sub.user_id, { status: 'active' });
-          results.push({ id: sub.id, status: 'charged' });
-        } else {
-          const f = (sub.charge_failures || 0) + 1;
-          await supaAdmin('PATCH', 'subscriptions?id=eq.' + sub.id, { last_charge_status: 'failed', charge_failures: f, status: f >= 3 ? 'past_due' : sub.status });
-          if (f >= 3) await supaAdmin('PATCH', 'user_profiles?id=eq.' + sub.user_id, { status: 'read_only' });
-          results.push({ id: sub.id, status: 'failed', failures: f });
-        }
-      } catch(e) { results.push({ id: sub.id, status: 'error', msg: e.message }); }
-      await new Promise(r => setTimeout(r, 1000));
+    if (!Array.isArray(subs)) {
+      return res.status(500).json({ error: 'Failed to load subscriptions', detail: subs });
     }
-    return res.status(200).json({ processed: results.length, results });
-  } catch (error) { return res.status(500).json({ error: error.message }); }
+
+    for (const sub of subs) {
+      const cycle = sub.billing_cycle || 'monthly';
+      const plan = sub.plan || 'pro';
+      const amount = (PRICES[plan] || PRICES.pro)[cycle];
+
+      // ===== Charge the saved token (Cardcom v11) =====
+      // NOTE: verify these field names against your Cardcom terminal docs before going live.
+      const payload = {
+        TerminalNumber: TERMINAL,
+        ApiName: API_NAME,
+        Amount: amount,
+        ISOCoinId: 1,
+        ExternalUniqTranId: sub.id + '-' + today, // idempotency: don't double-charge same day
+        ReturnValue: sub.id,
+        Token: sub.cardcom_token,
+        CardExpiration: sub.cardcom_token_exp || undefined, // MMYY, if your terminal requires it
+      };
+
+      try {
+        const r = await fetch('https://secure.cardcom.solutions/api/v11/Transactions/Transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await r.json();
+        const ok = data.ResponseCode === 0;
+
+        if (ok) {
+          const newNext = nextDate(sub.next_charge_date || today, cycle);
+          await fetch(`${SUPA_URL}/rest/v1/user_profiles?id=eq.${sub.id}`, {
+            method: 'PATCH',
+            headers: supaHeaders(),
+            body: JSON.stringify({
+              next_charge_date: newNext,
+              trial_ends_at: newNext, // keep frontend access window in sync
+              status: 'active',
+            }),
+          });
+          // Record the payment (amount stored in agorot to match admin stats: amount_ils)
+          await fetch(`${SUPA_URL}/rest/v1/payments`, {
+            method: 'POST',
+            headers: supaHeaders(),
+            body: JSON.stringify({
+              user_id: sub.id, plan, amount, amount_ils: amount * 100,
+              status: 'completed',
+            }),
+          });
+          charged++;
+          log.push({ user: sub.id, plan, amount, result: 'charged', next: newNext });
+        } else {
+          // Charge declined — stop access. (Optionally add a grace/retry window here.)
+          await fetch(`${SUPA_URL}/rest/v1/user_profiles?id=eq.${sub.id}`, {
+            method: 'PATCH',
+            headers: supaHeaders(),
+            body: JSON.stringify({ status: 'expired', plan: 'free' }),
+          });
+          await fetch(`${SUPA_URL}/rest/v1/payments`, {
+            method: 'POST',
+            headers: supaHeaders(),
+            body: JSON.stringify({
+              user_id: sub.id, plan, amount, amount_ils: amount * 100, status: 'failed',
+            }),
+          });
+          failed++;
+          log.push({ user: sub.id, plan, result: 'declined', code: data.ResponseCode, desc: data.Description });
+        }
+      } catch (e) {
+        skipped++;
+        log.push({ user: sub.id, result: 'error', error: e.message });
+      }
+    }
+
+    return res.status(200).json({ ok: true, today, charged, failed, skipped, total: subs.length, log });
+  } catch (error) {
+    console.error('charge-recurring error:', error);
+    return res.status(500).json({ error: error.message });
+  }
 };
