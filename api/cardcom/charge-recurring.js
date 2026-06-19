@@ -1,13 +1,9 @@
 // api/cardcom/charge-recurring.js
 // CRON endpoint — runs daily, charges every active subscription whose
 // next_charge_date has arrived, using the saved Cardcom token.
-// This is what makes the "gym membership" model work: bills again and again
-// until the user cancels (auto_renew = false).
-//
-// Triggered by Vercel Cron (see vercel.json). Protected by CRON_SECRET.
 
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // REQUIRED — service role, bypasses RLS
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const PRICES = {
   basic: { monthly: 99, yearly: 990 },
@@ -23,7 +19,6 @@ function supaHeaders() {
   };
 }
 
-// Advance a YYYY-MM-DD date by 1 month or 1 year
 function nextDate(fromISO, cycle) {
   const d = new Date(fromISO);
   if (cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
@@ -32,7 +27,6 @@ function nextDate(fromISO, cycle) {
 }
 
 module.exports = async function handler(req, res) {
-  // Allow Vercel Cron (sends a special header) or manual call with the secret
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   const secretOk = req.query?.secret === process.env.CRON_SECRET
     || req.headers['authorization'] === 'Bearer ' + process.env.CRON_SECRET;
@@ -45,17 +39,14 @@ module.exports = async function handler(req, res) {
 
   const TERMINAL = parseInt(process.env.CARDCOM_TERMINAL || '170602', 10);
   const API_NAME = process.env.CARDCOM_API_NAME || 'nBpN6Pz2AqazwWsiicQM';
+  const API_PASSWORD = process.env.CARDCOM_API_PASSWORD || '';
   const today = new Date().toISOString().slice(0, 10);
-
-  // ?debug=1 -> return the FULL Cardcom response so we can see exactly what it sends back,
-  // without changing any data. Great for diagnosing the expiration / field-name issue.
   const debugMode = req.query?.debug === '1';
 
   let charged = 0, failed = 0, skipped = 0;
   const log = [];
 
   try {
-    // Find subscriptions due today: active + auto-renew on + has a token + due
     const q = `select=*&status=eq.active&auto_renew=eq.true`
       + `&cardcom_token=not.is.null&next_charge_date=lte.${today}`;
     const subsRes = await fetch(`${SUPA_URL}/rest/v1/user_profiles?${q}`, { headers: supaHeaders() });
@@ -70,26 +61,28 @@ module.exports = async function handler(req, res) {
       const plan = sub.plan || 'pro';
       const amount = (PRICES[plan] || PRICES.pro)[cycle];
 
-      // ===== Charge the saved token (Cardcom v11) =====
-      // We rely on the TOKEN ALONE - the token already carries the card details,
-      // exactly like the first payment (LowProfile/Create) succeeded without us
-      // sending an expiration. Sending an empty/wrong CardExpiration is what caused
-      // error 60000416 ("invalid expiration format"), so we DO NOT send it by default.
+      // Build payload with ApiPassword + separate month/year fields
       const payload = {
         TerminalNumber: TERMINAL,
         ApiName: API_NAME,
+        ApiPassword: API_PASSWORD,
         Amount: amount,
         ISOCoinId: 1,
-        ExternalUniqTranId: sub.id + '-' + today, // idempotency: don't double-charge same day
+        ExternalUniqTranId: sub.id + '-' + today,
         ReturnValue: sub.id,
         Token: sub.cardcom_token,
       };
 
-      // If a properly-formatted expiration IS stored (MMYY, exactly 4 digits), include it -
-      // some terminals require it. Otherwise we omit it entirely.
-      const exp = (sub.cardcom_token_exp || '').replace(/\D/g, ''); // digits only
+      // Parse token expiry into separate CardValidityMonth + CardValidityYear
+      const exp = (sub.cardcom_token_exp || '').replace(/\D/g, '');
       if (exp.length === 4) {
-        payload.CardExpiration = exp;
+        // Format: MMYY (e.g. "1231" = December 2031)
+        payload.CardValidityMonth = exp.slice(0, 2);
+        payload.CardValidityYear = '20' + exp.slice(2, 4);
+      } else if (exp.length === 6) {
+        // Format: MMYYYY (e.g. "122031")
+        payload.CardValidityMonth = exp.slice(0, 2);
+        payload.CardValidityYear = exp.slice(2, 6);
       }
 
       try {
@@ -101,14 +94,14 @@ module.exports = async function handler(req, res) {
         const data = await r.json();
         const ok = data.ResponseCode === 0;
 
-        // DEBUG: surface the entire Cardcom response (and what we sent) without touching data.
         if (debugMode) {
           log.push({
             user: sub.id,
-            sent: { ...payload, Token: '***hidden***' }, // don't echo the raw token
+            email: sub.email,
+            sent: { ...payload, Token: '***', ApiPassword: '***' },
             cardcom_response: data,
           });
-          continue; // skip DB writes in debug mode
+          continue;
         }
 
         if (ok) {
@@ -118,11 +111,10 @@ module.exports = async function handler(req, res) {
             headers: supaHeaders(),
             body: JSON.stringify({
               next_charge_date: newNext,
-              trial_ends_at: newNext, // keep frontend access window in sync
+              trial_ends_at: newNext,
               status: 'active',
             }),
           });
-          // Record the payment (amount stored in agorot to match admin stats: amount_ils)
           await fetch(`${SUPA_URL}/rest/v1/payments`, {
             method: 'POST',
             headers: supaHeaders(),
@@ -134,7 +126,6 @@ module.exports = async function handler(req, res) {
           charged++;
           log.push({ user: sub.id, plan, amount, result: 'charged', next: newNext });
         } else {
-          // Charge declined - stop access. (Optionally add a grace/retry window here.)
           await fetch(`${SUPA_URL}/rest/v1/user_profiles?id=eq.${sub.id}`, {
             method: 'PATCH',
             headers: supaHeaders(),
