@@ -9,7 +9,7 @@ const PLAN_PRICES = {
   pro:   { monthly: 13900, yearly: 139000 },
   max:   { monthly: 25900, yearly: 259000 },
 };
-const TRIAL_DAYS = 5;
+const TRIAL_DAYS = 3;
 
 async function getUserFromToken(authHeader) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
@@ -42,7 +42,6 @@ async function supaAdmin(method, path, body) {
 }
 
 async function fetchCardcomResult(terminal, apiName, lowProfileId) {
-  // Try GET first (per Cardcom v11 docs)
   const url = 'https://secure.cardcom.solutions/api/v11/LowProfile/GetLpResult'
     + '?TerminalNumber=' + encodeURIComponent(terminal)
     + '&ApiName=' + encodeURIComponent(apiName)
@@ -55,7 +54,6 @@ async function fetchCardcomResult(terminal, apiName, lowProfileId) {
     return getData;
   }
 
-  // Fallback: POST with JSON
   const postRes = await fetch('https://secure.cardcom.solutions/api/v11/LowProfile/GetLpResult', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -66,6 +64,39 @@ async function fetchCardcomResult(terminal, apiName, lowProfileId) {
     }),
   });
   return await postRes.json().catch(() => ({}));
+}
+
+// Extract card expiry in MMYY format from any Cardcom response shape
+function extractExpiry(lpData) {
+  // Try direct fields first
+  if (lpData.CardExpiration) return String(lpData.CardExpiration).replace(/\D/g, '').slice(0, 4);
+
+  // Try separate month/year fields from TranzactionInfo
+  const ti = lpData.TranzactionInfo || lpData.TransactionInfo || {};
+  if (ti.CardMonth && ti.CardYear) {
+    const mm = String(ti.CardMonth).padStart(2, '0');
+    const yy = String(ti.CardYear).slice(-2);
+    return mm + yy;
+  }
+  if (ti.CardValidity) return String(ti.CardValidity).replace(/\D/g, '').slice(0, 4);
+
+  // Try TokenInfo
+  const tok = lpData.TokenInfo || {};
+  if (tok.TokenExDate) return String(tok.TokenExDate).replace(/\D/g, '').slice(0, 4);
+  if (tok.CardMonth && tok.CardYear) {
+    const mm = String(tok.CardMonth).padStart(2, '0');
+    const yy = String(tok.CardYear).slice(-2);
+    return mm + yy;
+  }
+
+  // Try top-level CardMonth/CardYear
+  if (lpData.CardMonth && lpData.CardYear) {
+    const mm = String(lpData.CardMonth).padStart(2, '0');
+    const yy = String(lpData.CardYear).slice(-2);
+    return mm + yy;
+  }
+
+  return '';
 }
 
 module.exports = async function handler(req, res) {
@@ -89,7 +120,7 @@ module.exports = async function handler(req, res) {
     // 1. Fetch transaction details from Cardcom v11
     const lpData = await fetchCardcomResult(TERMINAL, API_NAME, low_profile_code);
 
-    console.log('[start-trial]', low_profile_code, '→', JSON.stringify(lpData).slice(0, 1000));
+    console.log('[start-trial] full response:', JSON.stringify(lpData).slice(0, 2000));
 
     if (lpData.ResponseCode !== 0) {
       console.error('[start-trial] Cardcom error:', lpData.ResponseCode, lpData.Description || lpData.Message);
@@ -111,15 +142,15 @@ module.exports = async function handler(req, res) {
       lpData.TokenInfo?.Last4Digits ||
       lpData.TranzactionInfo?.Last4CardDigits ||
       lpData.TransactionInfo?.Last4CardDigits ||
+      lpData.TranzactionInfo?.LastCardDigitsString ||
       (lpData.CardMask ? String(lpData.CardMask).slice(-4) : null) ||
       (lpData.UIValues?.CardNumber ? lpData.UIValues.CardNumber.slice(-4) : null) ||
       '****';
 
-    const cardExpiry =
-      lpData.CardExpiration ||
-      lpData.TokenInfo?.TokenExDate ||
-      lpData.TranzactionInfo?.CardValidity ||
-      '';
+    // Extract expiry in MMYY format
+    const cardExpiry = extractExpiry(lpData);
+
+    console.log('[start-trial] token:', cardToken ? 'found' : 'MISSING', 'last4:', lastFour, 'expiry:', cardExpiry || 'MISSING');
 
     if (!cardToken) {
       console.warn('[start-trial] No token in response — proceeding without saving token');
@@ -131,6 +162,7 @@ module.exports = async function handler(req, res) {
       ? (billingCycle === 'yearly' ? 365 : 30)
       : TRIAL_DAYS;
     const periodEnd = new Date(now.getTime() + periodDays * 24 * 60 * 60 * 1000);
+    const nextCharge = new Date(periodEnd);
     const subStatus = isImmediate ? 'active' : 'trialing';
     const userStatus = isImmediate ? 'active' : 'trialing';
 
@@ -160,15 +192,20 @@ module.exports = async function handler(req, res) {
       console.error('[start-trial] Sub insert exception:', subErr.message);
     }
 
-    // 5. Update user profile (CRITICAL)
-    const profileUpdateRes = await supaAdmin('PATCH', 'user_profiles?id=eq.' + user.id, {
+    // 5. Update user profile — SAVE TOKEN + EXPIRY + BILLING INFO
+    const profileUpdate = {
       status: userStatus,
       plan: planName,
       billing_cycle: billingCycle,
       cardcom_token: cardToken,
       cardcom_last_four: lastFour,
-      trial_ends_at: isImmediate ? null : periodEnd.toISOString(),
-    });
+      cardcom_token_exp: cardExpiry || null,
+      auto_renew: true,
+      next_charge_date: nextCharge.toISOString().slice(0, 10),
+      trial_ends_at: periodEnd.toISOString(),
+    };
+
+    const profileUpdateRes = await supaAdmin('PATCH', 'user_profiles?id=eq.' + user.id, profileUpdate);
 
     if (!profileUpdateRes.ok) {
       const errText = await profileUpdateRes.text().catch(() => '');
