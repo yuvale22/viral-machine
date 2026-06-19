@@ -1,14 +1,9 @@
 // api/auth/start-trial.js
-// POST — Fetches token from Cardcom v11 GetLpResult, creates subscription, updates profile
+// POST — Fetches token from Cardcom v11 GetLpResult, starts 3-day free trial
 
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrem10dW56bWRsZmlhcHd6a29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzcyMTcsImV4cCI6MjA4OTE1MzIxN30.td9gx19iEU4jl8ph6JX33LHm-K-vQtNG5TW9q_kHWRs';
 
-const PLAN_PRICES = {
-  basic: { monthly: 9900, yearly: 99000 },
-  pro:   { monthly: 13900, yearly: 139000 },
-  max:   { monthly: 25900, yearly: 259000 },
-};
 const TRIAL_DAYS = 3;
 
 async function getUserFromToken(authHeader) {
@@ -66,36 +61,21 @@ async function fetchCardcomResult(terminal, apiName, lowProfileId) {
   return await postRes.json().catch(() => ({}));
 }
 
-// Extract card expiry in MMYY format from any Cardcom response shape
 function extractExpiry(lpData) {
-  // Try direct fields first
   if (lpData.CardExpiration) return String(lpData.CardExpiration).replace(/\D/g, '').slice(0, 4);
-
-  // Try separate month/year fields from TranzactionInfo
   const ti = lpData.TranzactionInfo || lpData.TransactionInfo || {};
   if (ti.CardMonth && ti.CardYear) {
-    const mm = String(ti.CardMonth).padStart(2, '0');
-    const yy = String(ti.CardYear).slice(-2);
-    return mm + yy;
+    return String(ti.CardMonth).padStart(2, '0') + String(ti.CardYear).slice(-2);
   }
   if (ti.CardValidity) return String(ti.CardValidity).replace(/\D/g, '').slice(0, 4);
-
-  // Try TokenInfo
   const tok = lpData.TokenInfo || {};
   if (tok.TokenExDate) return String(tok.TokenExDate).replace(/\D/g, '').slice(0, 4);
   if (tok.CardMonth && tok.CardYear) {
-    const mm = String(tok.CardMonth).padStart(2, '0');
-    const yy = String(tok.CardYear).slice(-2);
-    return mm + yy;
+    return String(tok.CardMonth).padStart(2, '0') + String(tok.CardYear).slice(-2);
   }
-
-  // Try top-level CardMonth/CardYear
   if (lpData.CardMonth && lpData.CardYear) {
-    const mm = String(lpData.CardMonth).padStart(2, '0');
-    const yy = String(lpData.CardYear).slice(-2);
-    return mm + yy;
+    return String(lpData.CardMonth).padStart(2, '0') + String(lpData.CardYear).slice(-2);
   }
-
   return '';
 }
 
@@ -105,37 +85,30 @@ module.exports = async function handler(req, res) {
   const user = await getUserFromToken(req.headers.authorization);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { low_profile_code, plan, cycle, immediate } = req.body || {};
+  const { low_profile_code, plan, cycle } = req.body || {};
   if (!low_profile_code) return res.status(400).json({ error: 'Missing low_profile_code' });
 
   const planName = plan || 'pro';
   const billingCycle = cycle || 'monthly';
-  const isImmediate = immediate === true;
-  const planPrices = PLAN_PRICES[planName] || PLAN_PRICES.pro;
-  const amount = billingCycle === 'yearly' ? planPrices.yearly : planPrices.monthly;
   const TERMINAL = process.env.CARDCOM_TERMINAL || '170602';
   const API_NAME = process.env.CARDCOM_API_NAME || 'nBpN6Pz2AqazwWsiicQM';
 
   try {
-    // 1. Fetch transaction details from Cardcom v11
     const lpData = await fetchCardcomResult(TERMINAL, API_NAME, low_profile_code);
-
-    console.log('[start-trial] full response:', JSON.stringify(lpData).slice(0, 2000));
+    console.log('[start-trial] response:', JSON.stringify(lpData).slice(0, 2000));
 
     if (lpData.ResponseCode !== 0) {
-      console.error('[start-trial] Cardcom error:', lpData.ResponseCode, lpData.Description || lpData.Message);
       return res.status(400).json({
         error: 'הכרטיס נדחה — ' + (lpData.Description || lpData.Message || 'נסה כרטיס אחר')
       });
     }
 
-    // 2. Extract token + card info from any v11 response shape
+    // Extract token + card info
     const cardToken =
       lpData.Token ||
       lpData.TokenInfo?.Token ||
       lpData.TranzactionInfo?.Token ||
       lpData.TransactionInfo?.Token ||
-      lpData.UIValues?.CardOwnerToken ||
       null;
 
     const lastFour =
@@ -143,66 +116,28 @@ module.exports = async function handler(req, res) {
       lpData.TranzactionInfo?.Last4CardDigits ||
       lpData.TransactionInfo?.Last4CardDigits ||
       lpData.TranzactionInfo?.LastCardDigitsString ||
-      (lpData.CardMask ? String(lpData.CardMask).slice(-4) : null) ||
-      (lpData.UIValues?.CardNumber ? lpData.UIValues.CardNumber.slice(-4) : null) ||
       '****';
 
-    // Extract expiry in MMYY format
     const cardExpiry = extractExpiry(lpData);
 
     console.log('[start-trial] token:', cardToken ? 'found' : 'MISSING', 'last4:', lastFour, 'expiry:', cardExpiry || 'MISSING');
 
-    if (!cardToken) {
-      console.warn('[start-trial] No token in response — proceeding without saving token');
-    }
-
-    // 3. Calculate subscription period
+    // Calculate trial period — 3 days free, then charge
     const now = new Date();
-    const periodDays = isImmediate
-      ? (billingCycle === 'yearly' ? 365 : 30)
-      : TRIAL_DAYS;
-    const periodEnd = new Date(now.getTime() + periodDays * 24 * 60 * 60 * 1000);
-    const nextCharge = new Date(periodEnd);
-    const subStatus = isImmediate ? 'active' : 'trialing';
-    const userStatus = isImmediate ? 'active' : 'trialing';
+    const trialEnd = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+    const nextChargeDate = trialEnd.toISOString().slice(0, 10);
 
-    // 4. Save subscription (best-effort)
-    try {
-      const subRes = await supaAdmin('POST', 'subscriptions', {
-        user_id: user.id,
-        cardcom_token: cardToken,
-        cardcom_last_four: lastFour,
-        cardcom_expiry: cardExpiry,
-        plan: planName,
-        billing_cycle: billingCycle,
-        status: subStatus,
-        amount_ils: amount,
-        current_period_start: now.toISOString(),
-        current_period_end: periodEnd.toISOString(),
-        trial_end: isImmediate ? null : periodEnd.toISOString(),
-        last_charge_status: isImmediate ? 'success' : 'pending',
-        last_charge_date: isImmediate ? now.toISOString() : null,
-      });
-
-      if (!subRes.ok) {
-        const subErr = await subRes.text().catch(() => '');
-        console.error('[start-trial] Sub insert error:', subErr);
-      }
-    } catch(subErr) {
-      console.error('[start-trial] Sub insert exception:', subErr.message);
-    }
-
-    // 5. Update user profile — SAVE TOKEN + EXPIRY + BILLING INFO
+    // Update user profile — trialing with card saved for future charge
     const profileUpdate = {
-      status: userStatus,
+      status: 'trialing',
       plan: planName,
       billing_cycle: billingCycle,
       cardcom_token: cardToken,
       cardcom_last_four: lastFour,
       cardcom_token_exp: cardExpiry || null,
       auto_renew: true,
-      next_charge_date: nextCharge.toISOString().slice(0, 10),
-      trial_ends_at: periodEnd.toISOString(),
+      next_charge_date: nextChargeDate,
+      trial_ends_at: trialEnd.toISOString(),
     };
 
     const profileUpdateRes = await supaAdmin('PATCH', 'user_profiles?id=eq.' + user.id, profileUpdate);
@@ -215,11 +150,9 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       plan: planName,
-      status: subStatus,
-      immediate: isImmediate,
-      trial_end: isImmediate ? null : periodEnd.toISOString(),
-      period_end: periodEnd.toISOString(),
-      period_end_display: periodEnd.toLocaleDateString('he-IL'),
+      status: 'trialing',
+      trial_end: trialEnd.toISOString(),
+      next_charge: nextChargeDate,
       last_four: lastFour,
     });
 
