@@ -788,7 +788,7 @@ src="https://www.facebook.com/tr?id=2411695185972851&ev=PageView&noscript=1"
           <li class="disabled"><span class="feat-icon">✗</span> הצעות מחיר</li>
           <li><span class="feat-icon">✓</span> דשבורד פיננסי</li>
         </ul>
-        <button class="plan-btn plan-btn-outline" id="basic-plan-btn" onclick="selectPaywallPlan('basic')">בחר ושלם ←</button>
+        <button class="plan-btn plan-btn-outline" id="basic-plan-btn" onclick="selectPaywallPlan('basic')">התחל 3 ימי ניסיון חינם ←</button>
       </div>
 
       <!-- PRO (highlighted) -->
@@ -809,7 +809,7 @@ src="https://www.facebook.com/tr?id=2411695185972851&ev=PageView&noscript=1"
           <li><span class="feat-icon">✓</span> דשבורד פיננסי</li>
           <li class="disabled"><span class="feat-icon">✗</span> הצעות מחיר White-label</li>
         </ul>
-        <button class="plan-btn plan-btn-primary" onclick="selectPaywallPlan('pro')">בחר ושלם עכשיו ←</button>
+        <button class="plan-btn plan-btn-primary" onclick="selectPaywallPlan('pro')">התחל 3 ימי ניסיון חינם ←</button>
       </div>
 
       <!-- MAX -->
@@ -830,7 +830,7 @@ src="https://www.facebook.com/tr?id=2411695185972851&ev=PageView&noscript=1"
           <li><span class="feat-icon">✓</span> הצעות מחיר White-label</li>
           <li><span class="feat-icon">✓</span> דשבורד פיננסי מלא</li>
         </ul>
-        <button class="plan-btn plan-btn-outline" onclick="selectPaywallPlan('max')">בחר ושלם עכשיו ←</button>
+        <button class="plan-btn plan-btn-outline" onclick="selectPaywallPlan('max')">התחל 3 ימי ניסיון חינם ←</button>
       </div>
     </div>
 
@@ -848,9 +848,9 @@ src="https://www.facebook.com/tr?id=2411695185972851&ev=PageView&noscript=1"
     </div>
 
     <!-- Trust + Skip -->
-    <div class="paywall-trust" id="paywall-trust" style="margin-top:16px">🔒 מאובטח &nbsp;•&nbsp; ביטול בכל רגע &nbsp;•&nbsp; ₪0 עד <span id="paywall-trust-date"></span></div>
+    <div class="paywall-trust" id="paywall-trust" style="margin-top:16px">🔒 3 ימי ניסיון חינם &nbsp;•&nbsp; אימות כרטיס בלבד &nbsp;•&nbsp; ביטול בכל עת</div>
     <!-- Skip paywall — 3 day free trial -->
-    <button class="paywall-skip" id="paywall-skip-btn" onclick="skipPaywall()">התחל 3 ימי ניסיון חינם (בלי כרטיס)</button>
+    <!-- trial requires card -->
   </div>
 </div>
 
@@ -902,7 +902,7 @@ src="https://www.facebook.com/tr?id=2411695185972851&ev=PageView&noscript=1"
       <!-- Trust message -->
       <div style="text-align:center;margin-top:20px;color:var(--text-muted);font-size:13px;line-height:1.7">
         <div style="margin-bottom:6px">🔒 תשלום מאובטח באמצעות קארדקום</div>
-        <div id="payment-trust-line">חיוב חודשי מתחדש · בטל בכל עת · ללא התחייבות</div>
+        <div id="payment-trust-line">3 ימי ניסיון חינם · אימות כרטיס בלבד · ביטול בכל עת</div>
       </div>
 
       <!-- Polling status -->
@@ -5241,27 +5241,24 @@ function showPaywall(firstName) {
   // Show/hide trial elements
   const trialSection = document.getElementById('paywall-trial-section');
   const subtitle = document.getElementById('paywall-subtitle');
-  const skipBtn = document.getElementById('paywall-skip-btn');
   const trustEl = document.getElementById('paywall-trust');
   const basicBtn = document.getElementById('basic-plan-btn');
   const welcomeText = document.getElementById('paywall-welcome-text');
 
   if (hasUsedTrial) {
-    // User already used trial or is paying — upgrade mode
+    // User already used trial — upgrade/renew mode
     trialSection.style.display = 'none';
-    subtitle.innerHTML = 'בחר מסלול — חיוב חודשי מתחדש, בטל בכל עת';
-    skipBtn.style.display = 'none';
-    trustEl.innerHTML = '🔒 חיוב חודשי מתחדש &nbsp;•&nbsp; בטל בכל עת &nbsp;•&nbsp; ללא התחייבות';
-    basicBtn.textContent = 'בחר ושלם ←';
+    subtitle.innerHTML = 'בחר מסלול — הזן כרטיס, 3 ימי ניסיון חינם, ביטול בכל עת';
+    trustEl.innerHTML = '🔒 3 ימי ניסיון חינם &nbsp;•&nbsp; אימות כרטיס בלבד &nbsp;•&nbsp; ביטול בכל עת';
+    basicBtn.textContent = 'התחל 3 ימי ניסיון חינם ←';
     welcomeText.innerHTML = 'שדרג את YUMi שלך';
   } else {
-    // New user — free trial mode
+    // New user
     trialSection.style.display = '';
     document.getElementById('paywall-trial-date').textContent = dateStr;
-    subtitle.innerHTML = 'נסו 3 ימים בחינם, או בחרו מסלול ושלמו';
-    skipBtn.style.display = '';
-    trustEl.innerHTML = '🔒 חיוב חודשי מתחדש &nbsp;•&nbsp; בטל בכל עת &nbsp;•&nbsp; ללא התחייבות';
-    basicBtn.textContent = 'בחר ושלם ←';
+    subtitle.innerHTML = 'בחר מסלול — הזן כרטיס, 3 ימי ניסיון חינם, ביטול בכל עת';
+    trustEl.innerHTML = '🔒 3 ימי ניסיון חינם &nbsp;•&nbsp; אימות כרטיס בלבד &nbsp;•&nbsp; ביטול בכל עת';
+    basicBtn.textContent = 'התחל 3 ימי ניסיון חינם ←';
     welcomeText.innerHTML = 'ברוכים הבאים, <span id="paywall-name">' + esc(firstName || state.userProfile?.full_name || '') + '</span>';
   }
 
@@ -5319,8 +5316,8 @@ function selectPaywallPlan(plan) {
   const price = isYearly ? p.yearly : p.monthly;
   const label = { basic: 'Basic', pro: 'PRO', max: 'MAX' }[plan];
 
-  document.getElementById('selected-plan-label').textContent = 'מסלול ' + label + ' — תשלום מיידי';
-  document.getElementById('selected-plan-price').textContent = '₪' + price + '/' + (isYearly ? 'שנה' : 'חודש');
+  document.getElementById('selected-plan-label').textContent = 'מסלול ' + label + ' — 3 ימי ניסיון חינם';
+  document.getElementById('selected-plan-price').textContent = 'אחרי הניסיון: ₪' + price + '/' + (isYearly ? 'שנה' : 'חודש');
 
   openCardcomPayment();
 }
@@ -5330,7 +5327,7 @@ async function openCardcomPayment() {
     const res = await fetch('/api/cardcom/create-token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + supaToken },
-      body: JSON.stringify({ plan: selectedPlan, cycle: selectedBillingCycle, immediate: true }),
+      body: JSON.stringify({ plan: selectedPlan, cycle: selectedBillingCycle }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -5357,8 +5354,8 @@ async function openCardcomPayment() {
 
     document.getElementById('payment-emoji').textContent = planEmojis[selectedPlan] || '🚀';
     document.getElementById('payment-plan-line').textContent =
-      `מסלול ${planLabels[selectedPlan]} — ₪${price}/${cycleLabel}`;
-    document.getElementById('payment-trust-line').textContent = 'חיוב חודשי מתחדש · בטל בכל עת · ללא התחייבות';
+      `מסלול ${planLabels[selectedPlan]} — 3 ימי ניסיון חינם, אח״כ ₪${price}/${cycleLabel}`;
+    document.getElementById('payment-trust-line').textContent = '3 ימי ניסיון חינם · אימות כרטיס בלבד · ביטול בכל עת';
 
     // Reset iframe and loading state
     document.getElementById('payment-iframe').style.display = 'none';
@@ -5491,7 +5488,7 @@ async function handleCardcomSuccess() {
   const finalPlan = pendingPlan?.plan || planFromUrl || selectedPlan || 'basic';
   const finalCycle = pendingPlan?.cycle || selectedBillingCycle || 'monthly';
   const finalLowProfileCode = pendingPlan?.low_profile_code || cardcomLowProfileCode;
-  const isImmediate = true;
+  const isImmediate = finalPlan !== 'basic';
 
   toast('✨ מפעיל את החשבון שלך...', 'ok');
 
@@ -5522,7 +5519,7 @@ async function handleCardcomSuccess() {
       state.userProfile.cardcom_last_four = data.last_four || state.userProfile.cardcom_last_four;
     }
 
-    toast('🎉 מסלול ' + finalPlan.toUpperCase() + ' הופעל! המנוי יתחדש אוטומטית.', 'ok');
+    toast('🎉 3 ימי ניסיון חינם הופעלו! מסלול ' + finalPlan.toUpperCase() + ' יתחיל אוטומטית.', 'ok');
     setTimeout(() => { updatePlanUI(); showScreen('home'); }, 1500);
   } catch(e) {
     console.error('Start trial error:', e);
@@ -5597,16 +5594,31 @@ async function cancelSubscription() {
     toast('אין לך מנוי פעיל לביטול', 'err');
     return;
   }
-  if (!confirm('לבטל את החידוש האוטומטי של המנוי?\n\nלא תחויב יותר.\nתמשיך ליהנות מהמנוי עד סוף התקופה ששילמת עליה, ואז הגישה תיחסם.')) return;
+  const isTrial = state.userProfile?.status === 'trialing';
+  const msg = isTrial
+    ? 'אתה בתקופת ניסיון — הכרטיס שלך לא יחויב.\n\nלבטל?'
+    : 'המנוי לא יתחדש ולא תחויב שוב.\nתוכל להמשיך להשתמש עד סוף התקופה.\n\nלבטל?';
+  if (!confirm(msg)) return;
 
   try {
+    const update = { auto_renew: false };
+    if (isTrial) {
+      // Trial — cancel immediately, no charge
+      update.status = 'expired';
+      update.plan = 'free';
+    }
     await fetch(SUPA_URL + '/rest/v1/user_profiles?id=eq.' + state.user.id, {
       method: 'PATCH',
       headers: { ...supaHeaders(true), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ auto_renew: false }),
+      body: JSON.stringify(update),
     });
     state.userProfile.auto_renew = false;
-    toast('החידוש האוטומטי בוטל. לא תחויב שוב.', 'ok');
+    if (isTrial) {
+      state.userProfile.status = 'expired';
+      state.userProfile.plan = 'free';
+    }
+    updatePlanUI();
+    toast(isTrial ? 'הניסיון בוטל — לא תחויב.' : 'המנוי לא יתחדש. לא תחויב שוב.', 'ok');
   } catch(e) {
     toast('שגיאה בביטול: ' + e.message, 'err');
   }
