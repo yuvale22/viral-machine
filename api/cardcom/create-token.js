@@ -1,5 +1,6 @@
 // api/cardcom/create-token.js
-// POST — Creates Cardcom Low Profile page for tokenization (v11 JSON API)
+// POST — Creates Cardcom Low Profile page for card tokenization
+// All plans start with 3-day free trial — card saved, charged after 3 days
 const SUPA_URL = 'https://tkzmtunzmdlfiapwzkop.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrem10dW56bWRsZmlhcHd6a29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzcyMTcsImV4cCI6MjA4OTE1MzIxN30.td9gx19iEU4jl8ph6JX33LHm-K-vQtNG5TW9q_kHWRs';
 async function getUserFromToken(authHeader) {
@@ -22,8 +23,7 @@ module.exports = async function handler(req, res) {
   const body = req.body || {};
   const plan = body.plan || 'pro';
   const cycle = body.cycle || 'monthly';
-  const immediate = body.immediate === true;
-  // Pricing
+  // Pricing (for display on receipt — actual charge happens after trial)
   const PRICES = {
     basic: { monthly: 99, yearly: 990 },
     pro:   { monthly: 139, yearly: 1390 },
@@ -31,29 +31,24 @@ module.exports = async function handler(req, res) {
   };
   const planPrices = PRICES[plan] || PRICES.pro;
   const chargeAmount = cycle === 'yearly' ? planPrices.yearly : planPrices.monthly;
-  // URLs — success goes to toda.html with sum & plan for Meta Pixel
+  // URLs
   const baseUrl = 'https://www.yumi-app.co.il';
-  const successUrl = baseUrl + '/toda.html?sum=' + chargeAmount + '&plan=' + plan.toUpperCase() + '&user_id=' + user.id;
+  const successUrl = baseUrl + '/toda.html?sum=0&plan=' + plan.toUpperCase() + '&trial=3&user_id=' + user.id;
   const failUrl = baseUrl + '/?cardcom_fail=1';
   const ipnUrl = baseUrl + '/api/cardcom/ipn';
-  // Operation: ChargeOnly = 1 (immediate charge), CreateTokenOnly = 3 (token only for trial)
-  const operation = immediate ? 'ChargeAndCreateToken' : 'CreateTokenOnly';
-  const amount = immediate ? chargeAmount : 1;
-  const productLabel = immediate
-    ? 'YUMi ' + plan.toUpperCase() + ' — ' + (cycle === 'yearly' ? 'שנתי' : 'חודשי')
-    : 'YUMi Basic — 5 ימי ניסיון';
-  // Cardcom v11 JSON payload
+  // CreateTokenOnly — save card without charging (1₪ verification)
+  const productLabel = 'YUMi ' + plan.toUpperCase() + ' — 3 ימי ניסיון חינם (אימות כרטיס)';
   const payload = {
     TerminalNumber: TERMINAL,
     ApiName: API_NAME,
     ReturnValue: user.id,
-    Amount: amount,
+    Amount: 1,
     SuccessRedirectUrl: successUrl,
     FailedRedirectUrl: failUrl,
     WebHookUrl: ipnUrl,
-    Operation: operation,
+    Operation: 'ChargeAndCreateToken',
     Language: 'he',
-    ISOCoinId: 1, // 1 = ILS
+    ISOCoinId: 1,
     ProductName: productLabel,
     UIDefinition: {
       IsHideCardOwnerName: false,
@@ -68,7 +63,7 @@ module.exports = async function handler(req, res) {
       Name: user.user_metadata?.full_name || user.email || 'YUMi User',
       Products: [{
         Description: productLabel,
-        UnitCost: amount,
+        UnitCost: 1,
         Quantity: 1,
       }],
     },
