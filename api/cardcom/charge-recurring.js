@@ -73,16 +73,10 @@ module.exports = async function handler(req, res) {
         Token: sub.cardcom_token,
       };
 
-      // Parse token expiry into separate CardValidityMonth + CardValidityYear
+      // Card expiry — field name: CardExpirationMMYY, format: MMYY (e.g. "1231")
       const exp = (sub.cardcom_token_exp || '').replace(/\D/g, '');
-      if (exp.length === 4) {
-        // Format: MMYY (e.g. "1231" = December 2031)
-        payload.CardValidityMonth = exp.slice(0, 2);
-        payload.CardValidityYear = '20' + exp.slice(2, 4);
-      } else if (exp.length === 6) {
-        // Format: MMYYYY (e.g. "122031")
-        payload.CardValidityMonth = exp.slice(0, 2);
-        payload.CardValidityYear = exp.slice(2, 6);
+      if (exp.length >= 4) {
+        payload.CardExpirationMMYY = exp.slice(0, 4);
       }
 
       try {
