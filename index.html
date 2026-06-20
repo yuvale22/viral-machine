@@ -5519,6 +5519,16 @@ async function handleCardcomSuccess() {
       state.userProfile.cardcom_last_four = data.last_four || state.userProfile.cardcom_last_four;
     }
 
+    // Fire Meta Pixel — track trial signup
+    try {
+      if (typeof fbq === 'function') {
+        const PRICES = { basic: { monthly: 99, yearly: 990 }, pro: { monthly: 139, yearly: 1390 }, max: { monthly: 259, yearly: 2590 } };
+        const pixelAmount = PRICES[finalPlan]?.[finalCycle] || 0;
+        fbq('track', 'StartTrial', { value: pixelAmount, currency: 'ILS', content_name: finalPlan.toUpperCase(), predicted_ltv: pixelAmount });
+        fbq('track', 'Subscribe', { value: pixelAmount, currency: 'ILS', content_name: finalPlan.toUpperCase() });
+      }
+    } catch(px) { console.log('Pixel error:', px); }
+
     toast('🎉 3 ימי ניסיון חינם הופעלו! מסלול ' + finalPlan.toUpperCase() + ' יתחיל אוטומטית.', 'ok');
     setTimeout(() => { updatePlanUI(); showScreen('home'); }, 1500);
   } catch(e) {
@@ -5545,24 +5555,9 @@ function handleCardcomFailure() {
 }
 
 async function skipPaywall() {
-  // Start free trial (5 days, no card)
-  try {
-    if (state.user && state.userProfile?.status === 'pending_payment') {
-      await fetch(SUPA_URL + '/rest/v1/user_profiles?id=eq.' + state.user.id, {
-        method: 'PATCH',
-        headers: { ...supaHeaders(true), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'trialing',
-          trial_ends_at: new Date(Date.now() + TRIAL_DAYS * 24*60*60*1000).toISOString(),
-        })
-      });
-      state.userProfile.status = 'trialing';
-      state.userProfile.trial_ends_at = new Date(Date.now() + TRIAL_DAYS * 24*60*60*1000).toISOString();
-    }
-  } catch(e) { console.log('Skip trial update:', e); }
-  toast('🎁 ' + TRIAL_DAYS + ' ימי ניסיון הופעלו!', 'ok');
-  updatePlanUI();
-  showScreen('home');
+  // No free trial without card — redirect to paywall
+  toast('יש להזין כרטיס אשראי כדי להתחיל ניסיון חינם', 'err');
+  showPaywall(state.userProfile?.full_name);
 }
 
 
