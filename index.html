@@ -1918,8 +1918,12 @@ window.onload = async () => {
         showScreen('admin');
       } else if (await startPendingLandingPlan()) {
         // Going to payment from landing page (already logged in)
-      } else if (state.userProfile?.status === 'pending_payment') {
-        showPaywall(state.userProfile.full_name);
+      } else if (!state.userProfile?.cardcom_token || state.userProfile?.status === 'pending_payment') {
+        // No card on file — must pay first
+        showPaywall(state.userProfile?.full_name);
+      } else if (state.userProfile?.status === 'expired') {
+        // Subscription expired — must renew
+        showPaywall(state.userProfile?.full_name);
       } else {
         updatePlanUI();
         showScreen('home');
@@ -1953,9 +1957,21 @@ function buildGrid() {
 }
 
 function showScreen(name) {
+  // GUARD: Block access to app screens if user hasn't paid (no card on file)
+  const freeScreens = ['auth', 'paywall', 'payment', 'admin', 'admin-login', 'setup'];
+  if (!freeScreens.includes(name) && state.user && !isSuperAdmin()) {
+    const status = state.userProfile?.status;
+    const hasCard = !!state.userProfile?.cardcom_token;
+    // Allow: active users, trialing WITH card
+    // Block: pending_payment, trialing WITHOUT card, expired
+    if (status === 'pending_payment' || (status === 'trialing' && !hasCard) || (!status)) {
+      showPaywall(state.userProfile?.full_name);
+      return;
+    }
+  }
+
   // Super admin can access admin dashboard from regular UI
   if (name === 'admin' && !IS_ADMIN && isSuperAdmin()) {
-    // Set supaToken if needed for admin operations
     if (!supaToken && localStorage.getItem('vm_supa_token')) {
       supaToken = localStorage.getItem('vm_supa_token');
     }
